@@ -16,7 +16,7 @@ export const updateDeviceSchema = createDeviceSchema.partial();
 export const createPlantSchema = z.object({
   name: z.string().min(1, "Le nom est requis").max(100),
   species: z.string().max(200).optional(),
-  imageUrl: z.string().url().optional(),
+  imageUrl: z.url().optional(),
   notes: z.string().max(500).optional(),
   deviceId: z.string().cuid(),
 });
@@ -81,3 +81,62 @@ export type UpdateDeviceConfigInput = z.infer<typeof updateDeviceConfigSchema>;
 export type WaterCommandInput = z.infer<typeof waterCommandSchema>;
 export type ReadingsQueryInput = z.infer<typeof readingsQuerySchema>;
 export type CreateScheduleInput = z.infer<typeof createScheduleSchema>;
+
+// ─── Vitrine ──────────────────────────────────────────────────
+export const appointmentSchema = z.object({
+  name: z.string().min(1, "Le nom est requis").max(100),
+  email: z.email("Email invalide"),
+  phone: z.string().min(10, "Numéro de téléphone invalide").max(20),
+  date: z.string().min(1, "La date est requise"),
+  time: z.string().min(1, "L'heure est requise"),
+  subject: z.string().min(1, "Le sujet est requis").max(200),
+  message: z.string().max(1000).optional(),
+});
+
+export const contactMessageSchema = z.object({
+  name: z.string().min(1, "Le nom est requis").max(100),
+  email: z.email("Email invalide"),
+  message: z.string().min(10, "Message trop court").max(2000),
+});
+
+export type AppointmentInput = z.infer<typeof appointmentSchema>;
+export type ContactMessageInput = z.infer<typeof contactMessageSchema>;
+
+// ─── Finances ─────────────────────────────────────────────────
+export const transactionSchema = z.object({
+  amount: z.number().positive("Le montant doit être positif"),
+  category: z.string().min(1).max(50),
+  description: z.string().max(200).optional(),
+  type: z.enum(["INCOME", "EXPENSE"]),
+  date: z.iso.datetime(),
+});
+
+export type TransactionInput = z.infer<typeof transactionSchema>;
+
+// ─── Santé ────────────────────────────────────────────────────
+export const healthEntrySchema = z.object({
+  weight: z.number().min(20).max(300).optional(),
+  steps: z.number().int().min(0).max(100000).optional(),
+  sleepHours: z.number().min(0).max(24).optional(),
+  notes: z.string().max(500).optional(),
+  date: z.iso.datetime(),
+});
+
+export type HealthEntryInput = z.infer<typeof healthEntrySchema>;
+
+// ─── Agenda ───────────────────────────────────────────────────
+export const taskSchema = z.object({
+  title: z.string().min(1, "Le titre est requis").max(200),
+  dueDate: z.iso.datetime().optional(),
+  priority: z.enum(["LOW", "MEDIUM", "HIGH"]).optional().default("MEDIUM"),
+});
+
+export const updateTaskSchema = z.object({
+  completed: z.boolean().optional(),
+  title: z.string().min(1).max(200).optional(),
+  dueDate: z.iso.datetime().optional().nullable(),
+  priority: z.enum(["LOW", "MEDIUM", "HIGH"]).optional(),
+});
+
+export type TaskInput = z.infer<typeof taskSchema>;
+export type UpdateTaskInput = z.infer<typeof updateTaskSchema>;

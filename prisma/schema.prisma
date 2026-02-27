@@ -1,11 +1,13 @@
-// prisma/schema.prisma — IoT Plant Watering System
+// prisma/schema.prisma — MyLife Platform
 
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
+  previewFeatures = ["driverAdapters"]
 }
 
 datasource db {
   provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 // ─────────────────────────────────────────
@@ -181,4 +183,194 @@ model WateringSchedule {
   updatedAt      DateTime  @updatedAt
 
   @@map("watering_schedules")
+}
+
+// ─────────────────────────────────────────
+// AUTH — NextAuth v5
+// ─────────────────────────────────────────
+
+enum UserRole {
+  USER
+  ADMIN
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  emailVerified DateTime?
+  image         String?
+  role          UserRole  @default(USER)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  accounts      Account[]
+  sessions      Session[]
+  transactions  Transaction[]
+  healthEntries HealthEntry[]
+  tasks         Task[]
+
+  @@map("users")
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@map("verification_tokens")
+}
+
+// ─────────────────────────────────────────
+// VITRINE — Contacts & Rendez-vous
+// ─────────────────────────────────────────
+
+enum AppointmentStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+}
+
+model Appointment {
+  id        String            @id @default(cuid())
+  name      String
+  email     String
+  phone     String
+  date      DateTime
+  subject   String
+  message   String?
+  status    AppointmentStatus @default(PENDING)
+  smsSent   Boolean           @default(false)
+  createdAt DateTime          @default(now())
+
+  @@index([status, createdAt])
+  @@map("appointments")
+}
+
+model ContactMessage {
+  id        String   @id @default(cuid())
+  name      String
+  email     String
+  message   String
+  smsSent   Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@map("contact_messages")
+}
+
+// ─────────────────────────────────────────
+// MAISON — Constantes IoT
+// ─────────────────────────────────────────
+
+model HomeReading {
+  id         String   @id @default(cuid())
+  sensor     String
+  value      Float
+  unit       String
+  location   String?
+  recordedAt DateTime @default(now())
+
+  @@index([sensor, recordedAt])
+  @@map("home_readings")
+}
+
+// ─────────────────────────────────────────
+// FINANCES — Budget
+// ─────────────────────────────────────────
+
+enum TransactionType {
+  INCOME
+  EXPENSE
+}
+
+model Transaction {
+  id          String          @id @default(cuid())
+  userId      String
+  user        User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  amount      Float
+  category    String
+  description String?
+  type        TransactionType
+  date        DateTime
+  createdAt   DateTime        @default(now())
+
+  @@index([userId, date])
+  @@map("transactions")
+}
+
+// ─────────────────────────────────────────
+// SANTÉ — Suivi santé / sport
+// ─────────────────────────────────────────
+
+model HealthEntry {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  weight     Float?
+  steps      Int?
+  sleepHours Float?
+  notes      String?
+  date       DateTime
+  createdAt  DateTime @default(now())
+
+  @@index([userId, date])
+  @@unique([userId, date])
+  @@map("health_entries")
+}
+
+// ─────────────────────────────────────────
+// AGENDA — Tâches
+// ─────────────────────────────────────────
+
+enum TaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+model Task {
+  id        String       @id @default(cuid())
+  userId    String
+  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String
+  completed Boolean      @default(false)
+  dueDate   DateTime?
+  priority  TaskPriority @default(MEDIUM)
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  @@index([userId, completed])
+  @@map("tasks")
 }
