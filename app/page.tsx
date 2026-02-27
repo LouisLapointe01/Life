@@ -1,65 +1,55 @@
-import Image from "next/image";
 
-export default function Home() {
+import { DeviceCard } from "@/components/devices/DeviceCard";
+
+// MOCK DATA pour affichage initial (à remplacer par fetch API/devices)
+const mockDevices = [
+  {
+    id: "1",
+    name: "Pothos salon",
+    location: "Salon fenêtre",
+    isOnline: true,
+    plant: { name: "Monstera", imageUrl: "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=facearea&w=256&q=80" },
+    sensorReadings: [{ soilHumidity: 45, waterLevel: 80, recordedAt: new Date().toISOString() }],
+    alerts: [],
+  },
+  {
+    id: "2",
+    name: "Pothos bureau",
+    location: "Bureau",
+    isOnline: true,
+    plant: { name: "Pothos", imageUrl: "https://images.unsplash.com/photo-1465101046530-73398c7f28ca?auto=format&fit=facearea&w=256&q=80" },
+    sensorReadings: [{ soilHumidity: 22, waterLevel: 35, recordedAt: new Date().toISOString() }],
+    alerts: [{ isRead: false, isResolved: false }],
+  },
+  {
+    id: "3",
+    name: "Cactus chambre",
+    location: "Chambre",
+    isOnline: true,
+    plant: { name: "Cactus", imageUrl: "https://images.unsplash.com/photo-1501004318641-b39e6451bec6?auto=format&fit=facearea&w=256&q=80" },
+    sensorReadings: [{ soilHumidity: 15, waterLevel: 90, recordedAt: new Date().toISOString() }],
+    alerts: [],
+  },
+  {
+    id: "4",
+    name: "Fougère salle de bain",
+    location: "Salle de bain",
+    isOnline: false,
+    plant: { name: "Fougère", imageUrl: "https://images.unsplash.com/photo-1464983953574-0892a716854b?auto=format&fit=facearea&w=256&q=80" },
+    sensorReadings: [{ soilHumidity: 38, waterLevel: 60, recordedAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString() }],
+    alerts: [{ isRead: false, isResolved: false }],
+  },
+];
+
+export default function Dashboard() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
+    <main className="min-h-screen bg-zinc-50 dark:bg-black py-10 px-4">
+      <h1 className="text-3xl font-bold mb-8 text-center text-zinc-900 dark:text-zinc-50">Dashboard Arrosage IoT</h1>
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 justify-center">
+        {mockDevices.map((device) => (
+          <DeviceCard key={device.id} device={device as any} />
+        ))}
+      </div>
+    </main>
   );
 }

@@ -1,0 +1,184 @@
+// prisma/schema.prisma — IoT Plant Watering System
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─────────────────────────────────────────
+// MODULE PHYSIQUE (1 par pot)
+// ─────────────────────────────────────────
+model Device {
+  id              String    @id @default(cuid())
+  name            String
+  location        String?
+  macAddress      String    @unique
+  firmwareVersion String?
+  isOnline        Boolean   @default(false)
+  lastSeen        DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  plant           Plant?
+  sensorReadings  SensorReading[]
+  wateringEvents  WateringEvent[]
+  alerts          Alert[]
+  config          DeviceConfig?
+
+  @@map("devices")
+}
+
+// ─────────────────────────────────────────
+// PLANTE ASSOCIÉE AU MODULE
+// ─────────────────────────────────────────
+model Plant {
+  id        String   @id @default(cuid())
+  name      String
+  species   String?
+  imageUrl  String?
+  notes     String?
+  deviceId  String   @unique
+  device    Device   @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("plants")
+}
+
+// ─────────────────────────────────────────
+// CONFIGURATION PAR MODULE
+// ─────────────────────────────────────────
+model DeviceConfig {
+  id                    String  @id @default(cuid())
+  deviceId              String  @unique
+  device                Device  @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+
+  humidityThresholdLow  Int     @default(30)
+  humidityThresholdHigh Int     @default(70)
+
+  wateringDurationSec   Int     @default(5)
+  wateringCooldownMin   Int     @default(60)
+
+  readingIntervalMin    Int     @default(30)
+
+  autoWateringEnabled   Boolean @default(true)
+  nightModeStart        Int     @default(22)
+  nightModeEnd          Int     @default(7)
+
+  reservoirAlertLevel   Int     @default(20)
+
+  updatedAt             DateTime @updatedAt
+
+  @@map("device_configs")
+}
+
+// ─────────────────────────────────────────
+// LECTURES DES CAPTEURS (time-series)
+// ─────────────────────────────────────────
+model SensorReading {
+  id             String   @id @default(cuid())
+  deviceId       String
+  device         Device   @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+
+  soilHumidity   Float
+  airTemperature Float?
+  airHumidity    Float?
+  waterLevel     Float?
+  batteryLevel   Float?
+  rssi           Int?
+
+  recordedAt     DateTime @default(now())
+
+  @@index([deviceId, recordedAt])
+  @@index([recordedAt])
+  @@map("sensor_readings")
+}
+
+// ─────────────────────────────────────────
+// ÉVÉNEMENTS D'ARROSAGE
+// ─────────────────────────────────────────
+model WateringEvent {
+  id             String          @id @default(cuid())
+  deviceId       String
+  device         Device          @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+
+  triggeredBy    WateringTrigger
+  durationSec    Int
+  humidityBefore Float?
+  humidityAfter  Float?
+  success        Boolean         @default(true)
+  notes          String?
+
+  startedAt      DateTime        @default(now())
+  endedAt        DateTime?
+
+  @@index([deviceId, startedAt])
+  @@map("watering_events")
+}
+
+enum WateringTrigger {
+  AUTO
+  MANUAL
+  SCHEDULE
+}
+
+// ─────────────────────────────────────────
+// ALERTES
+// ─────────────────────────────────────────
+model Alert {
+  id         String        @id @default(cuid())
+  deviceId   String
+  device     Device        @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+
+  type       AlertType
+  severity   AlertSeverity
+  message    String
+  value      Float?
+  isRead     Boolean       @default(false)
+  isResolved Boolean       @default(false)
+  resolvedAt DateTime?
+
+  createdAt  DateTime      @default(now())
+
+  @@index([deviceId, createdAt])
+  @@index([isRead, createdAt])
+  @@map("alerts")
+}
+
+enum AlertType {
+  RESERVOIR_LOW
+  RESERVOIR_EMPTY
+  SOIL_TOO_DRY
+  SOIL_TOO_WET
+  DEVICE_OFFLINE
+  PUMP_FAILURE
+  BATTERY_LOW
+  SENSOR_ERROR
+}
+
+enum AlertSeverity {
+  INFO
+  WARNING
+  CRITICAL
+}
+
+// ─────────────────────────────────────────
+// PLANNING D'ARROSAGE
+// ─────────────────────────────────────────
+model WateringSchedule {
+  id             String    @id @default(cuid())
+  deviceId       String
+  name           String
+  cronExpression String
+  durationSec    Int       @default(5)
+  isEnabled      Boolean   @default(true)
+  lastRun        DateTime?
+  nextRun        DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@map("watering_schedules")
+}
