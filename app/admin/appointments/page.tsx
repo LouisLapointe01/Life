@@ -2,7 +2,6 @@ import { prisma } from "@/lib/prisma";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
-import type { Appointment } from "@prisma/client";
 
 const statusLabel: Record<string, { label: string; class: string }> = {
   PENDING: { label: "En attente", class: "bg-yellow-900/40 text-yellow-300 border-yellow-700" },
@@ -23,7 +22,7 @@ export default async function AppointmentsAdminPage() {
         {appointments.length === 0 && (
           <p className="text-slate-400">Aucun rendez-vous pour l&apos;instant.</p>
         )}
-        {appointments.map((rdv: Appointment) => {
+        {appointments.map((rdv) => {
           const s = statusLabel[rdv.status] ?? statusLabel.PENDING;
           return (
             <div key={rdv.id} className="bg-slate-900 border border-slate-700 rounded-lg p-4">
