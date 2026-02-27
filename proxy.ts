@@ -1,8 +1,8 @@
-// middleware.ts — Protection des routes (racine du projet)
+// proxy.ts — Protection des routes (Next.js 16, remplace middleware.ts)
 import NextAuth from "next-auth";
 import { authConfig } from "@/lib/auth.config";
 
-export const { auth: middleware } = NextAuth(authConfig);
+export const { auth: proxy } = NextAuth(authConfig);
 
 export const config = {
   matcher: [
