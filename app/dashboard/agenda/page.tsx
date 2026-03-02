@@ -108,18 +108,15 @@ export default function AgendaPage() {
       .eq("id", id);
 
     if (!error) {
-      const appointment = appointments.find((a) => a.id === id);
-      if (
-        status === "confirmed" &&
-        appointment?.is_close_contact &&
-        appointment?.guest_phone
-      ) {
-        await fetch("/api/appointments/notify", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ appointment_id: id }),
-        });
-      }
+      // Envoyer email de confirmation ou d'annulation au guest
+      await fetch("/api/appointments/notify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          appointment_id: id,
+          action: status,
+        }),
+      });
       await fetchAppointments();
     }
     setActionLoading(null);

@@ -1,6 +1,10 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAppointmentSchema } from "@/lib/validations";
 import { NextResponse } from "next/server";
+import {
+  sendBookingConfirmationToGuest,
+  sendNewBookingToAdmin,
+} from "@/lib/mailjet";
 
 export async function POST(request: Request) {
   try {
@@ -22,7 +26,7 @@ export async function POST(request: Request) {
     // Récupérer la durée du type de RDV
     const { data: appointmentType, error: typeError } = await supabase
       .from("appointment_types")
-      .select("duration_min")
+      .select("duration_min, name")
       .eq("id", type_id)
       .eq("is_active", true)
       .single();
@@ -89,6 +93,27 @@ export async function POST(request: Request) {
         { status: 500 }
       );
     }
+
+    // Envoyer emails de confirmation (async, non-bloquant)
+    const emailData = {
+      guestName: guest_name,
+      guestEmail: guest_email,
+      typeName: appointmentType.name,
+      startAt: startDate.toISOString(),
+      endAt: endDate.toISOString(),
+      durationMin: appointmentType.duration_min,
+    };
+
+    // Email au guest : "Demande enregistrée"
+    sendBookingConfirmationToGuest(emailData).catch(console.error);
+
+    // Email à l'admin : "Nouveau RDV à valider"
+    sendNewBookingToAdmin({
+      ...emailData,
+      guestPhone: guest_phone || closeContact?.phone || null,
+      message: message || null,
+      isCloseContact: isCloseContact,
+    }).catch(console.error);
 
     return NextResponse.json(appointment, { status: 201 });
   } catch {
