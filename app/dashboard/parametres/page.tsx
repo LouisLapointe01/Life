@@ -2,12 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Badge } from "@/components/ui/badge";
 import {
   Select,
   SelectContent,
@@ -22,7 +17,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Plus,
   Trash2,
@@ -31,11 +25,14 @@ import {
   Users,
   CalendarDays,
   Star,
+  Settings2,
+  Palette,
 } from "lucide-react";
+import { cn } from "@/lib/utils";
 
-// ============================================
-// Types
-// ============================================
+/* ═══════════════════════════════════════════════════════
+   Types
+   ═══════════════════════════════════════════════════════ */
 
 type AppointmentType = {
   id: string;
@@ -73,55 +70,70 @@ const DAYS = [
   "Samedi",
 ];
 
-// ============================================
-// Page principale
-// ============================================
+type Tab = "types" | "availability" | "contacts";
+
+const tabs: { key: Tab; label: string; icon: typeof CalendarDays }[] = [
+  { key: "types", label: "Types de RDV", icon: CalendarDays },
+  { key: "availability", label: "Disponibilités", icon: Clock },
+  { key: "contacts", label: "Contacts proches", icon: Users },
+];
+
+/* ═══════════════════════════════════════════════════════
+   Page
+   ═══════════════════════════════════════════════════════ */
 
 export default function ParametresPage() {
+  const [activeTab, setActiveTab] = useState<Tab>("types");
+
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Paramètres</h1>
-        <p className="text-muted-foreground">
-          Configurez vos types de rendez-vous, disponibilités et contacts proches.
+    <div className="mx-auto max-w-4xl space-y-6">
+      {/* Header */}
+      <div className="animate-slide-up">
+        <h2 className="text-3xl font-bold tracking-tight">Paramètres</h2>
+        <p className="mt-1 text-[15px] text-muted-foreground">
+          Configurez vos types de rendez-vous, disponibilités et contacts
+          proches.
         </p>
       </div>
 
-      <Tabs defaultValue="types">
-        <TabsList>
-          <TabsTrigger value="types" className="gap-1">
-            <CalendarDays className="h-4 w-4" />
-            Types de RDV
-          </TabsTrigger>
-          <TabsTrigger value="availability" className="gap-1">
-            <Clock className="h-4 w-4" />
-            Disponibilités
-          </TabsTrigger>
-          <TabsTrigger value="contacts" className="gap-1">
-            <Users className="h-4 w-4" />
-            Contacts proches
-          </TabsTrigger>
-        </TabsList>
+      {/* Tab Navigation */}
+      <div
+        className="flex gap-1 rounded-2xl bg-foreground/[0.04] p-1 animate-slide-up"
+        style={{ animationDelay: "80ms" }}
+      >
+        {tabs.map((tab) => {
+          const isActive = activeTab === tab.key;
+          return (
+            <button
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key)}
+              className={cn(
+                "flex flex-1 items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-[13px] font-medium transition-all duration-300",
+                isActive
+                  ? "bg-card text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              <tab.icon className="h-4 w-4" />
+              {tab.label}
+            </button>
+          );
+        })}
+      </div>
 
-        <TabsContent value="types" className="mt-4">
-          <AppointmentTypesSection />
-        </TabsContent>
-
-        <TabsContent value="availability" className="mt-4">
-          <AvailabilitySection />
-        </TabsContent>
-
-        <TabsContent value="contacts" className="mt-4">
-          <ContactsSection />
-        </TabsContent>
-      </Tabs>
+      {/* Content */}
+      <div className="animate-slide-up" style={{ animationDelay: "160ms" }}>
+        {activeTab === "types" && <AppointmentTypesSection />}
+        {activeTab === "availability" && <AvailabilitySection />}
+        {activeTab === "contacts" && <ContactsSection />}
+      </div>
     </div>
   );
 }
 
-// ============================================
-// Section : Types de RDV
-// ============================================
+/* ═══════════════════════════════════════════════════════
+   Types de RDV
+   ═══════════════════════════════════════════════════════ */
 
 function AppointmentTypesSection() {
   const [types, setTypes] = useState<AppointmentType[]>([]);
@@ -180,40 +192,57 @@ function AppointmentTypesSection() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-12">
-        <Loader2 className="h-6 w-6 animate-spin text-primary" />
+      <div className="flex items-center justify-center py-16">
+        <Loader2 className="h-7 w-7 animate-spin text-primary" />
       </div>
     );
   }
 
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle>Types de rendez-vous</CardTitle>
+    <div className="space-y-4">
+      {/* Header row */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500/20 to-blue-600/20">
+            <CalendarDays className="h-5 w-5 text-blue-500" />
+          </div>
+          <div>
+            <h3 className="text-[16px] font-semibold">Types de rendez-vous</h3>
+            <p className="text-[12px] text-muted-foreground">
+              {types.length} type{types.length > 1 ? "s" : ""} configuré
+              {types.length > 1 ? "s" : ""}
+            </p>
+          </div>
+        </div>
+
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
-            <Button size="sm" className="gap-1">
-              <Plus className="h-4 w-4" /> Ajouter
-            </Button>
+            <button className="flex items-center gap-2 rounded-2xl bg-primary px-4 py-2.5 text-[13px] font-medium text-primary-foreground shadow-lg shadow-primary/25 transition-all hover:shadow-xl hover:-translate-y-0.5">
+              <Plus className="h-4 w-4" />
+              Ajouter
+            </button>
           </DialogTrigger>
-          <DialogContent>
+          <DialogContent className="rounded-3xl">
             <DialogHeader>
               <DialogTitle>Nouveau type de rendez-vous</DialogTitle>
             </DialogHeader>
             <div className="space-y-4 pt-2">
-              <div className="space-y-2">
-                <Label>Nom</Label>
-                <Input
+              <div className="space-y-1.5">
+                <label className="text-[13px] font-medium">Nom</label>
+                <input
                   value={form.name}
                   onChange={(e) =>
                     setForm((f) => ({ ...f, name: e.target.value }))
                   }
                   placeholder="Ex: Appel téléphonique"
+                  className="glass-input w-full py-3 px-4 text-[14px]"
                 />
               </div>
-              <div className="space-y-2">
-                <Label>Durée (minutes)</Label>
-                <Input
+              <div className="space-y-1.5">
+                <label className="text-[13px] font-medium">
+                  Durée (minutes)
+                </label>
+                <input
                   type="number"
                   min="5"
                   max="480"
@@ -221,10 +250,14 @@ function AppointmentTypesSection() {
                   onChange={(e) =>
                     setForm((f) => ({ ...f, duration_min: e.target.value }))
                   }
+                  className="glass-input w-full py-3 px-4 text-[14px]"
                 />
               </div>
-              <div className="space-y-2">
-                <Label>Couleur</Label>
+              <div className="space-y-1.5">
+                <label className="flex items-center gap-2 text-[13px] font-medium">
+                  <Palette className="h-3.5 w-3.5 text-muted-foreground" />
+                  Couleur
+                </label>
                 <div className="flex items-center gap-3">
                   <input
                     type="color"
@@ -232,84 +265,92 @@ function AppointmentTypesSection() {
                     onChange={(e) =>
                       setForm((f) => ({ ...f, color: e.target.value }))
                     }
-                    className="h-10 w-10 cursor-pointer rounded-lg border border-border"
+                    className="h-11 w-11 cursor-pointer rounded-xl border-0 bg-transparent"
                   />
-                  <Input
+                  <input
                     value={form.color}
                     onChange={(e) =>
                       setForm((f) => ({ ...f, color: e.target.value }))
                     }
-                    className="font-mono"
+                    className="glass-input flex-1 py-3 px-4 text-[14px] font-mono"
                   />
                 </div>
               </div>
-              <Button
+              <button
                 onClick={addType}
                 disabled={!form.name || saving}
-                className="w-full"
+                className="w-full rounded-2xl bg-primary py-3 text-[14px] font-semibold text-primary-foreground shadow-lg shadow-primary/25 transition-all hover:shadow-xl disabled:opacity-50"
               >
                 {saving ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <Loader2 className="mx-auto h-4 w-4 animate-spin" />
                 ) : (
                   "Créer"
                 )}
-              </Button>
+              </button>
             </div>
           </DialogContent>
         </Dialog>
-      </CardHeader>
-      <CardContent>
-        {types.length === 0 ? (
-          <p className="py-8 text-center text-muted-foreground">
+      </div>
+
+      {/* List */}
+      {types.length === 0 ? (
+        <div className="glass-card flex flex-col items-center gap-3 py-16">
+          <CalendarDays className="h-12 w-12 text-muted-foreground/40" />
+          <p className="text-[14px] text-muted-foreground">
             Aucun type de rendez-vous. Créez-en un pour commencer.
           </p>
-        ) : (
-          <div className="space-y-3">
-            {types.map((type) => (
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {types.map((type) => (
+            <div
+              key={type.id}
+              className="glass-card flex items-center gap-4 p-4"
+            >
               <div
-                key={type.id}
-                className="flex items-center justify-between rounded-xl border border-border p-4"
+                className="flex h-11 w-11 items-center justify-center rounded-2xl"
+                style={{
+                  background: `linear-gradient(135deg, ${type.color}30, ${type.color}10)`,
+                }}
               >
-                <div className="flex items-center gap-3">
-                  <div
-                    className="h-3 w-3 rounded-full"
-                    style={{ backgroundColor: type.color }}
-                  />
-                  <div>
-                    <p className="font-medium">{type.name}</p>
-                    <p className="text-sm text-muted-foreground">
-                      {type.duration_min} min
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-3">
-                  <Switch
-                    checked={type.is_active}
-                    onCheckedChange={() =>
-                      toggleActive(type.id, type.is_active)
-                    }
-                  />
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => deleteType(type.id)}
-                    className="text-destructive hover:text-destructive"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
+                <div
+                  className="h-3 w-3 rounded-full"
+                  style={{ backgroundColor: type.color }}
+                />
               </div>
-            ))}
-          </div>
-        )}
-      </CardContent>
-    </Card>
+              <div className="flex-1 min-w-0">
+                <p className="text-[14px] font-semibold truncate">
+                  {type.name}
+                </p>
+                <p className="text-[12px] text-muted-foreground">
+                  {type.duration_min} min
+                </p>
+              </div>
+              <div className="flex items-center gap-3">
+                <Switch
+                  checked={type.is_active}
+                  onCheckedChange={() =>
+                    toggleActive(type.id, type.is_active)
+                  }
+                />
+                <button
+                  onClick={() => deleteType(type.id)}
+                  className="flex h-8 w-8 items-center justify-center rounded-xl text-muted-foreground hover:bg-red-500/10 hover:text-red-500 transition-colors"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
 
-// ============================================
-// Section : Disponibilités
-// ============================================
+/* ═══════════════════════════════════════════════════════
+   Disponibilités
+   ═══════════════════════════════════════════════════════ */
 
 function AvailabilitySection() {
   const [rules, setRules] = useState<AvailabilityRule[]>([]);
@@ -367,36 +408,61 @@ function AvailabilitySection() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-12">
-        <Loader2 className="h-6 w-6 animate-spin text-primary" />
+      <div className="flex items-center justify-center py-16">
+        <Loader2 className="h-7 w-7 animate-spin text-primary" />
       </div>
     );
   }
 
+  // Group by day
+  const grouped = rules.reduce(
+    (acc, rule) => {
+      const day = rule.day_of_week;
+      if (!acc[day]) acc[day] = [];
+      acc[day].push(rule);
+      return acc;
+    },
+    {} as Record<number, AvailabilityRule[]>
+  );
+
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle>Plages horaires</CardTitle>
+    <div className="space-y-4">
+      {/* Header row */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-orange-500/20 to-orange-600/20">
+            <Clock className="h-5 w-5 text-orange-500" />
+          </div>
+          <div>
+            <h3 className="text-[16px] font-semibold">Plages horaires</h3>
+            <p className="text-[12px] text-muted-foreground">
+              {rules.length} plage{rules.length > 1 ? "s" : ""} configurée
+              {rules.length > 1 ? "s" : ""}
+            </p>
+          </div>
+        </div>
+
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
-            <Button size="sm" className="gap-1">
-              <Plus className="h-4 w-4" /> Ajouter
-            </Button>
+            <button className="flex items-center gap-2 rounded-2xl bg-primary px-4 py-2.5 text-[13px] font-medium text-primary-foreground shadow-lg shadow-primary/25 transition-all hover:shadow-xl hover:-translate-y-0.5">
+              <Plus className="h-4 w-4" />
+              Ajouter
+            </button>
           </DialogTrigger>
-          <DialogContent>
+          <DialogContent className="rounded-3xl">
             <DialogHeader>
               <DialogTitle>Nouvelle plage horaire</DialogTitle>
             </DialogHeader>
             <div className="space-y-4 pt-2">
-              <div className="space-y-2">
-                <Label>Jour</Label>
+              <div className="space-y-1.5">
+                <label className="text-[13px] font-medium">Jour</label>
                 <Select
                   value={form.day_of_week}
                   onValueChange={(v) =>
                     setForm((f) => ({ ...f, day_of_week: v }))
                   }
                 >
-                  <SelectTrigger>
+                  <SelectTrigger className="rounded-xl">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -409,88 +475,103 @@ function AvailabilitySection() {
                 </Select>
               </div>
               <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Début</Label>
-                  <Input
+                <div className="space-y-1.5">
+                  <label className="text-[13px] font-medium">Début</label>
+                  <input
                     type="time"
                     value={form.start_time}
                     onChange={(e) =>
                       setForm((f) => ({ ...f, start_time: e.target.value }))
                     }
+                    className="glass-input w-full py-3 px-4 text-[14px]"
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label>Fin</Label>
-                  <Input
+                <div className="space-y-1.5">
+                  <label className="text-[13px] font-medium">Fin</label>
+                  <input
                     type="time"
                     value={form.end_time}
                     onChange={(e) =>
                       setForm((f) => ({ ...f, end_time: e.target.value }))
                     }
+                    className="glass-input w-full py-3 px-4 text-[14px]"
                   />
                 </div>
               </div>
-              <Button
+              <button
                 onClick={addRule}
                 disabled={saving}
-                className="w-full"
+                className="w-full rounded-2xl bg-primary py-3 text-[14px] font-semibold text-primary-foreground shadow-lg shadow-primary/25 transition-all hover:shadow-xl disabled:opacity-50"
               >
                 {saving ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <Loader2 className="mx-auto h-4 w-4 animate-spin" />
                 ) : (
                   "Créer"
                 )}
-              </Button>
+              </button>
             </div>
           </DialogContent>
         </Dialog>
-      </CardHeader>
-      <CardContent>
-        {rules.length === 0 ? (
-          <p className="py-8 text-center text-muted-foreground">
+      </div>
+
+      {/* List grouped by day */}
+      {rules.length === 0 ? (
+        <div className="glass-card flex flex-col items-center gap-3 py-16">
+          <Clock className="h-12 w-12 text-muted-foreground/40" />
+          <p className="text-[14px] text-muted-foreground">
             Aucune plage horaire. Ajoutez vos disponibilités.
           </p>
-        ) : (
-          <div className="space-y-3">
-            {rules.map((rule) => (
-              <div
-                key={rule.id}
-                className="flex items-center justify-between rounded-xl border border-border p-4"
-              >
-                <div>
-                  <p className="font-medium">{DAYS[rule.day_of_week]}</p>
-                  <p className="text-sm text-muted-foreground">
-                    {rule.start_time.slice(0, 5)} — {rule.end_time.slice(0, 5)}
-                  </p>
-                </div>
-                <div className="flex items-center gap-3">
-                  <Switch
-                    checked={rule.is_active}
-                    onCheckedChange={() =>
-                      toggleActive(rule.id, rule.is_active)
-                    }
-                  />
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => deleteRule(rule.id)}
-                    className="text-destructive hover:text-destructive"
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {Object.entries(grouped)
+            .sort(([a], [b]) => Number(a) - Number(b))
+            .map(([dayNum, dayRules]) => (
+              <div key={dayNum} className="space-y-2">
+                <p className="text-[12px] font-semibold uppercase tracking-widest text-muted-foreground px-1">
+                  {DAYS[Number(dayNum)]}
+                </p>
+                {dayRules.map((rule) => (
+                  <div
+                    key={rule.id}
+                    className="glass-card flex items-center gap-4 p-4"
                   >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
+                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-orange-500/10">
+                      <Clock className="h-4 w-4 text-orange-500" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-[14px] font-semibold">
+                        {rule.start_time.slice(0, 5)} —{" "}
+                        {rule.end_time.slice(0, 5)}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <Switch
+                        checked={rule.is_active}
+                        onCheckedChange={() =>
+                          toggleActive(rule.id, rule.is_active)
+                        }
+                      />
+                      <button
+                        onClick={() => deleteRule(rule.id)}
+                        className="flex h-8 w-8 items-center justify-center rounded-xl text-muted-foreground hover:bg-red-500/10 hover:text-red-500 transition-colors"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
               </div>
             ))}
-          </div>
-        )}
-      </CardContent>
-    </Card>
+        </div>
+      )}
+    </div>
   );
 }
 
-// ============================================
-// Section : Contacts proches
-// ============================================
+/* ═══════════════════════════════════════════════════════
+   Contacts proches
+   ═══════════════════════════════════════════════════════ */
 
 function ContactsSection() {
   const [contacts, setContacts] = useState<Contact[]>([]);
@@ -521,64 +602,123 @@ function ContactsSection() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-12">
-        <Loader2 className="h-6 w-6 animate-spin text-primary" />
+      <div className="flex items-center justify-center py-16">
+        <Loader2 className="h-7 w-7 animate-spin text-primary" />
       </div>
     );
   }
 
+  const closeContacts = contacts.filter((c) => c.is_close);
+  const otherContacts = contacts.filter((c) => !c.is_close);
+
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Contacts proches</CardTitle>
-        <p className="text-sm text-muted-foreground">
-          Les contacts marqués comme proches recevront un SMS de confirmation
-          quand leur rendez-vous est confirmé.
-        </p>
-      </CardHeader>
-      <CardContent>
-        {contacts.length === 0 ? (
-          <p className="py-8 text-center text-muted-foreground">
-            Aucun contact dans l&apos;annuaire. Ajoutez des contacts depuis la
-            page Annuaire.
+    <div className="space-y-4">
+      {/* Header */}
+      <div className="flex items-center gap-3">
+        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-purple-500/20 to-purple-600/20">
+          <Users className="h-5 w-5 text-purple-500" />
+        </div>
+        <div>
+          <h3 className="text-[16px] font-semibold">Contacts proches</h3>
+          <p className="text-[12px] text-muted-foreground">
+            Les proches reçoivent un SMS à la confirmation du RDV.
           </p>
-        ) : (
-          <div className="space-y-3">
-            {contacts.map((contact) => (
-              <div
-                key={contact.id}
-                className="flex items-center justify-between rounded-xl border border-border p-4"
-              >
-                <div className="flex items-center gap-3">
-                  {contact.is_close && (
-                    <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                  )}
-                  <div>
-                    <p className="font-medium">
-                      {contact.first_name} {contact.last_name || ""}
-                    </p>
-                    <div className="flex gap-3 text-sm text-muted-foreground">
-                      {contact.email && <span>{contact.email}</span>}
-                      {contact.phone && <span>{contact.phone}</span>}
-                    </div>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Badge variant={contact.is_close ? "default" : "secondary"}>
-                    {contact.is_close ? "Proche" : "Standard"}
-                  </Badge>
-                  <Switch
-                    checked={contact.is_close}
-                    onCheckedChange={() =>
-                      toggleClose(contact.id, contact.is_close)
-                    }
-                  />
-                </div>
-              </div>
-            ))}
-          </div>
+        </div>
+      </div>
+
+      {contacts.length === 0 ? (
+        <div className="glass-card flex flex-col items-center gap-3 py-16">
+          <Users className="h-12 w-12 text-muted-foreground/40" />
+          <p className="text-[14px] text-muted-foreground">
+            Aucun contact dans l&apos;annuaire.
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {closeContacts.length > 0 && (
+            <div className="space-y-2">
+              <p className="text-[12px] font-semibold uppercase tracking-widest text-muted-foreground px-1">
+                Proches ({closeContacts.length})
+              </p>
+              {closeContacts.map((contact) => (
+                <ContactRow
+                  key={contact.id}
+                  contact={contact}
+                  onToggle={() => toggleClose(contact.id, contact.is_close)}
+                />
+              ))}
+            </div>
+          )}
+
+          {otherContacts.length > 0 && (
+            <div className="space-y-2">
+              <p className="text-[12px] font-semibold uppercase tracking-widest text-muted-foreground px-1">
+                Autres contacts ({otherContacts.length})
+              </p>
+              {otherContacts.map((contact) => (
+                <ContactRow
+                  key={contact.id}
+                  contact={contact}
+                  onToggle={() => toggleClose(contact.id, contact.is_close)}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ContactRow({
+  contact,
+  onToggle,
+}: {
+  contact: Contact;
+  onToggle: () => void;
+}) {
+  return (
+    <div className="glass-card flex items-center gap-4 p-4">
+      <div
+        className={cn(
+          "flex h-10 w-10 items-center justify-center rounded-2xl text-[14px] font-bold",
+          contact.is_close
+            ? "bg-gradient-to-br from-yellow-400/20 to-amber-500/20 text-amber-600"
+            : "bg-foreground/[0.06] text-muted-foreground"
         )}
-      </CardContent>
-    </Card>
+      >
+        {contact.first_name.charAt(0).toUpperCase()}
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2">
+          <p className="text-[14px] font-semibold truncate">
+            {contact.first_name} {contact.last_name || ""}
+          </p>
+          {contact.is_close && (
+            <Star className="h-3.5 w-3.5 fill-yellow-400 text-yellow-400 shrink-0" />
+          )}
+        </div>
+        <div className="flex gap-3 text-[12px] text-muted-foreground">
+          {contact.email && <span className="truncate">{contact.email}</span>}
+          {contact.phone && <span>{contact.phone}</span>}
+        </div>
+      </div>
+      <div className="flex items-center gap-2">
+        <span
+          className={cn(
+            "rounded-xl px-2.5 py-1 text-[11px] font-medium",
+            contact.is_close
+              ? "bg-yellow-500/10 text-yellow-600 dark:text-yellow-400"
+              : "bg-foreground/[0.06] text-muted-foreground"
+          )}
+        >
+          {contact.is_close ? "Proche" : "Standard"}
+        </span>
+        <Switch
+          checked={contact.is_close}
+          onCheckedChange={onToggle}
+        />
+      </div>
+    </div>
   );
 }
