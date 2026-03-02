@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { useProfile } from "@/hooks/use-profile";
 import { Badge } from "@/components/ui/badge";
 import { format, isToday, isTomorrow, startOfDay, addDays, isSameDay } from "date-fns";
 import { fr } from "date-fns/locale";
@@ -75,6 +76,7 @@ const statusConfig: Record<
    Page
    ═══════════════════════════════════════════════════════ */
 export default function AgendaPage() {
+  const profile = useProfile();
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
@@ -83,8 +85,11 @@ export default function AgendaPage() {
   const [search, setSearch] = useState("");
   const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
 
+  const isAdmin = profile?.role === "admin";
+
   const fetchAppointments = useCallback(async () => {
     const supabase = createClient();
+    // Les guests ne voient que leurs RDV (RLS Supabase + filtre local)
     const { data } = await supabase
       .from("appointments")
       .select("*, appointment_types(name, color, duration_min)")
@@ -465,6 +470,7 @@ export default function AgendaPage() {
               onCancel={() => updateStatus(selectedAppointment.id, "cancelled")}
               isLoading={actionLoading === selectedAppointment.id}
               onClose={() => setSelectedAppointment(null)}
+              isAdmin={isAdmin}
             />
           ) : (
             <div className="glass-card flex flex-col items-center justify-center py-20 text-center">
@@ -492,12 +498,14 @@ function AppointmentDetail({
   onCancel,
   isLoading,
   onClose,
+  isAdmin,
 }: {
   appointment: Appointment;
   onConfirm: () => void;
   onCancel: () => void;
   isLoading: boolean;
   onClose: () => void;
+  isAdmin: boolean;
 }) {
   const config = statusConfig[apt.status] || statusConfig.pending;
 
@@ -631,8 +639,8 @@ function AppointmentDetail({
           </p>
         </div>
 
-        {/* Actions */}
-        {apt.status === "pending" && (
+        {/* Actions — admin seulement */}
+        {apt.status === "pending" && isAdmin && (
           <div className="flex gap-2 pt-2">
             <button
               onClick={onConfirm}

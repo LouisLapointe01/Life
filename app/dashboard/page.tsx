@@ -71,10 +71,10 @@ export default function DashboardPage() {
         : "Bonsoir";
 
   return (
-    <div className="mx-auto max-w-6xl space-y-8">
+    <div className="mx-auto max-w-6xl space-y-5 lg:space-y-8">
       {/* Greeting */}
       <div className="animate-slide-up">
-        <h2 className="text-3xl font-bold tracking-tight">{greeting} 👋</h2>
+        <h2 className="text-2xl lg:text-3xl font-bold tracking-tight">{greeting} 👋</h2>
         <p className="mt-1.5 text-[15px] text-muted-foreground">
           Voici un aperçu de votre journée du{" "}
           {now.toLocaleDateString("fr-FR", {
@@ -88,7 +88,7 @@ export default function DashboardPage() {
 
       {/* Quick Stats Bar */}
       <div
-        className="glass-card flex items-center justify-between px-6 py-4 animate-slide-up"
+        className="glass-card grid grid-cols-2 gap-3 px-4 py-4 lg:flex lg:items-center lg:justify-between lg:px-6 animate-slide-up"
         style={{ animationDelay: "100ms" }}
       >
         {quickStats.map((stat) => (

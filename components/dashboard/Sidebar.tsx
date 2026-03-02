@@ -76,7 +76,7 @@ export function Sidebar() {
   return (
     <aside
       className={cn(
-        "glass-sidebar flex h-dvh flex-col transition-all duration-300 ease-[cubic-bezier(0.25,0.46,0.45,0.94)]",
+        "glass-sidebar hidden lg:flex h-dvh flex-col transition-all duration-300 ease-[cubic-bezier(0.25,0.46,0.45,0.94)]",
         collapsed ? "w-[72px]" : "w-[260px]"
       )}
     >

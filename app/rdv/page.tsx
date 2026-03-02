@@ -17,8 +17,20 @@ import {
   ArrowLeft,
   ChevronRight,
   Sparkles,
+  Users,
+  Search,
+  X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+
+type Contact = {
+  id: string;
+  first_name: string;
+  last_name: string | null;
+  email: string | null;
+  phone: string | null;
+  is_close: boolean;
+};
 
 type AppointmentType = {
   id: string;
@@ -51,6 +63,12 @@ export default function RdvPage() {
     message: "",
   });
 
+  // Contact picker (admin seulement)
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [contacts, setContacts] = useState<Contact[]>([]);
+  const [contactSearch, setContactSearch] = useState("");
+  const [showContactPicker, setShowContactPicker] = useState(false);
+
   const stepIndex = (["type", "date", "slot", "form"] as const).indexOf(
     step as "type" | "date" | "slot" | "form"
   );
@@ -65,6 +83,26 @@ export default function RdvPage() {
       .then(({ data }) => {
         if (data) setTypes(data);
       });
+
+    // Charger le profil et les contacts si admin
+    async function loadAdminData() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", user.id)
+        .single();
+      if (profile?.role === "admin") {
+        setIsAdmin(true);
+        const { data: contactsData } = await supabase
+          .from("contacts")
+          .select("id, first_name, last_name, email, phone, is_close")
+          .order("first_name");
+        if (contactsData) setContacts(contactsData);
+      }
+    }
+    loadAdminData();
   }, []);
 
   const fetchSlots = useCallback(async (date: Date, typeId: string) => {
@@ -391,6 +429,116 @@ export default function RdvPage() {
               </div>
             )}
           </div>
+
+          {/* ─── Contact picker (admin only) ─── */}
+          {isAdmin && contacts.length > 0 && (
+            <div className="glass-card overflow-hidden">
+              <div className="p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <p className="text-[12px] font-semibold uppercase tracking-widest text-muted-foreground">
+                    Choisir depuis l&apos;annuaire
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setShowContactPicker(!showContactPicker)}
+                    className="flex items-center gap-1.5 rounded-xl bg-primary/10 px-3 py-1.5 text-[12px] font-medium text-primary transition-all hover:bg-primary/20"
+                  >
+                    <Users className="h-3.5 w-3.5" />
+                    {showContactPicker ? "Masquer" : "Ouvrir"}
+                  </button>
+                </div>
+
+                {showContactPicker && (
+                  <div className="space-y-3 animate-slide-up">
+                    {/* Search */}
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                      <input
+                        value={contactSearch}
+                        onChange={(e) => setContactSearch(e.target.value)}
+                        placeholder="Rechercher un contact..."
+                        className="glass-input w-full py-2.5 pl-9 pr-4 text-[13px]"
+                      />
+                    </div>
+
+                    {/* Contacts list */}
+                    <div className="max-h-48 overflow-y-auto space-y-1 scrollbar-thin">
+                      {contacts
+                        .filter((c) => {
+                          const q = contactSearch.toLowerCase();
+                          return (
+                            !q ||
+                            c.first_name.toLowerCase().includes(q) ||
+                            (c.last_name ?? "").toLowerCase().includes(q) ||
+                            (c.email ?? "").toLowerCase().includes(q)
+                          );
+                        })
+                        .map((contact) => (
+                          <button
+                            key={contact.id}
+                            type="button"
+                            onClick={() => {
+                              setFormData({
+                                guest_name: `${contact.first_name} ${contact.last_name ?? ""}`.trim(),
+                                guest_email: contact.email ?? "",
+                                guest_phone: contact.phone ?? "",
+                                message: formData.message,
+                              });
+                              setShowContactPicker(false);
+                              setContactSearch("");
+                            }}
+                            className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-colors hover:bg-foreground/[0.05]"
+                          >
+                            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-purple-500/20 to-purple-600/20 text-[13px] font-bold text-purple-600 dark:text-purple-400">
+                              {contact.first_name.charAt(0).toUpperCase()}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-[13px] font-semibold truncate">
+                                {contact.first_name} {contact.last_name ?? ""}
+                                {contact.is_close && (
+                                  <span className="ml-1.5 text-[10px] text-amber-500">⭐</span>
+                                )}
+                              </p>
+                              {contact.email && (
+                                <p className="text-[11px] text-muted-foreground truncate">
+                                  {contact.email}
+                                </p>
+                              )}
+                            </div>
+                          </button>
+                        ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Sélection active */}
+                {formData.guest_name && (
+                  <div className="mt-3 flex items-center gap-2 rounded-xl bg-primary/5 px-3 py-2">
+                    <div className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/10 text-[12px] font-bold text-primary">
+                      {formData.guest_name.charAt(0).toUpperCase()}
+                    </div>
+                    <p className="flex-1 text-[13px] font-medium truncate">
+                      {formData.guest_name}
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setFormData({
+                          guest_name: "",
+                          guest_email: "",
+                          guest_phone: "",
+                          message: formData.message,
+                        })
+                      }
+                      className="text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
 
           <div className="glass-card overflow-hidden">
             <div className="p-6">
