@@ -1,21 +1,28 @@
-import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import type { Metadata, Viewport } from "next";
+import { Inter } from "next/font/google";
 import "./globals.css";
-import { AuthProvider } from "@/components/providers/SessionProvider";
 
-const geistSans = Geist({
+const inter = Inter({
   variable: "--font-geist-sans",
   subsets: ["latin"],
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
-
 export const metadata: Metadata = {
-  title: "Louis Lapointe",
-  description: "Portfolio & MyLife Dashboard",
+  title: "Life Dashboard",
+  description: "Votre tableau de bord personnel",
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "Life Dashboard",
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#007AFF",
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
 };
 
 export default function RootLayout({
@@ -25,10 +32,11 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="fr">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
-        <AuthProvider>{children}</AuthProvider>
+      <head>
+        <link rel="apple-touch-icon" href="/icons/icon-192.png" />
+      </head>
+      <body className={`${inter.variable} font-sans antialiased`}>
+        {children}
       </body>
     </html>
   );

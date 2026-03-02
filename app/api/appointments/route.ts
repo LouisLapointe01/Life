@@ -1,53 +1,100 @@
-// app/api/appointments/route.ts — Prise de rendez-vous
-import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
-import { appointmentSchema } from "@/lib/validations";
-import { sendSMS } from "@/lib/twilio";
+import { createClient } from "@/lib/supabase/server";
+import { createAppointmentSchema } from "@/lib/validations";
+import { NextResponse } from "next/server";
 
-export async function POST(req: NextRequest) {
+export async function POST(request: Request) {
   try {
-    const body = await req.json();
-    const result = appointmentSchema.safeParse(body);
+    const body = await request.json();
+    const parsed = createAppointmentSchema.safeParse(body);
 
-    if (!result.success) {
+    if (!parsed.success) {
       return NextResponse.json(
-        { error: "Données invalides", details: result.error.flatten() },
+        { error: parsed.error.issues[0].message },
         { status: 400 }
       );
     }
 
-    const { name, email, phone, date, time, subject, message } = result.data;
+    const { type_id, guest_name, guest_email, guest_phone, start_at, message } =
+      parsed.data;
 
-    const appointmentDate = new Date(`${date}T${time}`);
+    const supabase = await createClient();
 
-    const appointment = await prisma.appointment.create({
-      data: { name, email, phone, date: appointmentDate, subject, message },
-    });
+    // Récupérer la durée du type de RDV
+    const { data: appointmentType, error: typeError } = await supabase
+      .from("appointment_types")
+      .select("duration_min")
+      .eq("id", type_id)
+      .eq("is_active", true)
+      .single();
 
-    const smsText = `📅 Nouveau RDV de ${name} (${phone})\nDate : ${date} à ${time}\nSujet : ${subject}`;
-    const smsSent = await sendSMS(smsText);
+    if (typeError || !appointmentType) {
+      return NextResponse.json(
+        { error: "Type de rendez-vous invalide" },
+        { status: 400 }
+      );
+    }
 
-    await prisma.appointment.update({
-      where: { id: appointment.id },
-      data: { smsSent },
-    });
+    // Calculer end_at
+    const startDate = new Date(start_at);
+    const endDate = new Date(
+      startDate.getTime() + appointmentType.duration_min * 60 * 1000
+    );
 
-    return NextResponse.json({ success: true, id: appointment.id }, { status: 201 });
-  } catch (err) {
-    console.error("[API /appointments]", err);
-    return NextResponse.json({ error: "Erreur serveur" }, { status: 500 });
-  }
-}
+    // Vérifier qu'il n'y a pas de conflit
+    const { data: conflicts } = await supabase
+      .from("appointments")
+      .select("id")
+      .neq("status", "cancelled")
+      .lt("start_at", endDate.toISOString())
+      .gt("end_at", startDate.toISOString());
 
-export async function GET() {
-  try {
-    const appointments = await prisma.appointment.findMany({
-      orderBy: { createdAt: "desc" },
-      take: 50,
-    });
-    return NextResponse.json(appointments);
-  } catch (err) {
-    console.error("[API /appointments GET]", err);
-    return NextResponse.json({ error: "Erreur serveur" }, { status: 500 });
+    if (conflicts && conflicts.length > 0) {
+      return NextResponse.json(
+        { error: "Ce créneau n'est plus disponible" },
+        { status: 409 }
+      );
+    }
+
+    // Vérifier si l'email correspond à un contact proche
+    const { data: closeContact } = await supabase
+      .from("contacts")
+      .select("id, phone")
+      .eq("email", guest_email)
+      .eq("is_close", true)
+      .single();
+
+    const isCloseContact = !!closeContact;
+
+    // Insérer le RDV
+    const { data: appointment, error: insertError } = await supabase
+      .from("appointments")
+      .insert({
+        type_id,
+        guest_name,
+        guest_email,
+        guest_phone: guest_phone || closeContact?.phone || null,
+        start_at: startDate.toISOString(),
+        end_at: endDate.toISOString(),
+        message: message || null,
+        status: "pending",
+        is_close_contact: isCloseContact,
+      })
+      .select()
+      .single();
+
+    if (insertError) {
+      console.error("[Appointments] Erreur insertion:", insertError);
+      return NextResponse.json(
+        { error: "Erreur lors de la création du rendez-vous" },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json(appointment, { status: 201 });
+  } catch {
+    return NextResponse.json(
+      { error: "Erreur serveur" },
+      { status: 500 }
+    );
   }
 }
