@@ -10,8 +10,9 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { LogOut, User, Search, Bell } from "lucide-react";
+import { LogOut, User, Bell, Sparkles } from "lucide-react";
 import type { User as SupabaseUser } from "@supabase/supabase-js";
+import Link from "next/link";
 
 const pageTitles: Record<string, string> = {
   "/dashboard": "Accueil",
@@ -46,21 +47,24 @@ export function Header({ title }: { title?: string }) {
   const pageTitle = title ?? pageTitles[pathname] ?? "Dashboard";
 
   return (
-    <header className="glass-header flex h-[72px] shrink-0 items-center justify-between px-8 z-10">
-      {/* Left: Title */}
-      <div className="flex items-center gap-4">
-        <h1 className="text-xl font-bold tracking-tight">
+    <header className="glass-header flex h-[64px] shrink-0 items-center justify-between px-4 lg:px-8 z-10">
+      {/* Left: Logo (mobile only) + Title */}
+      <div className="flex items-center gap-3">
+        {/* Logo visible only on mobile (sidebar hidden) */}
+        <Link
+          href="/dashboard"
+          className="flex lg:hidden h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 shadow-md shadow-blue-500/30"
+        >
+          <Sparkles className="h-4 w-4 text-white" />
+        </Link>
+
+        <h1 className="text-[17px] lg:text-xl font-bold tracking-tight">
           {pageTitle}
         </h1>
       </div>
 
       {/* Right: Actions */}
-      <div className="flex items-center gap-2">
-        {/* Search */}
-        <button className="flex h-9 w-9 items-center justify-center rounded-xl text-muted-foreground transition-all duration-200 hover:bg-foreground/[0.06] hover:text-foreground">
-          <Search className="h-[18px] w-[18px]" />
-        </button>
-
+      <div className="flex items-center gap-1.5">
         {/* Notifications */}
         <button className="relative flex h-9 w-9 items-center justify-center rounded-xl text-muted-foreground transition-all duration-200 hover:bg-foreground/[0.06] hover:text-foreground">
           <Bell className="h-[18px] w-[18px]" />
@@ -68,12 +72,12 @@ export function Header({ title }: { title?: string }) {
         </button>
 
         {/* Separator */}
-        <div className="mx-2 h-6 w-px bg-border" />
+        <div className="mx-1 h-5 w-px bg-border" />
 
         {/* Profile */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <button className="flex items-center gap-3 rounded-2xl px-2.5 py-1.5 transition-all duration-200 hover:bg-foreground/[0.06]">
+            <button className="flex items-center gap-2 rounded-2xl px-2 py-1.5 transition-all duration-200 hover:bg-foreground/[0.06]">
               {avatarUrl ? (
                 <img
                   src={avatarUrl}
@@ -86,12 +90,19 @@ export function Header({ title }: { title?: string }) {
                   {fullName.charAt(0).toUpperCase()}
                 </div>
               )}
-              <span className="hidden text-[13px] font-medium md:block">
+              <span className="hidden text-[13px] font-medium md:block max-w-[120px] truncate">
                 {fullName}
               </span>
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-52 rounded-2xl p-1.5">
+            <div className="px-3 py-2 mb-1">
+              <p className="text-[13px] font-semibold truncate">{fullName}</p>
+              <p className="text-[11px] text-muted-foreground truncate">
+                {user?.email}
+              </p>
+            </div>
+            <DropdownMenuSeparator className="my-1" />
             <DropdownMenuItem className="rounded-xl px-3 py-2.5 text-[13px] cursor-pointer">
               <User className="mr-2 h-4 w-4" />
               Profil
