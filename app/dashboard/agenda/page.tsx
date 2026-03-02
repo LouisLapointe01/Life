@@ -183,28 +183,29 @@ export default function AgendaPage() {
   }
 
   return (
-    <div className="mx-auto max-w-7xl space-y-6">
+    <div className="mx-auto max-w-7xl space-y-4 lg:space-y-6">
       {/* ─── Header ─── */}
-      <div className="flex items-center justify-between animate-slide-up">
+      <div className="flex flex-wrap items-center justify-between gap-3 animate-slide-up">
         <div>
-          <h2 className="text-3xl font-bold tracking-tight">Agenda</h2>
-          <p className="mt-1 text-[15px] text-muted-foreground">
+          <h2 className="text-2xl lg:text-3xl font-bold tracking-tight">Agenda</h2>
+          <p className="mt-1 text-[14px] lg:text-[15px] text-muted-foreground">
             Gérez vos rendez-vous et confirmez les demandes.
           </p>
         </div>
         <Link
           href="/rdv"
           target="_blank"
-          className="flex items-center gap-2 rounded-2xl bg-primary px-5 py-2.5 text-[13px] font-medium text-primary-foreground shadow-lg shadow-primary/25 transition-all hover:shadow-xl hover:-translate-y-0.5"
+          className="flex items-center gap-2 rounded-2xl bg-primary px-4 py-2.5 text-[13px] font-medium text-primary-foreground shadow-lg shadow-primary/25 transition-all hover:shadow-xl hover:-translate-y-0.5"
         >
           <ExternalLink className="h-4 w-4" />
-          Page de réservation
+          <span className="hidden sm:inline">Page de réservation</span>
+          <span className="sm:hidden">Réserver</span>
         </Link>
       </div>
 
       {/* ─── Stats Cards ─── */}
       <div
-        className="grid grid-cols-4 gap-4 animate-slide-up"
+        className="grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-4 animate-slide-up"
         style={{ animationDelay: "100ms" }}
       >
         {[
@@ -253,11 +254,11 @@ export default function AgendaPage() {
 
       {/* ─── Main Content ─── */}
       <div
-        className="grid grid-cols-12 gap-6 animate-slide-up"
+        className="grid grid-cols-1 gap-4 lg:grid-cols-12 lg:gap-6 animate-slide-up"
         style={{ animationDelay: "200ms" }}
       >
         {/* ── Left: Calendar + List ── */}
-        <div className="col-span-8 space-y-4">
+        <div className={cn("space-y-4", selectedAppointment ? "hidden lg:block lg:col-span-8" : "lg:col-span-8")}>
           {/* Week Navigation */}
           <div className="glass-card p-4">
             <div className="flex items-center justify-between mb-4">
@@ -321,7 +322,7 @@ export default function AgendaPage() {
           </div>
 
           {/* Filters bar */}
-          <div className="flex items-center gap-3">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <input
@@ -462,7 +463,7 @@ export default function AgendaPage() {
         </div>
 
         {/* ── Right: Detail Panel ── */}
-        <div className="col-span-4">
+        <div className={cn(selectedAppointment ? "lg:col-span-4" : "hidden lg:block lg:col-span-4")}>
           {selectedAppointment ? (
             <AppointmentDetail
               appointment={selectedAppointment}
@@ -518,9 +519,17 @@ function AppointmentDetail({
           background: `linear-gradient(135deg, ${apt.appointment_types.color}22, ${apt.appointment_types.color}08)`,
         }}
       >
+        {/* Bouton fermer — croix sur desktop, flèche retour sur mobile */}
         <button
           onClick={onClose}
-          className="absolute right-4 top-4 flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-foreground/[0.06] transition-colors"
+          className="absolute left-4 top-4 flex items-center gap-1.5 rounded-xl px-2 py-1 text-[12px] font-medium text-muted-foreground hover:text-foreground hover:bg-foreground/[0.06] transition-colors lg:hidden"
+        >
+          <ChevronLeft className="h-4 w-4" />
+          Retour
+        </button>
+        <button
+          onClick={onClose}
+          className="absolute right-4 top-4 hidden lg:flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-foreground/[0.06] transition-colors"
         >
           <XCircle className="h-4 w-4" />
         </button>

@@ -250,27 +250,27 @@ export default function LogementPage() {
   };
 
   return (
-    <div className="mx-auto max-w-7xl space-y-6">
+    <div className="mx-auto max-w-7xl space-y-4 lg:space-y-6">
       {/* ─── Page Title ─── */}
       <div className="animate-slide-up">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h2 className="text-3xl font-bold tracking-tight">Logement</h2>
-            <p className="mt-1 text-[15px] text-muted-foreground">
-              {totalDevicesOn}/{totalDevices} appareils actifs • Tout fonctionne
-              correctement
+            <h2 className="text-2xl lg:text-3xl font-bold tracking-tight">Logement</h2>
+            <p className="mt-1 text-[14px] lg:text-[15px] text-muted-foreground">
+              {totalDevicesOn}/{totalDevices} appareils actifs · Tout fonctionne
             </p>
           </div>
-          <button className="flex items-center gap-2 rounded-2xl bg-primary px-5 py-2.5 text-[13px] font-medium text-primary-foreground shadow-lg shadow-primary/25 transition-all duration-300 hover:shadow-xl hover:shadow-primary/30 hover:-translate-y-0.5">
+          <button className="flex items-center gap-2 rounded-2xl bg-primary px-4 py-2.5 text-[13px] font-medium text-primary-foreground shadow-lg shadow-primary/25 transition-all duration-300 hover:shadow-xl hover:-translate-y-0.5">
             <Plus className="h-4 w-4" />
-            Ajouter appareil
+            <span className="hidden sm:inline">Ajouter appareil</span>
+            <span className="sm:hidden">Ajouter</span>
           </button>
         </div>
       </div>
 
       {/* ─── Energy Stats ─── */}
       <div
-        className="grid grid-cols-4 gap-4 animate-slide-up"
+        className="grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-4 animate-slide-up"
         style={{ animationDelay: "100ms" }}
       >
         {energyData.map((stat) => (
@@ -308,11 +308,11 @@ export default function LogementPage() {
 
       {/* ─── Main Content: Rooms + Room Detail ─── */}
       <div
-        className="grid grid-cols-12 gap-6 animate-slide-up"
+        className="grid grid-cols-1 gap-4 lg:grid-cols-12 lg:gap-6 animate-slide-up"
         style={{ animationDelay: "200ms" }}
       >
         {/* Rooms List */}
-        <div className="col-span-4 space-y-3">
+        <div className="lg:col-span-4 space-y-3">
           <div className="flex items-center justify-between px-1">
             <h3 className="text-[13px] font-semibold uppercase tracking-wider text-muted-foreground">
               Pièces
@@ -386,7 +386,7 @@ export default function LogementPage() {
         </div>
 
         {/* Room Detail Panel */}
-        <div className="col-span-5 space-y-4">
+        <div className="lg:col-span-5 space-y-4">
           <div className="glass-card overflow-hidden">
             {/* Room header with gradient */}
             <div
@@ -444,7 +444,7 @@ export default function LogementPage() {
         </div>
 
         {/* Right sidebar: Security + Quick actions */}
-        <div className="col-span-3 space-y-4">
+        <div className="lg:col-span-3 space-y-4">
           {/* Security Panel */}
           <div className="glass-card p-5">
             <div className="flex items-center gap-2 mb-4">
