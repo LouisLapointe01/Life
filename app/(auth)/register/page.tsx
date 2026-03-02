@@ -2,10 +2,12 @@
 
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { Loader2, Mail, Lock, User, Eye, EyeOff, Sparkles, CheckCircle2 } from "lucide-react";
+import { Loader2, Mail, Lock, User, Eye, EyeOff, Sparkles } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 export default function RegisterPage() {
+  const router = useRouter();
   const [form, setForm] = useState({
     name: "",
     email: "",
@@ -15,7 +17,6 @@ export default function RegisterPage() {
   const [showPwd, setShowPwd] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState(false);
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -36,7 +37,6 @@ export default function RegisterPage() {
       password: form.password,
       options: {
         data: { full_name: form.name },
-        emailRedirectTo: `${window.location.origin}/api/auth/callback`,
       },
     });
 
@@ -46,41 +46,12 @@ export default function RegisterPage() {
           ? "Un compte existe déjà avec cet email"
           : error.message
       );
+      setLoading(false);
     } else {
-      setSuccess(true);
+      // Confirmation email désactivée → connecté directement
+      router.push("/dashboard");
     }
-    setLoading(false);
   };
-
-  if (success) {
-    return (
-      <div className="flex min-h-dvh items-center justify-center gradient-mesh px-4">
-        <div className="w-full max-w-sm">
-          <div className="glass-card p-8 rounded-3xl text-center">
-            <div className="mb-6 flex flex-col items-center gap-4">
-              <div className="flex h-16 w-16 items-center justify-center rounded-[24px] bg-green-500/15">
-                <CheckCircle2 className="h-8 w-8 text-green-500" />
-              </div>
-              <div>
-                <h2 className="text-xl font-bold">Compte créé !</h2>
-                <p className="mt-2 text-[13px] text-muted-foreground">
-                  Un email de confirmation a été envoyé à{" "}
-                  <strong>{form.email}</strong>. Vérifiez votre boîte mail pour
-                  activer votre compte.
-                </p>
-              </div>
-            </div>
-            <Link
-              href="/login"
-              className="flex w-full items-center justify-center rounded-2xl bg-primary py-3 text-[14px] font-semibold text-primary-foreground shadow-lg shadow-primary/25 transition-all hover:shadow-xl hover:-translate-y-0.5"
-            >
-              Retour à la connexion
-            </Link>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="flex min-h-dvh items-center justify-center gradient-mesh px-4">
