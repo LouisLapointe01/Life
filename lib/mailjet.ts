@@ -3,14 +3,17 @@ import Mailjet from "node-mailjet";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 
-const mailjet = new Mailjet({
-  apiKey: process.env.MAILJET_API_KEY!,
-  apiSecret: process.env.MAILJET_SECRET_KEY!,
-});
+// Lazy init — évite le crash au build quand les env vars ne sont pas chargées
+function getClient() {
+  return new Mailjet({
+    apiKey: process.env.MAILJET_API_KEY!,
+    apiSecret: process.env.MAILJET_SECRET_KEY!,
+  });
+}
 
-const FROM_EMAIL = process.env.MAILJET_FROM_EMAIL || "noreply@life.app";
-const FROM_NAME = process.env.MAILJET_FROM_NAME || "Life";
-const ADMIN_EMAIL = process.env.ADMIN_EMAIL || "";
+const FROM_EMAIL = () => process.env.MAILJET_FROM_EMAIL || "noreply@life.app";
+const FROM_NAME = () => process.env.MAILJET_FROM_NAME || "Life";
+const ADMIN_EMAIL = () => process.env.ADMIN_EMAIL || "";
 
 /* ═══════════════════════════════════════════════════════
    Generic send
@@ -27,10 +30,10 @@ async function send({
   htmlBody: string;
 }): Promise<boolean> {
   try {
-    await mailjet.post("send", { version: "v3.1" }).request({
+    await getClient().post("send", { version: "v3.1" }).request({
       Messages: [
         {
-          From: { Email: FROM_EMAIL, Name: FROM_NAME },
+          From: { Email: FROM_EMAIL(), Name: FROM_NAME() },
           To: [{ Email: toEmail, Name: toName }],
           Subject: subject,
           HTMLPart: htmlBody,
@@ -165,7 +168,7 @@ export async function sendNewBookingToAdmin({
   message?: string | null;
   isCloseContact: boolean;
 }): Promise<boolean> {
-  if (!ADMIN_EMAIL) return false;
+  if (!ADMIN_EMAIL()) return false;
 
   const closeTag = isCloseContact
     ? `<span style="display:inline-block;background:#FFD60A20;color:#FF9500;font-size:12px;font-weight:600;padding:4px 10px;border-radius:8px;">⭐ Contact proche</span>`
@@ -211,7 +214,7 @@ export async function sendNewBookingToAdmin({
   `);
 
   return send({
-    toEmail: ADMIN_EMAIL,
+    toEmail: ADMIN_EMAIL(),
     toName: "Admin",
     subject: `Nouveau RDV — ${guestName} (${typeName})`,
     htmlBody: html,
@@ -391,7 +394,7 @@ export async function sendReminderToAdmin({
   endAt: string;
   reminderType: "24h" | "1h";
 }): Promise<boolean> {
-  if (!ADMIN_EMAIL) return false;
+  if (!ADMIN_EMAIL()) return false;
 
   const emoji = reminderType === "24h" ? "📅" : "⏰";
   const label = reminderType === "24h" ? "demain" : "dans 1 heure";
@@ -426,7 +429,7 @@ export async function sendReminderToAdmin({
   `);
 
   return send({
-    toEmail: ADMIN_EMAIL,
+    toEmail: ADMIN_EMAIL(),
     toName: "Admin",
     subject: `${emoji} Rappel — RDV avec ${guestName} ${label}`,
     htmlBody: html,
