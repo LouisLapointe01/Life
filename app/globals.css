@@ -366,7 +366,14 @@
     filter: blur(80px);
     opacity: 0.5;
     pointer-events: none;
+    will-change: transform;
     animation: float 8s ease-in-out infinite;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .glass-orb {
+      animation: none;
+    }
   }
 
   .glass-orb-blue {

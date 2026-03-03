@@ -1,4 +1,5 @@
-// lib/twilio.ts — Helper SMS via Twilio
+// lib/twilio.ts — Helper SMS via Twilio (server uniquement)
+import "server-only";
 import twilio from "twilio";
 
 const getClient = () =>

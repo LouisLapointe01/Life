@@ -1,4 +1,5 @@
-// lib/mailjet.ts — Helper emails via Mailjet
+// lib/mailjet.ts — Helper emails via Mailjet (server uniquement)
+import "server-only";
 import Mailjet from "node-mailjet";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
