@@ -22,12 +22,12 @@ import {
   Loader2,
   ArrowLeft,
   ChevronRight,
-  Sparkles,
   Users,
   Search,
   X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { LeafLogo } from "@/components/LeafLogo";
 import { useRdvModal } from "@/contexts/rdv-modal-context";
 
 type Contact = {
@@ -539,7 +539,7 @@ export function RdvModal() {
                         disabled={submitting}
                         className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-primary px-5 py-3 text-[14px] font-semibold text-primary-foreground shadow-lg shadow-primary/25 transition-all hover:shadow-xl hover:-translate-y-0.5 disabled:opacity-50"
                       >
-                        {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Sparkles className="h-4 w-4" /> Réserver</>}
+                        {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <><LeafLogo size={16} /> Réserver</>}
                       </button>
                     </div>
                   </form>
@@ -557,7 +557,7 @@ export function RdvModal() {
                     <CheckCircle2 className="h-10 w-10 text-green-500" />
                   </div>
                   <div className="absolute -right-1 -top-1 flex h-7 w-7 items-center justify-center rounded-full bg-green-500 text-white shadow-lg shadow-green-500/30">
-                    <Sparkles className="h-3.5 w-3.5" />
+                    <LeafLogo size={16} />
                   </div>
                 </div>
                 <div>

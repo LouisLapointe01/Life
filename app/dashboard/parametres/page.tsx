@@ -104,22 +104,21 @@ export default function ParametresPage() {
   const [activeTab, setActiveTab] = useState<Tab>("types");
 
   return (
-    <div className="mx-auto w-full max-w-4xl space-y-6 px-2 sm:px-4 md:px-0">
+    <div className="mx-auto w-full max-w-4xl space-y-4 sm:space-y-6">
       {/* Header */}
       <div className="animate-slide-up">
-        <h2 className="text-3xl font-bold tracking-tight">Paramètres</h2>
-        <p className="mt-1 text-[15px] text-muted-foreground">
-          Configurez vos types de rendez-vous, disponibilités et contacts
-          proches.
+        <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">Paramètres</h2>
+        <p className="mt-1 text-[13px] sm:text-[15px] text-muted-foreground">
+          Configurez vos types de rendez-vous, disponibilités et contacts proches.
         </p>
       </div>
 
       {/* Tab Navigation */}
       <div
-        className="overflow-x-auto rounded-2xl bg-foreground/[0.04] p-1 animate-slide-up scrollbar-thin"
+        className="-mx-1 overflow-x-auto rounded-2xl bg-foreground/[0.04] p-1 animate-slide-up scrollbar-thin"
         style={{ animationDelay: "80ms" }}
       >
-        <div className="flex gap-1 min-w-[340px] sm:min-w-0 w-max">
+        <div className="flex gap-0.5 sm:gap-1">
           {tabs.map((tab) => {
             const isActive = activeTab === tab.key;
             return (
@@ -127,15 +126,15 @@ export default function ParametresPage() {
                 key={tab.key}
                 onClick={() => setActiveTab(tab.key)}
                 className={cn(
-                  "flex flex-1 items-center justify-center gap-2 rounded-xl px-3 sm:px-4 py-2.5 text-[11px] sm:text-[13px] font-medium transition-all duration-300 whitespace-nowrap",
+                  "flex flex-1 items-center justify-center gap-1.5 sm:gap-2 rounded-xl px-2.5 sm:px-4 py-2 sm:py-2.5 text-[11px] sm:text-[13px] font-medium transition-all duration-300 whitespace-nowrap",
                   isActive
                     ? "bg-card text-foreground shadow-sm"
                     : "text-muted-foreground hover:text-foreground"
                 )}
-                style={{ minWidth: 120 }}
               >
-                <tab.icon className="h-4 w-4" />
-                {tab.label}
+                <tab.icon className="h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0" />
+                <span className="hidden xs:inline sm:inline">{tab.label}</span>
+                <span className="xs:hidden">{tab.label.split(" ")[0]}</span>
               </button>
             );
           })}
@@ -173,76 +172,77 @@ function DashboardSectionsSettings() {
   } = useDashboardTabs();
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Header + Reset */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500/20 to-indigo-600/20">
-            <LayoutGrid className="h-5 w-5 text-indigo-500" />
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+          <div className="flex h-9 w-9 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500/20 to-indigo-600/20">
+            <LayoutGrid className="h-4 w-4 sm:h-5 sm:w-5 text-indigo-500" />
           </div>
-          <div>
-            <h3 className="text-[15px] sm:text-[16px] font-semibold">Sections du dashboard</h3>
-            <p className="text-[11px] sm:text-[12px] text-muted-foreground">
+          <div className="min-w-0">
+            <h3 className="text-[14px] sm:text-[16px] font-semibold truncate">Sections du dashboard</h3>
+            <p className="text-[11px] sm:text-[12px] text-muted-foreground truncate">
               Choisissez les sections visibles et leur ordre.
             </p>
           </div>
         </div>
         <button
           onClick={resetToDefault}
-          className="flex items-center gap-2 rounded-2xl bg-foreground/[0.06] px-4 py-2.5 text-[12px] sm:text-[13px] font-medium text-muted-foreground transition-all hover:bg-foreground/[0.1] hover:text-foreground self-end sm:self-auto"
+          className="flex shrink-0 items-center gap-1.5 sm:gap-2 rounded-2xl bg-foreground/[0.06] px-3 sm:px-4 py-2 sm:py-2.5 text-[11px] sm:text-[13px] font-medium text-muted-foreground transition-all hover:bg-foreground/[0.1] hover:text-foreground"
         >
-          <RotateCcw className="h-3.5 w-3.5" />
-          Réinitialiser
+          <RotateCcw className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+          <span className="hidden sm:inline">Réinitialiser</span>
+          <span className="sm:hidden">Reset</span>
         </button>
       </div>
 
       {/* Sections sidebar (visibles) */}
       <div className="space-y-2">
-        <p className="text-[12px] font-semibold uppercase tracking-widest text-muted-foreground px-1">
+        <p className="text-[11px] sm:text-[12px] font-semibold uppercase tracking-widest text-muted-foreground px-1">
           Sidebar — Visible ({visibleTabs.length})
         </p>
         <div className="space-y-1.5">
           {visibleTabs.map((tab, index) => (
             <div
               key={tab.id}
-              className="glass-card flex items-center gap-3 p-3.5"
+              className="glass-card flex items-center gap-2 sm:gap-3 p-2.5 sm:p-3.5"
             >
               {/* Icon du tab */}
               <div
                 className={cn(
-                  "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br",
+                  "flex h-8 w-8 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-lg sm:rounded-xl bg-gradient-to-br",
                   tab.color
                 )}
               >
-                <tab.icon className={cn("h-4.5 w-4.5", tab.iconColor)} />
+                <tab.icon className={cn("h-3.5 w-3.5 sm:h-4.5 sm:w-4.5", tab.iconColor)} />
               </div>
 
               {/* Nom */}
               <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <p className="text-[14px] font-semibold truncate">
+                <div className="flex items-center gap-1.5 sm:gap-2">
+                  <p className="text-[13px] sm:text-[14px] font-semibold truncate">
                     {tab.label}
                   </p>
                   {tab.locked && (
-                    <span className="flex items-center gap-1 rounded-lg bg-foreground/[0.06] px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+                    <span className="hidden sm:flex items-center gap-1 rounded-lg bg-foreground/[0.06] px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
                       <Lock className="h-2.5 w-2.5" />
                       Fixe
                     </span>
                   )}
                 </div>
-                <p className="text-[11px] text-muted-foreground truncate">
+                <p className="text-[10px] sm:text-[11px] text-muted-foreground truncate">
                   {tab.href}
                 </p>
               </div>
 
               {/* Actions: réordonner + supprimer */}
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-0.5 sm:gap-1 shrink-0">
                 <button
                   onClick={() => index > 0 && moveTab(index, index - 1)}
                   disabled={index === 0}
-                  className="flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground transition-all hover:bg-foreground/[0.06] hover:text-foreground disabled:opacity-30"
+                  className="flex h-6 w-6 sm:h-7 sm:w-7 items-center justify-center rounded-lg text-muted-foreground transition-all hover:bg-foreground/[0.06] hover:text-foreground disabled:opacity-30"
                 >
-                  <ArrowUp className="h-3.5 w-3.5" />
+                  <ArrowUp className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
                 </button>
                 <button
                   onClick={() =>
@@ -250,20 +250,20 @@ function DashboardSectionsSettings() {
                     moveTab(index, index + 1)
                   }
                   disabled={index === visibleTabs.length - 1}
-                  className="flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground transition-all hover:bg-foreground/[0.06] hover:text-foreground disabled:opacity-30"
+                  className="flex h-6 w-6 sm:h-7 sm:w-7 items-center justify-center rounded-lg text-muted-foreground transition-all hover:bg-foreground/[0.06] hover:text-foreground disabled:opacity-30"
                 >
-                  <ArrowDown className="h-3.5 w-3.5" />
+                  <ArrowDown className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
                 </button>
                 {!tab.locked ? (
                   <button
                     onClick={() => removeTab(tab.id)}
-                    className="flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground transition-all hover:bg-red-500/10 hover:text-red-500"
+                    className="flex h-6 w-6 sm:h-7 sm:w-7 items-center justify-center rounded-lg text-muted-foreground transition-all hover:bg-red-500/10 hover:text-red-500"
                     title="Retirer"
                   >
-                    <EyeOff className="h-3.5 w-3.5" />
+                    <EyeOff className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
                   </button>
                 ) : (
-                  <div className="w-7" />
+                  <div className="w-6 sm:w-7" />
                 )}
               </div>
             </div>
@@ -274,34 +274,34 @@ function DashboardSectionsSettings() {
       {/* Sections masquées */}
       {hiddenTabs.length > 0 && (
         <div className="space-y-2">
-          <p className="text-[12px] font-semibold uppercase tracking-widest text-muted-foreground px-1">
+          <p className="text-[11px] sm:text-[12px] font-semibold uppercase tracking-widest text-muted-foreground px-1">
             Masquées ({hiddenTabs.length})
           </p>
           <div className="space-y-1.5">
             {hiddenTabs.map((tab) => (
               <div
                 key={tab.id}
-                className="glass-card flex items-center gap-3 p-3.5 opacity-60"
+                className="glass-card flex items-center gap-2 sm:gap-3 p-2.5 sm:p-3.5 opacity-60"
               >
                 <div
                   className={cn(
-                    "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br",
+                    "flex h-8 w-8 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-lg sm:rounded-xl bg-gradient-to-br",
                     tab.color
                   )}
                 >
-                  <tab.icon className={cn("h-4.5 w-4.5", tab.iconColor)} />
+                  <tab.icon className={cn("h-3.5 w-3.5 sm:h-4.5 sm:w-4.5", tab.iconColor)} />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-[14px] font-semibold truncate">
+                  <p className="text-[13px] sm:text-[14px] font-semibold truncate">
                     {tab.label}
                   </p>
-                  <p className="text-[11px] text-muted-foreground">Masquée</p>
+                  <p className="text-[10px] sm:text-[11px] text-muted-foreground">Masquée</p>
                 </div>
                 <button
                   onClick={() => addTab(tab.id)}
-                  className="flex items-center gap-1.5 rounded-xl bg-primary/10 px-3 py-2 text-[12px] font-medium text-primary transition-all hover:bg-primary/20"
+                  className="flex shrink-0 items-center gap-1 sm:gap-1.5 rounded-xl bg-primary/10 px-2.5 sm:px-3 py-1.5 sm:py-2 text-[11px] sm:text-[12px] font-medium text-primary transition-all hover:bg-primary/20"
                 >
-                  <Eye className="h-3.5 w-3.5" />
+                  <Eye className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
                   Afficher
                 </button>
               </div>
@@ -314,14 +314,14 @@ function DashboardSectionsSettings() {
       <div className="space-y-2">
         <div className="flex items-center gap-2 px-1">
           <Smartphone className="h-3.5 w-3.5 text-muted-foreground" />
-          <p className="text-[12px] font-semibold uppercase tracking-widest text-muted-foreground">
+          <p className="text-[11px] sm:text-[12px] font-semibold uppercase tracking-widest text-muted-foreground">
             Barre mobile (max 4)
           </p>
         </div>
-        <p className="text-[12px] text-muted-foreground px-1">
+        <p className="text-[11px] sm:text-[12px] text-muted-foreground px-1">
           Sélectionnez jusqu&apos;à 4 sections pour la navigation mobile.
         </p>
-        <div className="grid grid-cols-2 gap-2 xs:grid-cols-3 sm:grid-cols-4">
+        <div className="grid grid-cols-3 gap-1.5 sm:grid-cols-4 sm:gap-2">
           {ALL_TABS.map((tab) => {
             const isInMobile = mobileIds.includes(tab.id);
             const isVisible = visibleIds.includes(tab.id);
@@ -335,7 +335,7 @@ function DashboardSectionsSettings() {
                 }
                 disabled={!isVisible || (tab.locked && isInMobile)}
                 className={cn(
-                  "flex flex-col items-center gap-2 rounded-2xl p-3.5 transition-all duration-200",
+                  "flex flex-col items-center gap-1.5 sm:gap-2 rounded-xl sm:rounded-2xl p-2.5 sm:p-3.5 transition-all duration-200",
                   isInMobile
                     ? "glass-card shadow-sm ring-2 ring-primary/30"
                     : "bg-foreground/[0.03] hover:bg-foreground/[0.06]",
@@ -344,15 +344,15 @@ function DashboardSectionsSettings() {
               >
                 <div
                   className={cn(
-                    "flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br",
+                    "flex h-7 w-7 sm:h-9 sm:w-9 items-center justify-center rounded-lg sm:rounded-xl bg-gradient-to-br",
                     tab.color
                   )}
                 >
-                  <tab.icon className={cn("h-4 w-4", tab.iconColor)} />
+                  <tab.icon className={cn("h-3.5 w-3.5 sm:h-4 sm:w-4", tab.iconColor)} />
                 </div>
-                <span className="text-[11px] font-medium">{tab.label}</span>
+                <span className="text-[10px] sm:text-[11px] font-medium text-center leading-tight">{tab.label}</span>
                 {isInMobile && (
-                  <span className="rounded-lg bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary">
+                  <span className="rounded-lg bg-primary/10 px-1.5 sm:px-2 py-0.5 text-[9px] sm:text-[10px] font-semibold text-primary">
                     Mobile
                   </span>
                 )}
@@ -435,13 +435,13 @@ function AppointmentTypesSection() {
   return (
     <div className="space-y-4">
       {/* Header row */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500/20 to-blue-600/20">
-            <CalendarDays className="h-5 w-5 text-blue-500" />
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+          <div className="flex h-9 w-9 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500/20 to-blue-600/20">
+            <CalendarDays className="h-4 w-4 sm:h-5 sm:w-5 text-blue-500" />
           </div>
-          <div>
-            <h3 className="text-[15px] sm:text-[16px] font-semibold">Types de rendez-vous</h3>
+          <div className="min-w-0">
+            <h3 className="text-[14px] sm:text-[16px] font-semibold truncate">Types de rendez-vous</h3>
             <p className="text-[11px] sm:text-[12px] text-muted-foreground">
               {types.length} type{types.length > 1 ? "s" : ""} configuré
               {types.length > 1 ? "s" : ""}
@@ -451,7 +451,7 @@ function AppointmentTypesSection() {
 
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
-            <button className="flex items-center gap-2 rounded-2xl bg-primary px-4 py-2.5 text-[12px] sm:text-[13px] font-medium text-primary-foreground shadow-lg shadow-primary/25 transition-all hover:shadow-xl hover:-translate-y-0.5 self-end sm:self-auto">
+            <button className="flex shrink-0 items-center gap-1.5 sm:gap-2 rounded-2xl bg-primary px-3 sm:px-4 py-2 sm:py-2.5 text-[11px] sm:text-[13px] font-medium text-primary-foreground shadow-lg shadow-primary/25 transition-all hover:shadow-xl hover:-translate-y-0.5">
               <Plus className="h-4 w-4" />
               Ajouter
             </button>
@@ -528,39 +528,39 @@ function AppointmentTypesSection() {
 
       {/* List */}
       {types.length === 0 ? (
-        <div className="glass-card flex flex-col items-center gap-3 py-16">
-          <CalendarDays className="h-12 w-12 text-muted-foreground/40" />
-          <p className="text-[14px] text-muted-foreground">
+        <div className="glass-card flex flex-col items-center gap-3 py-12 sm:py-16 px-4">
+          <CalendarDays className="h-10 w-10 sm:h-12 sm:w-12 text-muted-foreground/40" />
+          <p className="text-[13px] sm:text-[14px] text-muted-foreground text-center">
             Aucun type de rendez-vous. Créez-en un pour commencer.
           </p>
         </div>
       ) : (
-        <div className="space-y-2">
+        <div className="space-y-1.5 sm:space-y-2">
           {types.map((type) => (
             <div
               key={type.id}
-              className="glass-card flex items-center gap-4 p-4"
+              className="glass-card flex items-center gap-2.5 sm:gap-4 p-3 sm:p-4"
             >
               <div
-                className="flex h-11 w-11 items-center justify-center rounded-2xl"
+                className="flex h-9 w-9 sm:h-11 sm:w-11 shrink-0 items-center justify-center rounded-xl sm:rounded-2xl"
                 style={{
                   background: `linear-gradient(135deg, ${type.color}30, ${type.color}10)`,
                 }}
               >
                 <div
-                  className="h-3 w-3 rounded-full"
+                  className="h-2.5 w-2.5 sm:h-3 sm:w-3 rounded-full"
                   style={{ backgroundColor: type.color }}
                 />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-[14px] font-semibold truncate">
+                <p className="text-[13px] sm:text-[14px] font-semibold truncate">
                   {type.name}
                 </p>
-                <p className="text-[12px] text-muted-foreground">
+                <p className="text-[11px] sm:text-[12px] text-muted-foreground">
                   {type.duration_min} min
                 </p>
               </div>
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2 sm:gap-3 shrink-0">
                 <Switch
                   checked={type.is_active}
                   onCheckedChange={() =>
@@ -662,13 +662,13 @@ function AvailabilitySection() {
   return (
     <div className="space-y-4">
       {/* Header row */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-orange-500/20 to-orange-600/20">
-            <Clock className="h-5 w-5 text-orange-500" />
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+          <div className="flex h-9 w-9 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-orange-500/20 to-orange-600/20">
+            <Clock className="h-4 w-4 sm:h-5 sm:w-5 text-orange-500" />
           </div>
-          <div>
-            <h3 className="text-[15px] sm:text-[16px] font-semibold">Plages horaires</h3>
+          <div className="min-w-0">
+            <h3 className="text-[14px] sm:text-[16px] font-semibold truncate">Plages horaires</h3>
             <p className="text-[11px] sm:text-[12px] text-muted-foreground">
               {rules.length} plage{rules.length > 1 ? "s" : ""} configurée
               {rules.length > 1 ? "s" : ""}
@@ -678,7 +678,7 @@ function AvailabilitySection() {
 
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
-            <button className="flex items-center gap-2 rounded-2xl bg-primary px-4 py-2.5 text-[12px] sm:text-[13px] font-medium text-primary-foreground shadow-lg shadow-primary/25 transition-all hover:shadow-xl hover:-translate-y-0.5 self-end sm:self-auto">
+            <button className="flex shrink-0 items-center gap-1.5 sm:gap-2 rounded-2xl bg-primary px-3 sm:px-4 py-2 sm:py-2.5 text-[11px] sm:text-[13px] font-medium text-primary-foreground shadow-lg shadow-primary/25 transition-all hover:shadow-xl hover:-translate-y-0.5">
               <Plus className="h-4 w-4" />
               Ajouter
             </button>
@@ -750,8 +750,8 @@ function AvailabilitySection() {
 
       {/* List grouped by day */}
       {rules.length === 0 ? (
-        <div className="glass-card flex flex-col items-center gap-3 py-16">
-          <Clock className="h-12 w-12 text-muted-foreground/40" />
+        <div className="glass-card flex flex-col items-center gap-3 py-12 sm:py-16 px-4">
+          <Clock className="h-10 w-10 sm:h-12 sm:w-12 text-muted-foreground/40" />
           <p className="text-[14px] text-muted-foreground">
             Aucune plage horaire. Ajoutez vos disponibilités.
           </p>
@@ -768,18 +768,18 @@ function AvailabilitySection() {
                 {dayRules.map((rule) => (
                   <div
                     key={rule.id}
-                    className="glass-card flex items-center gap-4 p-4"
+                    className="glass-card flex items-center gap-2.5 sm:gap-4 p-3 sm:p-4"
                   >
-                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-orange-500/10">
-                      <Clock className="h-4 w-4 text-orange-500" />
+                    <div className="flex h-8 w-8 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-lg sm:rounded-xl bg-orange-500/10">
+                      <Clock className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-orange-500" />
                     </div>
-                    <div className="flex-1">
-                      <p className="text-[14px] font-semibold">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[13px] sm:text-[14px] font-semibold">
                         {rule.start_time.slice(0, 5)} —{" "}
                         {rule.end_time.slice(0, 5)}
                       </p>
                     </div>
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2 sm:gap-3 shrink-0">
                       <Switch
                         checked={rule.is_active}
                         onCheckedChange={() =>
@@ -848,21 +848,21 @@ function ContactsSection() {
   return (
     <div className="space-y-4">
       {/* Header */}
-      <div className="flex items-center gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-purple-500/20 to-purple-600/20">
-          <Users className="h-5 w-5 text-purple-500" />
+      <div className="flex items-center gap-2.5 sm:gap-3">
+        <div className="flex h-9 w-9 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-purple-500/20 to-purple-600/20">
+          <Users className="h-4 w-4 sm:h-5 sm:w-5 text-purple-500" />
         </div>
-        <div>
-          <h3 className="text-[16px] font-semibold">Contacts proches</h3>
-          <p className="text-[12px] text-muted-foreground">
+        <div className="min-w-0">
+          <h3 className="text-[14px] sm:text-[16px] font-semibold">Contacts proches</h3>
+          <p className="text-[11px] sm:text-[12px] text-muted-foreground">
             Les proches reçoivent un SMS à la confirmation du RDV.
           </p>
         </div>
       </div>
 
       {contacts.length === 0 ? (
-        <div className="glass-card flex flex-col items-center gap-3 py-16">
-          <Users className="h-12 w-12 text-muted-foreground/40" />
+        <div className="glass-card flex flex-col items-center gap-3 py-12 sm:py-16 px-4">
+          <Users className="h-10 w-10 sm:h-12 sm:w-12 text-muted-foreground/40" />
           <p className="text-[14px] text-muted-foreground">
             Aucun contact dans l&apos;annuaire.
           </p>
@@ -912,10 +912,10 @@ function ContactRow({
   onToggle: () => void;
 }) {
   return (
-    <div className="glass-card flex items-center gap-4 p-4">
+    <div className="glass-card flex items-center gap-2.5 sm:gap-4 p-3 sm:p-4">
       <div
         className={cn(
-          "flex h-10 w-10 items-center justify-center rounded-2xl text-[14px] font-bold",
+          "flex h-8 w-8 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-xl sm:rounded-2xl text-[12px] sm:text-[14px] font-bold",
           contact.is_close
             ? "bg-gradient-to-br from-yellow-400/20 to-amber-500/20 text-amber-600"
             : "bg-foreground/[0.06] text-muted-foreground"
@@ -924,20 +924,20 @@ function ContactRow({
         {contact.first_name.charAt(0).toUpperCase()}
       </div>
       <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2">
-          <p className="text-[14px] font-semibold truncate">
+        <div className="flex items-center gap-1.5 sm:gap-2">
+          <p className="text-[13px] sm:text-[14px] font-semibold truncate">
             {contact.first_name} {contact.last_name || ""}
           </p>
           {contact.is_close && (
-            <Star className="h-3.5 w-3.5 fill-yellow-400 text-yellow-400 shrink-0" />
+            <Star className="h-3 w-3 sm:h-3.5 sm:w-3.5 fill-yellow-400 text-yellow-400 shrink-0" />
           )}
         </div>
-        <div className="flex gap-3 text-[12px] text-muted-foreground">
-          {contact.email && <span className="truncate">{contact.email}</span>}
-          {contact.phone && <span>{contact.phone}</span>}
+        <div className="flex gap-2 sm:gap-3 text-[11px] sm:text-[12px] text-muted-foreground">
+          {contact.email && <span className="truncate max-w-[120px] sm:max-w-none">{contact.email}</span>}
+          {contact.phone && <span className="shrink-0">{contact.phone}</span>}
         </div>
       </div>
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
         <span
           className={cn(
             "hidden sm:inline-block rounded-xl px-2.5 py-1 text-[11px] font-medium",
