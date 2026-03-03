@@ -104,7 +104,7 @@ export default function ParametresPage() {
   const [activeTab, setActiveTab] = useState<Tab>("types");
 
   return (
-    <div className="mx-auto max-w-4xl space-y-6">
+    <div className="mx-auto max-w-4xl space-y-6 px-2 sm:px-0">
       {/* Header */}
       <div className="animate-slide-up">
         <h2 className="text-3xl font-bold tracking-tight">Paramètres</h2>
@@ -132,6 +132,7 @@ export default function ParametresPage() {
                     ? "bg-card text-foreground shadow-sm"
                     : "text-muted-foreground hover:text-foreground"
                 )}
+                style={{ minWidth: 120 }}
               >
                 <tab.icon className="h-4 w-4" />
                 {tab.label}
@@ -320,7 +321,7 @@ function DashboardSectionsSettings() {
         <p className="text-[12px] text-muted-foreground px-1">
           Sélectionnez jusqu&apos;à 4 sections pour la navigation mobile.
         </p>
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+        <div className="grid grid-cols-2 gap-2 xs:grid-cols-3 sm:grid-cols-4">
           {ALL_TABS.map((tab) => {
             const isInMobile = mobileIds.includes(tab.id);
             const isVisible = visibleIds.includes(tab.id);
