@@ -338,7 +338,7 @@ export default function SantePage() {
   return (
     <div className="mx-auto max-w-6xl space-y-6">
       {/* ─── Header ─── */}
-      <div className="animate-slide-up">
+      <div>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <h2 className="text-2xl lg:text-3xl font-bold tracking-tight">Santé</h2>
@@ -371,7 +371,7 @@ export default function SantePage() {
       </div>
 
       {/* ─── Dynamic sections ─── */}
-      <div className="space-y-6 animate-slide-up" style={{ animationDelay: "100ms" }}>
+      <div className="space-y-6">
         {visibleSections.map((section) => renderSection(section.id))}
       </div>
 

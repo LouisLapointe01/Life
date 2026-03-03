@@ -106,7 +106,7 @@ export default function ParametresPage() {
   return (
     <div className="mx-auto w-full max-w-4xl space-y-4 sm:space-y-6">
       {/* Header */}
-      <div className="animate-slide-up">
+      <div>
         <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">Paramètres</h2>
         <p className="mt-1 text-[13px] sm:text-[15px] text-muted-foreground">
           Configurez vos types de rendez-vous, disponibilités et contacts proches.
@@ -115,8 +115,7 @@ export default function ParametresPage() {
 
       {/* Tab Navigation */}
       <div
-        className="-mx-1 overflow-x-auto rounded-2xl bg-foreground/[0.04] p-1 animate-slide-up scrollbar-thin"
-        style={{ animationDelay: "80ms" }}
+        className="-mx-1 overflow-x-auto rounded-2xl bg-foreground/[0.04] p-1 scrollbar-thin"
       >
         <div className="flex gap-0.5 sm:gap-1">
           {tabs.map((tab) => {
@@ -142,7 +141,9 @@ export default function ParametresPage() {
       </div>
 
       {/* Content */}
-      <div className="animate-slide-up w-full" style={{ animationDelay: "160ms" }}>
+      <div
+        className="w-full"
+      >
         {activeTab === "sections" && <DashboardSectionsSettings />}
         {activeTab === "types" && <AppointmentTypesSection />}
         {activeTab === "availability" && <AvailabilitySection />}

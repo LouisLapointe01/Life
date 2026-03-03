@@ -193,7 +193,7 @@ export default function FichiersPage() {
             <input ref={fileInputRef} type="file" multiple className="hidden" onChange={handleFilesSelected} accept="*/*" />
 
             {/* Header */}
-            <div className="animate-slide-up">
+            <div>
                 <h2 className="text-2xl lg:text-3xl font-bold tracking-tight">Fichiers</h2>
                 <p className="mt-1.5 text-[15px] text-muted-foreground">
                     Vos documents importants, organisés et sécurisés.
@@ -202,7 +202,9 @@ export default function FichiersPage() {
             </div>
 
             {/* Search + Actions */}
-            <div className="glass-card flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between animate-slide-up" style={{ animationDelay: "100ms" }}>
+            <div
+                className="glass-card flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between"
+            >
                 <div className="relative flex-1 max-w-md">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Rechercher un fichier..." className="glass-input w-full py-2.5 pl-10 pr-4 text-[14px]" />
@@ -219,7 +221,9 @@ export default function FichiersPage() {
             </div>
 
             {/* Categories */}
-            <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-thin animate-slide-up" style={{ animationDelay: "150ms" }}>
+            <div
+                className="flex gap-2 overflow-x-auto pb-1 scrollbar-thin"
+            >
                 {allCategories.map((cat) => (
                     <button key={cat} onClick={() => setCategory(cat)} className={cn("shrink-0 rounded-2xl px-4 py-2 text-[13px] font-medium transition-all duration-200", category === cat ? "bg-primary/15 text-primary shadow-sm" : "bg-foreground/[0.04] text-muted-foreground hover:text-foreground hover:bg-foreground/[0.08]")}>{cat}</button>
                 ))}
@@ -227,7 +231,9 @@ export default function FichiersPage() {
 
             {/* Files */}
             {filtered.length === 0 ? (
-                <div className="glass-card flex flex-col items-center gap-3 py-16 animate-slide-up">
+                <div
+                    className="glass-card flex flex-col items-center gap-3 py-16"
+                >
                     <FolderOpen className="h-12 w-12 text-muted-foreground/40" />
                     <p className="text-[14px] text-muted-foreground">{files.length === 0 ? "Aucun fichier. Importez votre premier document." : "Aucun fichier trouvé."}</p>
                     {files.length === 0 && (
@@ -242,7 +248,10 @@ export default function FichiersPage() {
                         const Icon = fileIcons[file.type] || File;
                         const colorClass = fileColors[file.type] || fileColors.other;
                         return (
-                            <div key={file.id} className="glass-card group relative overflow-hidden p-5 animate-slide-up" style={{ animationDelay: `${(index + 3) * 80}ms` }}>
+                            <div
+                                key={file.id}
+                                className="glass-card group relative overflow-hidden p-5"
+                            >
                                 <div className="flex items-start justify-between">
                                     <div className={cn("flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br", colorClass)}><Icon className="h-5 w-5" /></div>
                                     <button onClick={() => setDeleteTarget(file)} className="flex h-8 w-8 items-center justify-center rounded-xl text-muted-foreground transition-all hover:bg-red-500/10 hover:text-red-500 opacity-0 group-hover:opacity-100"><Trash2 className="h-4 w-4" /></button>
@@ -261,7 +270,7 @@ export default function FichiersPage() {
                     })}
                 </div>
             ) : (
-                <div className="glass-card divide-y divide-foreground/[0.06] overflow-hidden animate-slide-up" style={{ animationDelay: "200ms" }}>
+                <div className="glass-card divide-y divide-foreground/[0.06] overflow-hidden">
                     {filtered.map((file) => {
                         const Icon = fileIcons[file.type] || File;
                         const colorClass = fileColors[file.type] || fileColors.other;
