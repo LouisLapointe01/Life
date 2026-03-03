@@ -13,21 +13,13 @@ import {
 import { LogOut, User, Bell, Sparkles } from "lucide-react";
 import type { User as SupabaseUser } from "@supabase/supabase-js";
 import Link from "next/link";
-
-const pageTitles: Record<string, string> = {
-  "/dashboard": "Accueil",
-  "/dashboard/agenda": "Agenda",
-  "/dashboard/sante": "Santé",
-  "/dashboard/logement": "Logement",
-  "/dashboard/fichiers": "Fichiers",
-  "/dashboard/annuaire": "Annuaire",
-  "/dashboard/parametres": "Paramètres",
-};
+import { usePageTitle } from "@/lib/stores/dashboard-tabs";
 
 export function Header({ title }: { title?: string }) {
   const router = useRouter();
   const pathname = usePathname();
   const [user, setUser] = useState<SupabaseUser | null>(null);
+  const dynamicTitle = usePageTitle(pathname);
 
   useEffect(() => {
     const supabase = createClient();
@@ -44,10 +36,10 @@ export function Header({ title }: { title?: string }) {
 
   const avatarUrl = user?.user_metadata?.avatar_url;
   const fullName = user?.user_metadata?.full_name ?? user?.email ?? "";
-  const pageTitle = title ?? pageTitles[pathname] ?? "Dashboard";
+  const pageTitle = title ?? dynamicTitle;
 
   return (
-    <header className="glass-header flex h-[64px] shrink-0 items-center justify-between px-4 lg:px-8 z-10">
+    <header className="flex h-[64px] shrink-0 items-center justify-between px-4 lg:px-8 z-10 bg-white/40 dark:bg-white/[0.06] backdrop-blur-2xl border-b border-white/30 dark:border-white/10">
       {/* Left: Logo (mobile only) + Title */}
       <div className="flex items-center gap-3">
         {/* Logo visible only on mobile (sidebar hidden) */}

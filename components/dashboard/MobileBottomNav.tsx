@@ -2,39 +2,35 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import {
-  LayoutDashboard,
-  Calendar,
-  CalendarPlus,
-  Users,
-  Settings,
-} from "lucide-react";
+import { CalendarPlus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useRdvModal } from "@/contexts/rdv-modal-context";
-
-const navLinks = [
-  { href: "/dashboard", label: "Accueil", icon: LayoutDashboard, exact: true },
-  { href: "/dashboard/agenda", label: "Agenda", icon: Calendar, exact: false },
-  { href: "/dashboard/annuaire", label: "Annuaire", icon: Users, exact: false },
-  { href: "/dashboard/parametres", label: "Réglages", icon: Settings, exact: false },
-];
+import { useMobileVisibleTabs } from "@/lib/stores/dashboard-tabs";
 
 export function MobileBottomNav() {
   const pathname = usePathname();
   const { open: openRdv } = useRdvModal();
+  const mobileTabs = useMobileVisibleTabs();
+
+  // Diviser en 2 groupes : gauche du RDV et droite
+  const leftTabs = mobileTabs.slice(0, 2);
+  const rightTabs = mobileTabs.slice(2, 4);
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 lg:hidden">
       <div
-        className="glass-sidebar border-t border-foreground/[0.06] flex items-stretch"
+        className="flex items-stretch bg-white/50 dark:bg-white/[0.06] backdrop-blur-2xl border-t border-white/30 dark:border-white/10"
         style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
       >
-        {/* Regular nav links */}
-        {navLinks.slice(0, 2).map((item) => {
-          const isActive = item.exact ? pathname === item.href : pathname.startsWith(item.href);
+        {/* Left nav links */}
+        {leftTabs.map((item) => {
+          const isActive =
+            item.href === "/dashboard"
+              ? pathname === item.href
+              : pathname.startsWith(item.href);
           return (
             <Link
-              key={item.href}
+              key={item.id}
               href={item.href}
               className={cn(
                 "flex flex-1 flex-col items-center justify-center gap-[3px] py-2.5 text-[10px] font-medium transition-all duration-200",
@@ -61,12 +57,15 @@ export function MobileBottomNav() {
           <span className="text-primary">RDV</span>
         </button>
 
-        {/* Remaining nav links */}
-        {navLinks.slice(2).map((item) => {
-          const isActive = item.exact ? pathname === item.href : pathname.startsWith(item.href);
+        {/* Right nav links */}
+        {rightTabs.map((item) => {
+          const isActive =
+            item.href === "/dashboard"
+              ? pathname === item.href
+              : pathname.startsWith(item.href);
           return (
             <Link
-              key={item.href}
+              key={item.id}
               href={item.href}
               className={cn(
                 "flex flex-1 flex-col items-center justify-center gap-[3px] py-2.5 text-[10px] font-medium transition-all duration-200",

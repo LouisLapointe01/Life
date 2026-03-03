@@ -33,9 +33,10 @@ export async function updateSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  // Redirect unauthenticated users to login (except for auth routes)
+  // Redirect unauthenticated users to login (except for public routes)
   if (
     !user &&
+    request.nextUrl.pathname !== "/" &&
     !request.nextUrl.pathname.startsWith("/login") &&
     !request.nextUrl.pathname.startsWith("/register") &&
     !request.nextUrl.pathname.startsWith("/api/auth") &&
@@ -47,7 +48,7 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  // Redirect authenticated users away from login/register
+  // Redirect authenticated users away from login/register (but not landing page)
   if (
     user &&
     (request.nextUrl.pathname.startsWith("/login") ||
