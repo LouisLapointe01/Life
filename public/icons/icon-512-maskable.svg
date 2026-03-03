@@ -10,8 +10,10 @@
       <stop offset="100%" stop-color="#e0f2f1"/>
     </linearGradient>
   </defs>
-  <rect width="512" height="512" rx="112" fill="url(#bg)"/>
-  <g transform="translate(256,256) scale(2.6)">
+  <!-- Full-bleed background (no rx) for maskable safe zone -->
+  <rect width="512" height="512" fill="url(#bg)"/>
+  <!-- Leaf scaled to fit within maskable safe zone (80% inner area) -->
+  <g transform="translate(256,256) scale(2.2)">
     <path d="M0,-52 C28,-48 52,-24 52,8 C52,38 28,56 0,60 C-28,56 -52,38 -52,8 C-52,-24 -28,-48 0,-52Z" fill="url(#lf)" opacity="0.95"/>
     <line x1="0" y1="-46" x2="0" y2="54" stroke="#2B9390" stroke-width="2.5" stroke-linecap="round" opacity="0.5"/>
     <path d="M0,-20 C-16,-14 -30,-4 -38,6" stroke="#2B9390" stroke-width="1.8" fill="none" stroke-linecap="round" opacity="0.4"/>

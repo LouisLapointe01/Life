@@ -26,6 +26,7 @@ import {
     Save,
     Wallet,
     Dumbbell,
+    Lock,
 } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
@@ -82,11 +83,10 @@ export default function DashboardPage() {
     /* ─── Edit widget dialog ─── */
     const [editingWidget, setEditingWidget] = useState<string | null>(null);
     const [ewTitle, setEwTitle] = useState("");
-    const [ewDesc, setEwDesc] = useState("");
-    const [ewStat, setEwStat] = useState("");
-    const [ewStatLabel, setEwStatLabel] = useState("");
 
-
+    /* ─── Edit stat dialog ─── */
+    const [editingStat, setEditingStat] = useState<string | null>(null);
+    const [esLabel, setEsLabel] = useState("");
 
     /* ─── Store ─── */
     const visibleWidgets = useVisibleWidgets();
@@ -122,21 +122,27 @@ export default function DashboardPage() {
     const startEditWidget = (w: DashboardWidget) => {
         setEditingWidget(w.id);
         setEwTitle(w.title);
-        setEwDesc(w.description);
-        setEwStat(w.stat);
-        setEwStatLabel(w.statLabel);
     };
 
     const saveEditWidget = () => {
         if (!editingWidget) return;
         updateWidget(editingWidget, {
             title: ewTitle,
-            description: ewDesc,
-            stat: ewStat,
-            statLabel: ewStatLabel,
         });
         setEditingWidget(null);
-        toast.success("Widget mis à jour");
+        toast.success("Widget renommé");
+    };
+
+    const startEditStat = (s: QuickStat) => {
+        setEditingStat(s.id);
+        setEsLabel(s.label);
+    };
+
+    const saveEditStat = () => {
+        if (!editingStat) return;
+        updateStat(editingStat, { label: esLabel });
+        setEditingStat(null);
+        toast.success("Statistique renommée");
     };
 
     if (!mounted) return null;
@@ -198,6 +204,15 @@ export default function DashboardPage() {
                                 <p className="text-xs text-muted-foreground">{stat.label}</p>
                                 <p className="text-sm font-semibold">{stat.value}</p>
                             </div>
+                            {/* Edit button */}
+                            {editMode && (
+                                <button
+                                    onClick={() => startEditStat(stat)}
+                                    className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-white shadow-md opacity-0 group-hover:opacity-100 transition-opacity"
+                                >
+                                    <Pencil className="h-2.5 w-2.5" />
+                                </button>
+                            )}
                         </div>
                     );
                 })}
@@ -333,13 +348,13 @@ export default function DashboardPage() {
                     <DialogHeader>
                         <DialogTitle className="flex items-center gap-2">
                             <Pencil className="h-4 w-4 text-primary" />
-                            Modifier le widget
+                            Renommer le widget
                         </DialogTitle>
-                        <DialogDescription>Personnalisez le contenu de ce widget.</DialogDescription>
+                        <DialogDescription>Modifiez le libellé de ce widget. Les données capteur sont en lecture seule.</DialogDescription>
                     </DialogHeader>
                     <div className="space-y-3 pt-2">
                         <div>
-                            <label className="text-[12px] font-medium text-muted-foreground mb-1 block">Titre</label>
+                            <label className="text-[12px] font-medium text-muted-foreground mb-1 block">Libellé</label>
                             <input
                                 value={ewTitle}
                                 onChange={(e) => setEwTitle(e.target.value)}
@@ -347,29 +362,29 @@ export default function DashboardPage() {
                             />
                         </div>
                         <div>
-                            <label className="text-[12px] font-medium text-muted-foreground mb-1 block">Description</label>
-                            <input
-                                value={ewDesc}
-                                onChange={(e) => setEwDesc(e.target.value)}
-                                className="glass-input w-full rounded-xl px-3 py-2 text-sm"
-                            />
+                            <label className="text-[12px] font-medium text-muted-foreground mb-1 flex items-center gap-1.5">
+                                <Lock className="h-3 w-3" /> Description
+                            </label>
+                            <div className="w-full rounded-xl bg-foreground/[0.04] px-3 py-2 text-sm text-muted-foreground cursor-not-allowed">
+                                {allWidgets.find(w => w.id === editingWidget)?.description || "—"}
+                            </div>
                         </div>
                         <div className="grid grid-cols-2 gap-3">
                             <div>
-                                <label className="text-[12px] font-medium text-muted-foreground mb-1 block">Statistique</label>
-                                <input
-                                    value={ewStat}
-                                    onChange={(e) => setEwStat(e.target.value)}
-                                    className="glass-input w-full rounded-xl px-3 py-2 text-sm"
-                                />
+                                <label className="text-[12px] font-medium text-muted-foreground mb-1 flex items-center gap-1.5">
+                                    <Lock className="h-3 w-3" /> Statistique
+                                </label>
+                                <div className="w-full rounded-xl bg-foreground/[0.04] px-3 py-2 text-sm text-muted-foreground cursor-not-allowed">
+                                    {allWidgets.find(w => w.id === editingWidget)?.stat || "—"}
+                                </div>
                             </div>
                             <div>
-                                <label className="text-[12px] font-medium text-muted-foreground mb-1 block">Label</label>
-                                <input
-                                    value={ewStatLabel}
-                                    onChange={(e) => setEwStatLabel(e.target.value)}
-                                    className="glass-input w-full rounded-xl px-3 py-2 text-sm"
-                                />
+                                <label className="text-[12px] font-medium text-muted-foreground mb-1 flex items-center gap-1.5">
+                                    <Lock className="h-3 w-3" /> Label
+                                </label>
+                                <div className="w-full rounded-xl bg-foreground/[0.04] px-3 py-2 text-sm text-muted-foreground cursor-not-allowed">
+                                    {allWidgets.find(w => w.id === editingWidget)?.statLabel || "—"}
+                                </div>
                             </div>
                         </div>
                         <button
@@ -377,7 +392,40 @@ export default function DashboardPage() {
                             className="w-full rounded-xl bg-primary py-2.5 text-sm font-medium text-primary-foreground shadow-lg shadow-primary/25 transition-all hover:shadow-xl"
                         >
                             <Save className="inline h-4 w-4 mr-2" />
-                            Enregistrer
+                            Renommer
+                        </button>
+                    </div>
+                </DialogContent>
+            </Dialog>
+
+            {/* ═══ Edit Stat Dialog ═══ */}
+            <Dialog open={editingStat !== null} onOpenChange={(open) => !open && setEditingStat(null)}>
+                <DialogContent className="glass-card border-white/10 sm:max-w-xs">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2">
+                            <Pencil className="h-4 w-4 text-primary" />
+                            Renommer la statistique
+                        </DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-3 pt-2">
+                        <div>
+                            <label className="text-[12px] font-medium text-muted-foreground mb-1 block">Libellé</label>
+                            <input value={esLabel} onChange={(e) => setEsLabel(e.target.value)} className="glass-input w-full rounded-xl px-3 py-2 text-sm" />
+                        </div>
+                        <div>
+                            <label className="text-[12px] font-medium text-muted-foreground mb-1 flex items-center gap-1.5">
+                                <Lock className="h-3 w-3" /> Valeur (capteur)
+                            </label>
+                            <div className="w-full rounded-xl bg-foreground/[0.04] px-3 py-2 text-sm text-muted-foreground cursor-not-allowed">
+                                {allStats.find(s => s.id === editingStat)?.value || "—"}
+                            </div>
+                        </div>
+                        <button
+                            onClick={saveEditStat}
+                            className="w-full rounded-xl bg-primary py-2.5 text-sm font-medium text-primary-foreground shadow-lg shadow-primary/25 transition-all hover:shadow-xl"
+                        >
+                            <Save className="inline h-4 w-4 mr-2" />
+                            Renommer
                         </button>
                     </div>
                 </DialogContent>

@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import {
-  Sparkles,
   CalendarDays,
   Heart,
   Home,
@@ -15,6 +14,7 @@ import {
   Zap,
   Globe,
 } from "lucide-react";
+import { LeafLogo } from "@/components/LeafLogo";
 
 export default function LandingPage() {
   return (
@@ -35,9 +35,7 @@ export default function LandingPage() {
         <nav className="sticky top-0 z-50 backdrop-blur-xl bg-white/10 border-b border-white/15">
           <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-5 sm:px-8">
             <div className="flex items-center gap-2.5">
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-white/30 to-white/10 backdrop-blur-xl shadow-lg border border-white/30">
-                <Sparkles className="h-4.5 w-4.5 text-white" />
-              </div>
+              <LeafLogo size={36} className="shrink-0 rounded-xl shadow-lg" />
               <span className="text-xl font-bold tracking-tight text-white">Life</span>
             </div>
             <div className="hidden sm:flex items-center gap-6">
@@ -308,9 +306,7 @@ export default function LandingPage() {
         <footer className="border-t border-white/10 backdrop-blur-xl bg-white/5">
           <div className="mx-auto max-w-5xl px-5 sm:px-8 py-8 flex flex-col sm:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-2">
-              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-white/15 border border-white/20">
-                <Sparkles className="h-3.5 w-3.5 text-white" />
-              </div>
+              <LeafLogo size={28} className="shrink-0 rounded-lg" />
               <span className="text-[14px] font-semibold text-white/80">Life</span>
             </div>
             <div className="flex items-center gap-5">

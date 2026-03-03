@@ -116,27 +116,29 @@ export default function ParametresPage() {
 
       {/* Tab Navigation */}
       <div
-        className="flex gap-1 rounded-2xl bg-foreground/[0.04] p-1 animate-slide-up"
+        className="overflow-x-auto rounded-2xl bg-foreground/[0.04] p-1 animate-slide-up"
         style={{ animationDelay: "80ms" }}
       >
-        {tabs.map((tab) => {
-          const isActive = activeTab === tab.key;
-          return (
-            <button
-              key={tab.key}
-              onClick={() => setActiveTab(tab.key)}
-              className={cn(
-                "flex flex-1 items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-[13px] font-medium transition-all duration-300",
-                isActive
-                  ? "bg-card text-foreground shadow-sm"
-                  : "text-muted-foreground hover:text-foreground"
-              )}
-            >
-              <tab.icon className="h-4 w-4" />
-              {tab.label}
-            </button>
-          );
-        })}
+        <div className="flex gap-1 min-w-max">
+          {tabs.map((tab) => {
+            const isActive = activeTab === tab.key;
+            return (
+              <button
+                key={tab.key}
+                onClick={() => setActiveTab(tab.key)}
+                className={cn(
+                  "flex flex-1 items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-[11px] sm:text-[13px] font-medium transition-all duration-300 whitespace-nowrap",
+                  isActive
+                    ? "bg-card text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                <tab.icon className="h-4 w-4" />
+                {tab.label}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {/* Content */}
@@ -172,21 +174,21 @@ function DashboardSectionsSettings() {
   return (
     <div className="space-y-6">
       {/* Header + Reset */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500/20 to-indigo-600/20">
             <LayoutGrid className="h-5 w-5 text-indigo-500" />
           </div>
           <div>
-            <h3 className="text-[16px] font-semibold">Sections du dashboard</h3>
-            <p className="text-[12px] text-muted-foreground">
+            <h3 className="text-[15px] sm:text-[16px] font-semibold">Sections du dashboard</h3>
+            <p className="text-[11px] sm:text-[12px] text-muted-foreground">
               Choisissez les sections visibles et leur ordre.
             </p>
           </div>
         </div>
         <button
           onClick={resetToDefault}
-          className="flex items-center gap-2 rounded-2xl bg-foreground/[0.06] px-4 py-2.5 text-[13px] font-medium text-muted-foreground transition-all hover:bg-foreground/[0.1] hover:text-foreground"
+          className="flex items-center gap-2 rounded-2xl bg-foreground/[0.06] px-4 py-2.5 text-[12px] sm:text-[13px] font-medium text-muted-foreground transition-all hover:bg-foreground/[0.1] hover:text-foreground self-end sm:self-auto"
         >
           <RotateCcw className="h-3.5 w-3.5" />
           Réinitialiser
@@ -432,14 +434,14 @@ function AppointmentTypesSection() {
   return (
     <div className="space-y-4">
       {/* Header row */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500/20 to-blue-600/20">
             <CalendarDays className="h-5 w-5 text-blue-500" />
           </div>
           <div>
-            <h3 className="text-[16px] font-semibold">Types de rendez-vous</h3>
-            <p className="text-[12px] text-muted-foreground">
+            <h3 className="text-[15px] sm:text-[16px] font-semibold">Types de rendez-vous</h3>
+            <p className="text-[11px] sm:text-[12px] text-muted-foreground">
               {types.length} type{types.length > 1 ? "s" : ""} configuré
               {types.length > 1 ? "s" : ""}
             </p>
@@ -448,7 +450,7 @@ function AppointmentTypesSection() {
 
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
-            <button className="flex items-center gap-2 rounded-2xl bg-primary px-4 py-2.5 text-[13px] font-medium text-primary-foreground shadow-lg shadow-primary/25 transition-all hover:shadow-xl hover:-translate-y-0.5">
+            <button className="flex items-center gap-2 rounded-2xl bg-primary px-4 py-2.5 text-[12px] sm:text-[13px] font-medium text-primary-foreground shadow-lg shadow-primary/25 transition-all hover:shadow-xl hover:-translate-y-0.5 self-end sm:self-auto">
               <Plus className="h-4 w-4" />
               Ajouter
             </button>
@@ -659,14 +661,14 @@ function AvailabilitySection() {
   return (
     <div className="space-y-4">
       {/* Header row */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-orange-500/20 to-orange-600/20">
             <Clock className="h-5 w-5 text-orange-500" />
           </div>
           <div>
-            <h3 className="text-[16px] font-semibold">Plages horaires</h3>
-            <p className="text-[12px] text-muted-foreground">
+            <h3 className="text-[15px] sm:text-[16px] font-semibold">Plages horaires</h3>
+            <p className="text-[11px] sm:text-[12px] text-muted-foreground">
               {rules.length} plage{rules.length > 1 ? "s" : ""} configurée
               {rules.length > 1 ? "s" : ""}
             </p>
@@ -675,7 +677,7 @@ function AvailabilitySection() {
 
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
-            <button className="flex items-center gap-2 rounded-2xl bg-primary px-4 py-2.5 text-[13px] font-medium text-primary-foreground shadow-lg shadow-primary/25 transition-all hover:shadow-xl hover:-translate-y-0.5">
+            <button className="flex items-center gap-2 rounded-2xl bg-primary px-4 py-2.5 text-[12px] sm:text-[13px] font-medium text-primary-foreground shadow-lg shadow-primary/25 transition-all hover:shadow-xl hover:-translate-y-0.5 self-end sm:self-auto">
               <Plus className="h-4 w-4" />
               Ajouter
             </button>
@@ -937,7 +939,7 @@ function ContactRow({
       <div className="flex items-center gap-2">
         <span
           className={cn(
-            "rounded-xl px-2.5 py-1 text-[11px] font-medium",
+            "hidden sm:inline-block rounded-xl px-2.5 py-1 text-[11px] font-medium",
             contact.is_close
               ? "bg-yellow-500/10 text-yellow-600 dark:text-yellow-400"
               : "bg-foreground/[0.06] text-muted-foreground"

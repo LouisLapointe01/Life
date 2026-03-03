@@ -17,13 +17,28 @@ export const metadata: Metadata = {
     statusBarStyle: "default",
     title: "Life",
   },
+  icons: {
+    icon: "/icons/icon-192.svg",
+    apple: [
+      { url: "/icons/icon-192.svg", sizes: "192x192" },
+      { url: "/icons/icon-512.svg", sizes: "512x512" },
+    ],
+  },
+  other: {
+    "mobile-web-app-capable": "yes",
+    "msapplication-TileImage": "/icons/icon-192.svg",
+    "msapplication-TileColor": "#3BA5A0",
+  },
 };
 
 export const viewport: Viewport = {
-  themeColor: "#007AFF",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#3BA5A0" },
+    { media: "(prefers-color-scheme: dark)", color: "#1a1a2e" },
+  ],
   width: "device-width",
   initialScale: 1,
-  maximumScale: 1,
+  maximumScale: 5,
   viewportFit: "cover",
 };
 
@@ -36,6 +51,8 @@ export default function RootLayout({
     <html lang="fr">
       <head>
         <link rel="apple-touch-icon" href="/icons/icon-192.svg" />
+        <link rel="apple-touch-icon" sizes="512x512" href="/icons/icon-512.svg" />
+        <link rel="icon" type="image/svg+xml" href="/icons/icon-192.svg" />
       </head>
       <body className={`${inter.variable} font-sans antialiased`}>
         {children}

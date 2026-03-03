@@ -23,6 +23,7 @@ import {
   ArrowDown,
   RotateCcw,
   Save,
+  Lock,
 } from "lucide-react";
 import {
   Dialog,
@@ -187,8 +188,7 @@ export default function SantePage() {
   const [mounted, setMounted] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [editingMetrique, setEditingMetrique] = useState<MetriqueId | null>(null);
-  const [editValeur, setEditValeur] = useState("");
-  const [editDetail, setEditDetail] = useState("");
+  const [editLabel, setEditLabel] = useState("");
 
   /* ─── Objectifs (localStorage) ─── */
   const [objectifs, setObjectifs] = useState<ObjectifItem[]>(DEFAULT_OBJECTIFS);
@@ -262,18 +262,16 @@ export default function SantePage() {
   /* ─── Edit métrique ─── */
   const startEditMetrique = (m: MetriqueData) => {
     setEditingMetrique(m.id);
-    setEditValeur(m.valeur);
-    setEditDetail(m.detail);
+    setEditLabel(m.label);
   };
 
   const saveEditMetrique = () => {
     if (!editingMetrique) return;
     updateMetrique(editingMetrique, {
-      valeur: editValeur,
-      detail: editDetail,
+      label: editLabel,
     });
     setEditingMetrique(null);
-    toast.success("Métrique mise à jour");
+    toast.success("Métrique renommée");
   };
 
   const scoreGlobal =
@@ -383,39 +381,44 @@ export default function SantePage() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Pencil className="h-4 w-4 text-primary" />
-              Modifier la métrique
+              Renommer la métrique
             </DialogTitle>
             <DialogDescription>
-              Mettez à jour vos données de santé.
+              Modifiez le libellé de cette métrique. Les valeurs capteur sont en lecture seule.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 pt-2">
             <div>
-              <label className="text-[12px] font-medium text-muted-foreground mb-1.5 block">Valeur</label>
+              <label className="text-[12px] font-medium text-muted-foreground mb-1.5 block">Libellé</label>
               <input
-                value={editValeur}
-                onChange={(e) => setEditValeur(e.target.value)}
+                value={editLabel}
+                onChange={(e) => setEditLabel(e.target.value)}
                 className="glass-input w-full rounded-xl px-3 py-2.5 text-sm"
-                placeholder="Ex: 10 432"
                 onKeyDown={(e) => e.key === "Enter" && saveEditMetrique()}
               />
             </div>
             <div>
-              <label className="text-[12px] font-medium text-muted-foreground mb-1.5 block">Détail</label>
-              <input
-                value={editDetail}
-                onChange={(e) => setEditDetail(e.target.value)}
-                className="glass-input w-full rounded-xl px-3 py-2.5 text-sm"
-                placeholder="Ex: Objectif : 10 000"
-                onKeyDown={(e) => e.key === "Enter" && saveEditMetrique()}
-              />
+              <label className="text-[12px] font-medium text-muted-foreground mb-1.5 flex items-center gap-1.5">
+                <Lock className="h-3 w-3" /> Valeur (capteur)
+              </label>
+              <div className="w-full rounded-xl bg-foreground/[0.04] px-3 py-2.5 text-sm text-muted-foreground cursor-not-allowed">
+                {allMetriques.find(m => m.id === editingMetrique)?.valeur || "—"}
+              </div>
+            </div>
+            <div>
+              <label className="text-[12px] font-medium text-muted-foreground mb-1.5 flex items-center gap-1.5">
+                <Lock className="h-3 w-3" /> Détail (capteur)
+              </label>
+              <div className="w-full rounded-xl bg-foreground/[0.04] px-3 py-2.5 text-sm text-muted-foreground cursor-not-allowed">
+                {allMetriques.find(m => m.id === editingMetrique)?.detail || "—"}
+              </div>
             </div>
             <button
               onClick={saveEditMetrique}
               className="w-full rounded-xl bg-primary py-2.5 text-sm font-medium text-primary-foreground shadow-lg shadow-primary/25 transition-all hover:shadow-xl"
             >
               <Save className="inline h-4 w-4 mr-2" />
-              Enregistrer
+              Renommer
             </button>
           </div>
         </DialogContent>

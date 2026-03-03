@@ -6,11 +6,11 @@ import { cn } from "@/lib/utils";
 import {
   PanelLeftClose,
   PanelLeft,
-  Sparkles,
   Plus,
   X,
   GripVertical,
 } from "lucide-react";
+import { LeafLogo } from "@/components/LeafLogo";
 import { useState } from "react";
 import { useRdvModal } from "@/contexts/rdv-modal-context";
 import { CalendarPlus } from "lucide-react";
@@ -42,18 +42,14 @@ export function Sidebar() {
       <div className="flex h-[72px] items-center gap-3 px-5">
         {!collapsed && (
           <div className="flex items-center gap-2.5 animate-fade-in">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 shadow-lg shadow-blue-500/30">
-              <Sparkles className="h-4.5 w-4.5 text-white" />
-            </div>
+            <LeafLogo size={36} className="shrink-0 rounded-xl shadow-lg shadow-teal-500/30" />
             <span className="text-xl font-bold tracking-tight bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text">
               Life
             </span>
           </div>
         )}
         {collapsed && (
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 shadow-lg shadow-blue-500/30 mx-auto">
-            <Sparkles className="h-4.5 w-4.5 text-white" />
-          </div>
+          <LeafLogo size={36} className="shrink-0 rounded-xl shadow-lg shadow-teal-500/30 mx-auto" />
         )}
       </div>
 
