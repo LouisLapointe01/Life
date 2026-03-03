@@ -10,7 +10,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { LogOut, User, Bell, Sparkles } from "lucide-react";
+import { LogOut, User, Bell } from "lucide-react";
+import { LeafLogo } from "@/components/LeafLogo";
 import type { User as SupabaseUser } from "@supabase/supabase-js";
 import Link from "next/link";
 import { usePageTitle } from "@/lib/stores/dashboard-tabs";
@@ -45,9 +46,9 @@ export function Header({ title }: { title?: string }) {
         {/* Logo visible only on mobile (sidebar hidden) */}
         <Link
           href="/dashboard"
-          className="flex lg:hidden h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 shadow-md shadow-blue-500/30"
+          className="flex lg:hidden"
         >
-          <Sparkles className="h-4 w-4 text-white" />
+          <LeafLogo size={32} className="rounded-xl shadow-md shadow-teal-500/30" />
         </Link>
 
         <h1 className="text-[17px] lg:text-xl font-bold tracking-tight">
