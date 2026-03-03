@@ -18,15 +18,25 @@ export const metadata: Metadata = {
     title: "Life",
   },
   icons: {
-    icon: "/icons/icon-192.svg",
+    icon: [
+      { url: "/favicon.ico", sizes: "32x32", type: "image/x-icon" },
+      { url: "/icons/icon-16.png", sizes: "16x16", type: "image/png" },
+      { url: "/icons/icon-32.png", sizes: "32x32", type: "image/png" },
+      { url: "/icons/icon-96.png", sizes: "96x96", type: "image/png" },
+      { url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icons/icon-512.png", sizes: "512x512", type: "image/png" },
+    ],
     apple: [
-      { url: "/icons/icon-192.svg", sizes: "192x192" },
-      { url: "/icons/icon-512.svg", sizes: "512x512" },
+      { url: "/icons/apple-icon-180.png", sizes: "180x180", type: "image/png" },
+      { url: "/icons/apple-icon-152.png", sizes: "152x152", type: "image/png" },
+      { url: "/icons/apple-icon-167.png", sizes: "167x167", type: "image/png" },
+      { url: "/icons/apple-icon-120.png", sizes: "120x120", type: "image/png" },
+      { url: "/icons/apple-icon-76.png", sizes: "76x76", type: "image/png" },
     ],
   },
   other: {
     "mobile-web-app-capable": "yes",
-    "msapplication-TileImage": "/icons/icon-192.svg",
+    "msapplication-TileImage": "/icons/icon-144.png",
     "msapplication-TileColor": "#3BA5A0",
   },
 };
@@ -50,9 +60,18 @@ export default function RootLayout({
   return (
     <html lang="fr">
       <head>
-        <link rel="apple-touch-icon" href="/icons/icon-192.svg" />
-        <link rel="apple-touch-icon" sizes="512x512" href="/icons/icon-512.svg" />
-        <link rel="icon" type="image/svg+xml" href="/icons/icon-192.svg" />
+        <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+        <link rel="icon" type="image/png" sizes="16x16" href="/icons/icon-16.png" />
+        <link rel="icon" type="image/png" sizes="32x32" href="/icons/icon-32.png" />
+        <link rel="icon" type="image/png" sizes="96x96" href="/icons/icon-96.png" />
+        <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png" />
+        <link rel="apple-touch-icon" href="/icons/apple-icon-180.png" />
+        <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-icon-180.png" />
+        <link rel="apple-touch-icon" sizes="167x167" href="/icons/apple-icon-167.png" />
+        <link rel="apple-touch-icon" sizes="152x152" href="/icons/apple-icon-152.png" />
+        <link rel="apple-touch-icon" sizes="120x120" href="/icons/apple-icon-120.png" />
+        <link rel="apple-touch-icon" sizes="76x76" href="/icons/apple-icon-76.png" />
+        <meta name="msapplication-TileImage" content="/icons/icon-144.png" />
       </head>
       <body className={`${inter.variable} font-sans antialiased`}>
         {children}
