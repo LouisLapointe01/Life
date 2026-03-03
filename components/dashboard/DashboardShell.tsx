@@ -5,20 +5,31 @@ import { Header } from "@/components/dashboard/Header";
 import { MobileBottomNav } from "@/components/dashboard/MobileBottomNav";
 import { RdvModal } from "@/components/dashboard/RdvModal";
 import { RdvModalProvider } from "@/contexts/rdv-modal-context";
+import { PageTransition } from "@/components/dashboard/PageTransition";
 
 export function DashboardShell({ children }: { children: React.ReactNode }) {
   return (
     <RdvModalProvider>
-      <div className="flex h-dvh gradient-mesh">
-        <Sidebar />
-        <div className="flex flex-1 flex-col overflow-hidden">
-          <Header />
-          <main className="flex-1 overflow-y-auto scrollbar-thin px-4 py-4 pb-24 lg:px-8 lg:py-6 lg:pb-6">
-            {children}
-          </main>
+      <div className="relative flex h-dvh overflow-hidden">
+        {/* Gradient background */}
+        <div className="fixed inset-0 bg-gradient-to-br from-[#43CEA2]/20 via-[#2B8ECC]/15 to-[#185A9D]/20" />
+        <div className="fixed inset-0 gradient-mesh" />
+        {/* Subtle glass orbs */}
+        <div className="glass-orb glass-orb-cyan fixed w-[500px] h-[500px] -top-40 -left-40 opacity-30" />
+        <div className="glass-orb glass-orb-green fixed w-[400px] h-[400px] bottom-[-100px] right-[-100px] opacity-25" style={{ animationDelay: "4s" }} />
+        <div className="glass-orb glass-orb-purple fixed w-[300px] h-[300px] top-[50%] left-[50%] opacity-20" style={{ animationDelay: "7s" }} />
+
+        <div className="relative z-10 flex flex-1 h-full">
+          <Sidebar />
+          <div className="flex flex-1 flex-col overflow-hidden">
+            <Header />
+            <main className="flex-1 overflow-y-auto scrollbar-thin px-4 py-4 pb-24 lg:px-8 lg:py-6 lg:pb-6">
+              <PageTransition>{children}</PageTransition>
+            </main>
+          </div>
+          <MobileBottomNav />
+          <RdvModal />
         </div>
-        <MobileBottomNav />
-        <RdvModal />
       </div>
     </RdvModalProvider>
   );

@@ -46,42 +46,47 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex min-h-dvh items-center justify-center gradient-mesh px-4">
-      <div className="w-full max-w-sm">
-        {/* Card */}
-        <div className="glass-card p-8 rounded-3xl">
+    <div className="relative flex min-h-dvh items-center justify-center overflow-hidden px-4">
+      {/* Background gradient bleu-vert */}
+      <div className="fixed inset-0 bg-gradient-to-br from-[#43CEA2] via-[#2B8ECC] to-[#185A9D]" />
+      {/* Glass orbs */}
+      <div className="glass-orb glass-orb-cyan fixed w-[400px] h-[400px] -top-20 -left-20" />
+      <div className="glass-orb glass-orb-green fixed w-[300px] h-[300px] bottom-10 right-10" style={{ animationDelay: "3s" }} />
+      <div className="glass-orb glass-orb-blue fixed w-[250px] h-[250px] top-1/2 left-1/2" style={{ animationDelay: "5s" }} />
+
+      <div className="relative z-10 w-full max-w-sm">
+        {/* Card glassmorphism */}
+        <div className="glass-surface p-8">
           {/* Logo */}
           <div className="mb-8 flex flex-col items-center gap-3">
-            <div className="flex h-14 w-14 items-center justify-center rounded-[22px] bg-gradient-to-br from-blue-500 to-blue-600 shadow-xl shadow-blue-500/30">
-              <Sparkles className="h-7 w-7 text-white" />
+            <div className="flex h-16 w-16 items-center justify-center rounded-[22px] bg-gradient-to-br from-white/30 to-white/10 backdrop-blur-xl shadow-xl border border-white/30">
+              <Sparkles className="h-8 w-8 text-white" />
             </div>
             <div className="text-center">
-              <h1 className="text-2xl font-bold tracking-tight">Life</h1>
-              <p className="mt-1 text-[13px] text-muted-foreground">
+              <h1 className="text-2xl font-bold tracking-tight text-white">Life</h1>
+              <p className="mt-1 text-[13px] text-white/70">
                 Connectez-vous pour accéder à votre espace
               </p>
             </div>
           </div>
 
           {/* Tab switcher */}
-          <div className="mb-6 flex gap-1 rounded-2xl bg-foreground/[0.04] p-1">
+          <div className="mb-6 flex gap-1 rounded-2xl bg-white/10 p-1 backdrop-blur-sm">
             <button
               onClick={() => setTab("email")}
-              className={`flex-1 rounded-xl py-2 text-[13px] font-medium transition-all duration-200 ${
-                tab === "email"
-                  ? "bg-card shadow-sm text-foreground"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
+              className={`flex-1 rounded-xl py-2 text-[13px] font-medium transition-all duration-200 ${tab === "email"
+                  ? "bg-white/20 shadow-sm text-white backdrop-blur-sm"
+                  : "text-white/60 hover:text-white"
+                }`}
             >
               Email
             </button>
             <button
               onClick={() => setTab("google")}
-              className={`flex-1 rounded-xl py-2 text-[13px] font-medium transition-all duration-200 ${
-                tab === "google"
-                  ? "bg-card shadow-sm text-foreground"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
+              className={`flex-1 rounded-xl py-2 text-[13px] font-medium transition-all duration-200 ${tab === "google"
+                  ? "bg-white/20 shadow-sm text-white backdrop-blur-sm"
+                  : "text-white/60 hover:text-white"
+                }`}
             >
               Google
             </button>
@@ -91,8 +96,8 @@ export default function LoginPage() {
           {tab === "email" && (
             <form onSubmit={handleEmailLogin} className="space-y-4">
               <div className="space-y-1.5">
-                <label className="flex items-center gap-2 text-[13px] font-medium">
-                  <Mail className="h-3.5 w-3.5 text-muted-foreground" />
+                <label className="flex items-center gap-2 text-[13px] font-medium text-white/80">
+                  <Mail className="h-3.5 w-3.5 text-white/60" />
                   Email
                 </label>
                 <input
@@ -103,12 +108,12 @@ export default function LoginPage() {
                     setForm((f) => ({ ...f, email: e.target.value }))
                   }
                   placeholder="vous@exemple.com"
-                  className="glass-input w-full px-4 py-3 text-[14px]"
+                  className="w-full rounded-xl bg-white/15 backdrop-blur-sm border border-white/20 px-4 py-3 text-[14px] text-white placeholder:text-white/40 outline-none transition-all focus:border-white/40 focus:bg-white/20 focus:ring-2 focus:ring-white/20"
                 />
               </div>
               <div className="space-y-1.5">
-                <label className="flex items-center gap-2 text-[13px] font-medium">
-                  <Lock className="h-3.5 w-3.5 text-muted-foreground" />
+                <label className="flex items-center gap-2 text-[13px] font-medium text-white/80">
+                  <Lock className="h-3.5 w-3.5 text-white/60" />
                   Mot de passe
                 </label>
                 <div className="relative">
@@ -120,12 +125,12 @@ export default function LoginPage() {
                       setForm((f) => ({ ...f, password: e.target.value }))
                     }
                     placeholder="••••••••"
-                    className="glass-input w-full px-4 py-3 pr-11 text-[14px]"
+                    className="w-full rounded-xl bg-white/15 backdrop-blur-sm border border-white/20 px-4 py-3 pr-11 text-[14px] text-white placeholder:text-white/40 outline-none transition-all focus:border-white/40 focus:bg-white/20 focus:ring-2 focus:ring-white/20"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPwd(!showPwd)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-white/50 hover:text-white transition-colors"
                   >
                     {showPwd ? (
                       <EyeOff className="h-4 w-4" />
@@ -137,7 +142,7 @@ export default function LoginPage() {
               </div>
 
               {error && (
-                <div className="rounded-2xl bg-red-500/10 px-4 py-3 text-[13px] text-red-500 font-medium">
+                <div className="rounded-2xl bg-red-500/20 backdrop-blur-sm border border-red-400/30 px-4 py-3 text-[13px] text-red-100 font-medium">
                   {error}
                 </div>
               )}
@@ -145,7 +150,7 @@ export default function LoginPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="flex w-full items-center justify-center gap-2 rounded-2xl bg-primary py-3 text-[14px] font-semibold text-primary-foreground shadow-lg shadow-primary/25 transition-all hover:shadow-xl hover:-translate-y-0.5 disabled:opacity-50"
+                className="flex w-full items-center justify-center gap-2 rounded-2xl bg-white/25 backdrop-blur-sm border border-white/30 py-3 text-[14px] font-semibold text-white shadow-lg transition-all hover:bg-white/35 hover:shadow-xl hover:-translate-y-0.5 disabled:opacity-50"
               >
                 {loading ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
@@ -160,7 +165,7 @@ export default function LoginPage() {
           {tab === "google" && (
             <button
               onClick={handleGoogleLogin}
-              className="flex w-full items-center justify-center gap-3 rounded-2xl border border-foreground/[0.08] bg-foreground/[0.03] py-3 text-[14px] font-medium transition-all duration-200 hover:bg-foreground/[0.06]"
+              className="flex w-full items-center justify-center gap-3 rounded-2xl bg-white/15 backdrop-blur-sm border border-white/20 py-3 text-[14px] font-medium text-white transition-all duration-200 hover:bg-white/25"
             >
               <Chrome className="h-5 w-5" />
               Continuer avec Google
@@ -168,18 +173,18 @@ export default function LoginPage() {
           )}
 
           {/* Link to register */}
-          <p className="mt-6 text-center text-[13px] text-muted-foreground">
+          <p className="mt-6 text-center text-[13px] text-white/60">
             Pas encore de compte ?{" "}
             <Link
               href="/register"
-              className="font-medium text-primary hover:underline"
+              className="font-medium text-white hover:underline"
             >
               S&apos;inscrire
             </Link>
           </p>
         </div>
 
-        <p className="mt-5 text-center text-[12px] text-muted-foreground">
+        <p className="mt-5 text-center text-[12px] text-white/40">
           Vos données restent privées et sécurisées.
         </p>
       </div>

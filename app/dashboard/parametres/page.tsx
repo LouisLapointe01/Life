@@ -27,7 +27,24 @@ import {
   Star,
   Settings2,
   Palette,
+  LayoutGrid,
+  Eye,
+  EyeOff,
+  Smartphone,
+  RotateCcw,
+  Lock,
+  GripVertical,
+  ArrowUp,
+  ArrowDown,
 } from "lucide-react";
+import {
+  ALL_TABS,
+  useDashboardTabs,
+  useVisibleTabs,
+  useHiddenTabs,
+  useMobileVisibleTabs,
+  type TabId,
+} from "@/lib/stores/dashboard-tabs";
 import { cn } from "@/lib/utils";
 
 /* ═══════════════════════════════════════════════════════
@@ -70,9 +87,10 @@ const DAYS = [
   "Samedi",
 ];
 
-type Tab = "types" | "availability" | "contacts";
+type Tab = "types" | "availability" | "contacts" | "sections";
 
 const tabs: { key: Tab; label: string; icon: typeof CalendarDays }[] = [
+  { key: "sections", label: "Sections", icon: LayoutGrid },
   { key: "types", label: "Types de RDV", icon: CalendarDays },
   { key: "availability", label: "Disponibilités", icon: Clock },
   { key: "contacts", label: "Contacts proches", icon: Users },
@@ -123,9 +141,222 @@ export default function ParametresPage() {
 
       {/* Content */}
       <div className="animate-slide-up" style={{ animationDelay: "160ms" }}>
+        {activeTab === "sections" && <DashboardSectionsSettings />}
         {activeTab === "types" && <AppointmentTypesSection />}
         {activeTab === "availability" && <AvailabilitySection />}
         {activeTab === "contacts" && <ContactsSection />}
+      </div>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════
+   Gestion des sections du dashboard
+   ═══════════════════════════════════════════════════════ */
+
+function DashboardSectionsSettings() {
+  const visibleTabs = useVisibleTabs();
+  const hiddenTabs = useHiddenTabs();
+  const mobileTabs = useMobileVisibleTabs();
+  const {
+    addTab,
+    removeTab,
+    moveTab,
+    addMobileTab,
+    removeMobileTab,
+    resetToDefault,
+    visibleTabs: visibleIds,
+    mobileTabs: mobileIds,
+  } = useDashboardTabs();
+
+  return (
+    <div className="space-y-6">
+      {/* Header + Reset */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500/20 to-indigo-600/20">
+            <LayoutGrid className="h-5 w-5 text-indigo-500" />
+          </div>
+          <div>
+            <h3 className="text-[16px] font-semibold">Sections du dashboard</h3>
+            <p className="text-[12px] text-muted-foreground">
+              Choisissez les sections visibles et leur ordre.
+            </p>
+          </div>
+        </div>
+        <button
+          onClick={resetToDefault}
+          className="flex items-center gap-2 rounded-2xl bg-foreground/[0.06] px-4 py-2.5 text-[13px] font-medium text-muted-foreground transition-all hover:bg-foreground/[0.1] hover:text-foreground"
+        >
+          <RotateCcw className="h-3.5 w-3.5" />
+          Réinitialiser
+        </button>
+      </div>
+
+      {/* Sections sidebar (visibles) */}
+      <div className="space-y-2">
+        <p className="text-[12px] font-semibold uppercase tracking-widest text-muted-foreground px-1">
+          Sidebar — Visible ({visibleTabs.length})
+        </p>
+        <div className="space-y-1.5">
+          {visibleTabs.map((tab, index) => (
+            <div
+              key={tab.id}
+              className="glass-card flex items-center gap-3 p-3.5"
+            >
+              {/* Icon du tab */}
+              <div
+                className={cn(
+                  "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br",
+                  tab.color
+                )}
+              >
+                <tab.icon className={cn("h-4.5 w-4.5", tab.iconColor)} />
+              </div>
+
+              {/* Nom */}
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <p className="text-[14px] font-semibold truncate">
+                    {tab.label}
+                  </p>
+                  {tab.locked && (
+                    <span className="flex items-center gap-1 rounded-lg bg-foreground/[0.06] px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+                      <Lock className="h-2.5 w-2.5" />
+                      Fixe
+                    </span>
+                  )}
+                </div>
+                <p className="text-[11px] text-muted-foreground truncate">
+                  {tab.href}
+                </p>
+              </div>
+
+              {/* Actions: réordonner + supprimer */}
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => index > 0 && moveTab(index, index - 1)}
+                  disabled={index === 0}
+                  className="flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground transition-all hover:bg-foreground/[0.06] hover:text-foreground disabled:opacity-30"
+                >
+                  <ArrowUp className="h-3.5 w-3.5" />
+                </button>
+                <button
+                  onClick={() =>
+                    index < visibleTabs.length - 1 &&
+                    moveTab(index, index + 1)
+                  }
+                  disabled={index === visibleTabs.length - 1}
+                  className="flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground transition-all hover:bg-foreground/[0.06] hover:text-foreground disabled:opacity-30"
+                >
+                  <ArrowDown className="h-3.5 w-3.5" />
+                </button>
+                {!tab.locked ? (
+                  <button
+                    onClick={() => removeTab(tab.id)}
+                    className="flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground transition-all hover:bg-red-500/10 hover:text-red-500"
+                    title="Retirer"
+                  >
+                    <EyeOff className="h-3.5 w-3.5" />
+                  </button>
+                ) : (
+                  <div className="w-7" />
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Sections masquées */}
+      {hiddenTabs.length > 0 && (
+        <div className="space-y-2">
+          <p className="text-[12px] font-semibold uppercase tracking-widest text-muted-foreground px-1">
+            Masquées ({hiddenTabs.length})
+          </p>
+          <div className="space-y-1.5">
+            {hiddenTabs.map((tab) => (
+              <div
+                key={tab.id}
+                className="glass-card flex items-center gap-3 p-3.5 opacity-60"
+              >
+                <div
+                  className={cn(
+                    "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br",
+                    tab.color
+                  )}
+                >
+                  <tab.icon className={cn("h-4.5 w-4.5", tab.iconColor)} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[14px] font-semibold truncate">
+                    {tab.label}
+                  </p>
+                  <p className="text-[11px] text-muted-foreground">Masquée</p>
+                </div>
+                <button
+                  onClick={() => addTab(tab.id)}
+                  className="flex items-center gap-1.5 rounded-xl bg-primary/10 px-3 py-2 text-[12px] font-medium text-primary transition-all hover:bg-primary/20"
+                >
+                  <Eye className="h-3.5 w-3.5" />
+                  Afficher
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Barre mobile */}
+      <div className="space-y-2">
+        <div className="flex items-center gap-2 px-1">
+          <Smartphone className="h-3.5 w-3.5 text-muted-foreground" />
+          <p className="text-[12px] font-semibold uppercase tracking-widest text-muted-foreground">
+            Barre mobile (max 4)
+          </p>
+        </div>
+        <p className="text-[12px] text-muted-foreground px-1">
+          Sélectionnez jusqu&apos;à 4 sections pour la navigation mobile.
+        </p>
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+          {ALL_TABS.map((tab) => {
+            const isInMobile = mobileIds.includes(tab.id);
+            const isVisible = visibleIds.includes(tab.id);
+            return (
+              <button
+                key={tab.id}
+                onClick={() =>
+                  isInMobile
+                    ? removeMobileTab(tab.id)
+                    : addMobileTab(tab.id)
+                }
+                disabled={!isVisible || (tab.locked && isInMobile)}
+                className={cn(
+                  "flex flex-col items-center gap-2 rounded-2xl p-3.5 transition-all duration-200",
+                  isInMobile
+                    ? "glass-card shadow-sm ring-2 ring-primary/30"
+                    : "bg-foreground/[0.03] hover:bg-foreground/[0.06]",
+                  !isVisible && "opacity-30 cursor-not-allowed"
+                )}
+              >
+                <div
+                  className={cn(
+                    "flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br",
+                    tab.color
+                  )}
+                >
+                  <tab.icon className={cn("h-4 w-4", tab.iconColor)} />
+                </div>
+                <span className="text-[11px] font-medium">{tab.label}</span>
+                {isInMobile && (
+                  <span className="rounded-lg bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary">
+                    Mobile
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
       </div>
     </div>
   );
