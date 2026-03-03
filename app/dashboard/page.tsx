@@ -150,7 +150,7 @@ export default function DashboardPage() {
     return (
         <div className="mx-auto max-w-6xl space-y-5 lg:space-y-8">
             {/* ─── Header ─── */}
-            <div className="animate-slide-up">
+            <div>
                 <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
                         <h2 className="text-2xl lg:text-3xl font-bold tracking-tight">{greeting} 👋</h2>
@@ -190,8 +190,7 @@ export default function DashboardPage() {
 
             {/* ─── Quick Stats Bar ─── */}
             <div
-                className="glass-card grid grid-cols-2 gap-3 px-4 py-4 lg:flex lg:items-center lg:justify-between lg:px-6 animate-slide-up"
-                style={{ animationDelay: "100ms" }}
+                className="glass-card grid grid-cols-2 gap-3 px-4 py-4 lg:flex lg:items-center lg:justify-between lg:px-6"
             >
                 {visibleStats.map((stat) => {
                     const StatIcon = getIcon(stat.iconKey);
@@ -300,23 +299,14 @@ export default function DashboardPage() {
 
                     if (editMode) {
                         return (
-                            <div
-                                key={widget.id}
-                                className="animate-slide-up"
-                                style={{ animationDelay: `${(index + 2) * 100}ms` }}
-                            >
+                            <div key={widget.id}>
                                 {content}
                             </div>
                         );
                     }
 
                     return (
-                        <Link
-                            key={widget.id}
-                            href={widget.href}
-                            className="animate-slide-up"
-                            style={{ animationDelay: `${(index + 2) * 100}ms` }}
-                        >
+                        <Link key={widget.id} href={widget.href}>
                             {content}
                         </Link>
                     );
@@ -326,8 +316,7 @@ export default function DashboardPage() {
                 {hiddenWidgets.length > 0 && (
                     <button
                         onClick={() => setSettingsOpen(true)}
-                        className="glass-card flex flex-col items-center justify-center gap-3 p-6 min-h-[200px] border-2 border-dashed border-foreground/10 hover:border-primary/30 hover:bg-primary/[0.03] transition-all duration-300 animate-slide-up"
-                        style={{ animationDelay: `${(visibleWidgets.length + 2) * 100}ms` }}
+                        className="glass-card flex flex-col items-center justify-center gap-3 p-6 min-h-[200px] border-2 border-dashed border-foreground/10 hover:border-primary/30 hover:bg-primary/[0.03] transition-all duration-300"
                     >
                         <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10">
                             <Plus className="h-5 w-5 text-primary" />

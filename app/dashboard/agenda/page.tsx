@@ -185,7 +185,7 @@ export default function AgendaPage() {
   return (
     <div className="mx-auto max-w-7xl space-y-4 lg:space-y-6">
       {/* ─── Header ─── */}
-      <div className="flex flex-wrap items-center justify-between gap-3 animate-slide-up">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-2xl lg:text-3xl font-bold tracking-tight">Agenda</h2>
           <p className="mt-1 text-[14px] lg:text-[15px] text-muted-foreground">
@@ -205,8 +205,7 @@ export default function AgendaPage() {
 
       {/* ─── Stats Cards ─── */}
       <div
-        className="grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-4 animate-slide-up"
-        style={{ animationDelay: "100ms" }}
+        className="grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-4"
       >
         {[
           {
@@ -254,8 +253,7 @@ export default function AgendaPage() {
 
       {/* ─── Main Content ─── */}
       <div
-        className="grid grid-cols-1 gap-4 lg:grid-cols-12 lg:gap-6 animate-slide-up"
-        style={{ animationDelay: "200ms" }}
+        className="grid grid-cols-1 gap-4 lg:grid-cols-12 lg:gap-6"
       >
         {/* ── Left: Calendar + List ── */}
         <div className={cn("space-y-4", selectedAppointment ? "hidden lg:block lg:col-span-8" : "lg:col-span-8")}>
@@ -511,7 +509,7 @@ function AppointmentDetail({
   const config = statusConfig[apt.status] || statusConfig.pending;
 
   return (
-    <div className="glass-card overflow-hidden animate-slide-up">
+    <div className="glass-card overflow-hidden">
       {/* Header with appointment type color */}
       <div
         className="relative p-6"

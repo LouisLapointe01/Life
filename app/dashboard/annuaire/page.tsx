@@ -33,6 +33,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
+
 /* ═══════════════════════════════════════════════════════
    Types
    ═══════════════════════════════════════════════════════ */
@@ -258,7 +259,7 @@ export default function AnnuairePage() {
   return (
     <div className="mx-auto max-w-7xl space-y-6">
       {/* ─── Header ─── */}
-      <div className="flex items-center justify-between animate-slide-up">
+      <div className="flex items-center justify-between">
         <div>
           <h2 className="text-3xl font-bold tracking-tight">Annuaire</h2>
           <p className="mt-1 text-[15px] text-muted-foreground">
@@ -276,8 +277,7 @@ export default function AnnuairePage() {
 
       {/* ─── Stats ─── */}
       <div
-        className="grid grid-cols-2 gap-4 lg:grid-cols-4 animate-slide-up"
-        style={{ animationDelay: "100ms" }}
+        className="grid grid-cols-2 gap-4 lg:grid-cols-4"
       >
         {[
           {
@@ -323,8 +323,7 @@ export default function AnnuairePage() {
 
       {/* ─── Main Layout ─── */}
       <div
-        className="grid grid-cols-1 gap-6 lg:grid-cols-12 animate-slide-up"
-        style={{ animationDelay: "200ms" }}
+        className="grid grid-cols-1 gap-6 lg:grid-cols-12"
       >
         {/* ── Colonne gauche : liste ── */}
         <div
@@ -649,7 +648,7 @@ function ContactDetail({
   };
 
   return (
-    <div className="glass-card overflow-hidden animate-slide-up">
+    <div className="glass-card overflow-hidden">
       {/* En-tête coloré */}
       <div
         className="relative p-6"
