@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { Loader2, Mail, Lock, User, Eye, EyeOff, Sparkles } from "lucide-react";
+import { Loader2, Mail, Lock, User, Eye, EyeOff } from "lucide-react";
+import { LeafLogo } from "@/components/LeafLogo";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
@@ -67,7 +68,7 @@ export default function RegisterPage() {
           {/* Logo */}
           <div className="mb-8 flex flex-col items-center gap-3">
             <div className="flex h-16 w-16 items-center justify-center rounded-[22px] bg-gradient-to-br from-white/30 to-white/10 backdrop-blur-xl shadow-xl border border-white/30">
-              <Sparkles className="h-8 w-8 text-white" />
+              <LeafLogo size={48} />
             </div>
             <div className="text-center">
               <h1 className="text-2xl font-bold tracking-tight text-white">Créer un compte</h1>

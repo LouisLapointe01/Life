@@ -1,4 +1,4 @@
-import { Sparkles } from "lucide-react";
+import { LeafLogo } from "@/components/LeafLogo";
 import Link from "next/link";
 
 export default function RdvLayout({
@@ -21,7 +21,7 @@ export default function RdvLayout({
           <div className="mx-auto flex h-14 max-w-2xl items-center justify-between px-4">
             <Link href="/" className="flex items-center gap-2.5">
               <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-white/30 to-white/10 backdrop-blur-xl shadow-lg border border-white/30">
-                <Sparkles className="h-4 w-4 text-white" />
+                <LeafLogo size={24} />
               </div>
               <span className="text-[16px] font-bold tracking-tight text-white">Life</span>
             </Link>
