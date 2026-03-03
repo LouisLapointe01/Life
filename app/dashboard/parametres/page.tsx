@@ -104,7 +104,7 @@ export default function ParametresPage() {
   const [activeTab, setActiveTab] = useState<Tab>("types");
 
   return (
-    <div className="mx-auto max-w-4xl space-y-6 px-2 sm:px-0">
+    <div className="mx-auto w-full max-w-4xl space-y-6 px-2 sm:px-4 md:px-0">
       {/* Header */}
       <div className="animate-slide-up">
         <h2 className="text-3xl font-bold tracking-tight">Paramètres</h2>
@@ -116,10 +116,10 @@ export default function ParametresPage() {
 
       {/* Tab Navigation */}
       <div
-        className="overflow-x-auto rounded-2xl bg-foreground/[0.04] p-1 animate-slide-up"
+        className="overflow-x-auto rounded-2xl bg-foreground/[0.04] p-1 animate-slide-up scrollbar-thin"
         style={{ animationDelay: "80ms" }}
       >
-        <div className="flex gap-1 min-w-max">
+        <div className="flex gap-1 min-w-[340px] sm:min-w-0 w-max">
           {tabs.map((tab) => {
             const isActive = activeTab === tab.key;
             return (
@@ -127,7 +127,7 @@ export default function ParametresPage() {
                 key={tab.key}
                 onClick={() => setActiveTab(tab.key)}
                 className={cn(
-                  "flex flex-1 items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-[11px] sm:text-[13px] font-medium transition-all duration-300 whitespace-nowrap",
+                  "flex flex-1 items-center justify-center gap-2 rounded-xl px-3 sm:px-4 py-2.5 text-[11px] sm:text-[13px] font-medium transition-all duration-300 whitespace-nowrap",
                   isActive
                     ? "bg-card text-foreground shadow-sm"
                     : "text-muted-foreground hover:text-foreground"
@@ -143,7 +143,7 @@ export default function ParametresPage() {
       </div>
 
       {/* Content */}
-      <div className="animate-slide-up" style={{ animationDelay: "160ms" }}>
+      <div className="animate-slide-up w-full" style={{ animationDelay: "160ms" }}>
         {activeTab === "sections" && <DashboardSectionsSettings />}
         {activeTab === "types" && <AppointmentTypesSection />}
         {activeTab === "availability" && <AvailabilitySection />}
