@@ -1,14 +1,29 @@
-const CACHE_NAME = "life-v2";
+const CACHE_NAME = "life-v3";
 const OFFLINE_URL = "/dashboard";
 
 const STATIC_ASSETS = [
     "/",
     "/dashboard",
     "/manifest.json",
-    "/icons/icon-192.svg",
-    "/icons/icon-512.svg",
-    "/icons/icon-192-maskable.svg",
-    "/icons/icon-512-maskable.svg",
+    "/favicon.ico",
+    "/icons/icon-16.png",
+    "/icons/icon-32.png",
+    "/icons/icon-48.png",
+    "/icons/icon-72.png",
+    "/icons/icon-96.png",
+    "/icons/icon-128.png",
+    "/icons/icon-144.png",
+    "/icons/icon-192.png",
+    "/icons/icon-192-maskable.png",
+    "/icons/icon-256.png",
+    "/icons/icon-384.png",
+    "/icons/icon-512.png",
+    "/icons/icon-512-maskable.png",
+    "/icons/apple-icon-180.png",
+    "/icons/apple-icon-152.png",
+    "/icons/apple-icon-167.png",
+    "/icons/apple-icon-120.png",
+    "/icons/apple-icon-76.png",
 ];
 
 self.addEventListener("install", (event) => {
@@ -67,8 +82,8 @@ self.addEventListener("push", (event) => {
     const title = data.title || "Life";
     const options = {
         body: data.body || "",
-        icon: "/icons/icon-192.svg",
-        badge: "/icons/icon-192.svg",
+        icon: "/icons/icon-192.png",
+        badge: "/icons/icon-96.png",
         data: { url: data.url || "/dashboard" },
     };
     event.waitUntil(self.registration.showNotification(title, options));

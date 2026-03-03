@@ -1,33 +1,37 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Download, X } from "lucide-react";
-import { LeafLogo } from "@/components/LeafLogo";
+import { useState, useEffect, useRef } from "react";
+import { Download, X, Share, MoreVertical, Menu } from "lucide-react";
+import Image from "next/image";
 
 interface BeforeInstallPromptEvent extends Event {
     prompt(): Promise<void>;
     userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
 }
 
-type BrowserType = "ios-safari" | "ios-chrome" | "firefox" | "opera" | "samsung" | "chromium" | "unknown";
+type BrowserType = "ios-safari" | "ios-chrome" | "ios-firefox" | "ios-opera" | "firefox" | "opera" | "samsung" | "edge" | "chromium" | "unknown";
 
 function detectBrowser(): BrowserType {
     const ua = navigator.userAgent;
     const isIOS = /iPhone|iPad|iPod/i.test(ua);
     if (isIOS && /CriOS/i.test(ua)) return "ios-chrome";
+    if (isIOS && /FxiOS/i.test(ua)) return "ios-firefox";
+    if (isIOS && /OPiOS/i.test(ua)) return "ios-opera";
     if (isIOS) return "ios-safari";
     if (/SamsungBrowser/i.test(ua)) return "samsung";
     if (/OPR|Opera/i.test(ua)) return "opera";
     if (/Firefox/i.test(ua)) return "firefox";
-    if (/Chrome|Chromium|Edg/i.test(ua)) return "chromium";
+    if (/Edg/i.test(ua)) return "edge";
+    if (/Chrome|Chromium/i.test(ua)) return "chromium";
     return "unknown";
 }
 
-function getInstructions(browser: BrowserType): { title: string; steps: string[] } {
+function getInstructions(browser: BrowserType): { title: string; steps: string[]; icon: React.ReactNode } {
     switch (browser) {
         case "ios-safari":
             return {
                 title: "Installer sur Safari (iOS)",
+                icon: <Share className="h-4 w-4 inline-block text-blue-500" />,
                 steps: [
                     "Appuyez sur le bouton Partager ⬆ en bas de Safari",
                     'Faites défiler et appuyez sur "Sur l\'écran d\'accueil"',
@@ -37,8 +41,30 @@ function getInstructions(browser: BrowserType): { title: string; steps: string[]
         case "ios-chrome":
             return {
                 title: "Installer sur Chrome (iOS)",
+                icon: <MoreVertical className="h-4 w-4 inline-block text-gray-600" />,
                 steps: [
                     "Appuyez sur le menu ··· en bas à droite",
+                    'Sélectionnez "Ajouter à l\'écran d\'accueil"',
+                    "Confirmez en appuyant sur Ajouter",
+                ],
+            };
+        case "ios-firefox":
+            return {
+                title: "Installer sur Firefox (iOS)",
+                icon: <Menu className="h-4 w-4 inline-block text-orange-500" />,
+                steps: [
+                    "Appuyez sur le menu ☰ en bas à droite",
+                    'Sélectionnez "Partager"',
+                    'Puis "Sur l\'écran d\'accueil"',
+                    "Confirmez en appuyant sur Ajouter",
+                ],
+            };
+        case "ios-opera":
+            return {
+                title: "Installer sur Opera (iOS)",
+                icon: <MoreVertical className="h-4 w-4 inline-block text-red-500" />,
+                steps: [
+                    "Appuyez sur le menu ··· en bas",
                     'Sélectionnez "Ajouter à l\'écran d\'accueil"',
                     "Confirmez en appuyant sur Ajouter",
                 ],
@@ -46,8 +72,9 @@ function getInstructions(browser: BrowserType): { title: string; steps: string[]
         case "firefox":
             return {
                 title: "Installer sur Firefox",
+                icon: <Menu className="h-4 w-4 inline-block text-orange-500" />,
                 steps: [
-                    "Appuyez sur le menu ☰ (trois lignes)",
+                    "Appuyez sur le menu ☰ (trois lignes) en haut à droite",
                     'Sélectionnez "Installer" ou "Ajouter à l\'écran d\'accueil"',
                     "Confirmez l'installation",
                 ],
@@ -55,15 +82,27 @@ function getInstructions(browser: BrowserType): { title: string; steps: string[]
         case "opera":
             return {
                 title: "Installer sur Opera",
+                icon: <MoreVertical className="h-4 w-4 inline-block text-red-500" />,
                 steps: [
                     "Appuyez sur le menu ⋮ en haut à droite",
                     'Sélectionnez "Ajouter à l\'écran d\'accueil"',
                     "Confirmez en appuyant sur Ajouter",
                 ],
             };
+        case "edge":
+            return {
+                title: "Installer sur Edge",
+                icon: <MoreVertical className="h-4 w-4 inline-block text-blue-600" />,
+                steps: [
+                    "Appuyez sur le menu ··· en bas à droite",
+                    'Sélectionnez "Ajouter au téléphone" ou "Installer"',
+                    "Confirmez l'installation",
+                ],
+            };
         case "samsung":
             return {
                 title: "Installer sur Samsung Internet",
+                icon: <Menu className="h-4 w-4 inline-block text-purple-600" />,
                 steps: [
                     "Appuyez sur le menu ☰ en bas",
                     'Sélectionnez "Ajouter page à" → "Écran d\'accueil"',
@@ -73,6 +112,7 @@ function getInstructions(browser: BrowserType): { title: string; steps: string[]
         default:
             return {
                 title: "Installer l'application",
+                icon: <Download className="h-4 w-4 inline-block" />,
                 steps: [
                     "Ouvrez le menu de votre navigateur",
                     'Cherchez "Installer" ou "Ajouter à l\'écran d\'accueil"',
@@ -84,6 +124,7 @@ function getInstructions(browser: BrowserType): { title: string; steps: string[]
 
 export function InstallPWAPrompt() {
     const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
+    const deferredPromptRef = useRef<BeforeInstallPromptEvent | null>(null);
     const [showPrompt, setShowPrompt] = useState(false);
     const [browser, setBrowser] = useState<BrowserType>("unknown");
     const [showManualInstructions, setShowManualInstructions] = useState(false);
@@ -108,20 +149,33 @@ export function InstallPWAPrompt() {
         }
 
         // Pour iOS et navigateurs sans beforeinstallprompt
-        if (detected.startsWith("ios") || detected === "firefox" || detected === "samsung") {
+        if (detected.startsWith("ios") || detected === "firefox" || detected === "samsung" || detected === "unknown") {
             const timer = setTimeout(() => setShowPrompt(true), 2000);
             return () => clearTimeout(timer);
         }
 
-        // Pour Chrome/Edge/Opera, écouter l'événement beforeinstallprompt
+        // Pour Chrome/Edge/Opera (desktop & Android), écouter l'événement beforeinstallprompt
         const handler = (e: Event) => {
             e.preventDefault();
-            setDeferredPrompt(e as BeforeInstallPromptEvent);
+            const evt = e as BeforeInstallPromptEvent;
+            setDeferredPrompt(evt);
+            deferredPromptRef.current = evt;
             setTimeout(() => setShowPrompt(true), 2000);
         };
 
         window.addEventListener("beforeinstallprompt", handler);
-        return () => window.removeEventListener("beforeinstallprompt", handler);
+
+        // Fallback : si aucun événement beforeinstallprompt après 4s, afficher quand même
+        const fallbackTimer = setTimeout(() => {
+            if (!deferredPromptRef.current) {
+                setShowPrompt(true);
+            }
+        }, 4000);
+
+        return () => {
+            window.removeEventListener("beforeinstallprompt", handler);
+            clearTimeout(fallbackTimer);
+        };
     }, []);
 
     const handleInstall = async () => {
@@ -166,7 +220,13 @@ export function InstallPWAPrompt() {
                             <>
                                 <div className="flex items-start gap-4">
                                     {/* App icon */}
-                                    <LeafLogo size={56} className="shrink-0 rounded-2xl shadow-xl shadow-teal-500/30" />
+                                    <Image
+                                        src="/icons/icon-192.png"
+                                        alt="Life"
+                                        width={56}
+                                        height={56}
+                                        className="shrink-0 rounded-2xl shadow-xl shadow-teal-500/30"
+                                    />
                                     <div className="flex-1 min-w-0">
                                         <h3 className="text-[16px] font-bold">Installer Life</h3>
                                         <p className="mt-1 text-[13px] text-muted-foreground leading-relaxed">
