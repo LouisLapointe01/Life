@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { useProfile } from "@/hooks/use-profile";
 import { Switch } from "@/components/ui/switch";
 import {
   Select,
@@ -46,6 +47,7 @@ import {
   type TabId,
 } from "@/lib/stores/dashboard-tabs";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 /* ═══════════════════════════════════════════════════════
    Types
@@ -101,6 +103,7 @@ const tabs: { key: Tab; label: string; icon: typeof CalendarDays }[] = [
    ═══════════════════════════════════════════════════════ */
 
 export default function ParametresPage() {
+  const profile = useProfile();
   const [activeTab, setActiveTab] = useState<Tab>("types");
 
   return (
@@ -145,8 +148,16 @@ export default function ParametresPage() {
         className="w-full"
       >
         {activeTab === "sections" && <DashboardSectionsSettings />}
-        {activeTab === "types" && <AppointmentTypesSection />}
-        {activeTab === "availability" && <AvailabilitySection />}
+        {activeTab === "types" && (
+          profile?.id ? <AppointmentTypesSection userId={profile.id} /> : (
+            <div className="flex items-center justify-center py-16"><Loader2 className="h-7 w-7 animate-spin text-primary" /></div>
+          )
+        )}
+        {activeTab === "availability" && (
+          profile?.id ? <AvailabilitySection userId={profile.id} /> : (
+            <div className="flex items-center justify-center py-16"><Loader2 className="h-7 w-7 animate-spin text-primary" /></div>
+          )
+        )}
         {activeTab === "contacts" && <ContactsSection />}
       </div>
     </div>
@@ -370,7 +381,7 @@ function DashboardSectionsSettings() {
    Types de RDV
    ═══════════════════════════════════════════════════════ */
 
-function AppointmentTypesSection() {
+function AppointmentTypesSection({ userId }: { userId?: string }) {
   const [types, setTypes] = useState<AppointmentType[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -382,47 +393,86 @@ function AppointmentTypesSection() {
   const [saving, setSaving] = useState(false);
 
   const fetchTypes = useCallback(async () => {
-    const supabase = createClient();
-    const { data } = await supabase
-      .from("appointment_types")
-      .select("*")
-      .order("sort_order");
-    if (data) setTypes(data);
+    try {
+      const url = userId
+        ? `/api/appointments/types?user_id=${userId}&all=true`
+        : `/api/appointments/types?all=true`;
+      const res = await fetch(url);
+      if (res.ok) {
+        const data = await res.json();
+        setTypes(data);
+      }
+    } catch { /* ignore */ }
     setLoading(false);
-  }, []);
+  }, [userId]);
 
   useEffect(() => {
     fetchTypes();
   }, [fetchTypes]);
 
   const addType = async () => {
+    if (!form.name.trim()) { toast.error("Le nom est requis."); return; }
     setSaving(true);
-    const supabase = createClient();
-    await supabase.from("appointment_types").insert({
-      name: form.name,
-      duration_min: parseInt(form.duration_min),
-      color: form.color,
-      sort_order: types.length,
-    });
-    setForm({ name: "", duration_min: "30", color: "#007AFF" });
-    setDialogOpen(false);
+    try {
+      const res = await fetch("/api/appointments/types", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: form.name.trim(),
+          duration_min: parseInt(form.duration_min) || 30,
+          color: form.color,
+          sort_order: types.length,
+          user_id: userId || null,
+        }),
+      });
+      if (res.ok) {
+        setForm({ name: "", duration_min: "30", color: "#007AFF" });
+        setDialogOpen(false);
+        toast.success("Type créé avec succès !");
+        await fetchTypes();
+      } else {
+        const data = await res.json().catch(() => ({}));
+        toast.error(data.error || "Erreur lors de la création du type.");
+      }
+    } catch {
+      toast.error("Erreur de connexion au serveur.");
+    }
     setSaving(false);
-    fetchTypes();
   };
 
   const toggleActive = async (id: string, is_active: boolean) => {
-    const supabase = createClient();
-    await supabase
-      .from("appointment_types")
-      .update({ is_active: !is_active })
-      .eq("id", id);
-    fetchTypes();
+    setTypes((prev) => prev.map((t) => (t.id === id ? { ...t, is_active: !is_active } : t)));
+    try {
+      const res = await fetch("/api/appointments/types", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, is_active: !is_active }),
+      });
+      if (!res.ok) {
+        setTypes((prev) => prev.map((t) => (t.id === id ? { ...t, is_active } : t)));
+        toast.error("Erreur lors de la modification.");
+      }
+    } catch {
+      setTypes((prev) => prev.map((t) => (t.id === id ? { ...t, is_active } : t)));
+      toast.error("Erreur de connexion.");
+    }
   };
 
   const deleteType = async (id: string) => {
-    const supabase = createClient();
-    await supabase.from("appointment_types").delete().eq("id", id);
-    fetchTypes();
+    const original = [...types];
+    setTypes((prev) => prev.filter((t) => t.id !== id));
+    try {
+      const res = await fetch(`/api/appointments/types?id=${id}`, { method: "DELETE" });
+      if (res.ok) {
+        toast.success("Type supprimé.");
+      } else {
+        setTypes(original);
+        toast.error("Erreur lors de la suppression.");
+      }
+    } catch {
+      setTypes(original);
+      toast.error("Erreur de connexion.");
+    }
   };
 
   if (loading) {
@@ -587,7 +637,7 @@ function AppointmentTypesSection() {
    Disponibilités
    ═══════════════════════════════════════════════════════ */
 
-function AvailabilitySection() {
+function AvailabilitySection({ userId }: { userId?: string }) {
   const [rules, setRules] = useState<AvailabilityRule[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -599,15 +649,18 @@ function AvailabilitySection() {
   const [saving, setSaving] = useState(false);
 
   const fetchRules = useCallback(async () => {
-    const supabase = createClient();
-    const { data } = await supabase
-      .from("availability_rules")
-      .select("*")
-      .order("day_of_week")
-      .order("start_time");
-    if (data) setRules(data);
+    try {
+      const url = userId
+        ? `/api/appointments/availability?user_id=${userId}`
+        : `/api/appointments/availability`;
+      const res = await fetch(url);
+      if (res.ok) {
+        const data = await res.json();
+        setRules(data);
+      }
+    } catch { /* ignore */ }
     setLoading(false);
-  }, []);
+  }, [userId]);
 
   useEffect(() => {
     fetchRules();
@@ -615,30 +668,46 @@ function AvailabilitySection() {
 
   const addRule = async () => {
     setSaving(true);
-    const supabase = createClient();
-    await supabase.from("availability_rules").insert({
-      day_of_week: parseInt(form.day_of_week),
-      start_time: form.start_time,
-      end_time: form.end_time,
-    });
-    setDialogOpen(false);
+    try {
+      const res = await fetch("/api/appointments/availability", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          day_of_week: parseInt(form.day_of_week),
+          start_time: form.start_time,
+          end_time: form.end_time,
+          user_id: userId || null,
+        }),
+      });
+      if (res.ok) {
+        setDialogOpen(false);
+        await fetchRules();
+      }
+    } catch { /* ignore */ }
     setSaving(false);
-    fetchRules();
   };
 
   const toggleActive = async (id: string, is_active: boolean) => {
-    const supabase = createClient();
-    await supabase
-      .from("availability_rules")
-      .update({ is_active: !is_active })
-      .eq("id", id);
-    fetchRules();
+    // Mise à jour optimiste
+    setRules((prev) => prev.map((r) => (r.id === id ? { ...r, is_active: !is_active } : r)));
+    try {
+      await fetch("/api/appointments/availability", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, is_active: !is_active }),
+      });
+    } catch {
+      setRules((prev) => prev.map((r) => (r.id === id ? { ...r, is_active } : r)));
+    }
   };
 
   const deleteRule = async (id: string) => {
-    const supabase = createClient();
-    await supabase.from("availability_rules").delete().eq("id", id);
-    fetchRules();
+    setRules((prev) => prev.filter((r) => r.id !== id));
+    try {
+      await fetch(`/api/appointments/availability?id=${id}`, { method: "DELETE" });
+    } catch {
+      fetchRules();
+    }
   };
 
   if (loading) {

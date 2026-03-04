@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { createClient } from "@/lib/supabase/client";
 import {
   Dialog,
   DialogContent,
@@ -126,12 +125,11 @@ export default function AnnuairePage() {
 
   /* ─── Fetch ─── */
   const fetchContacts = useCallback(async () => {
-    const supabase = createClient();
-    const { data } = await supabase
-      .from("contacts")
-      .select("*")
-      .order("first_name");
-    if (data) setContacts(data as Contact[]);
+    const res = await fetch("/api/contacts");
+    if (res.ok) {
+      const data = await res.json();
+      setContacts(data as Contact[]);
+    }
     setLoading(false);
   }, []);
 
@@ -190,7 +188,6 @@ export default function AnnuairePage() {
   const handleSave = async () => {
     if (!form.first_name.trim()) return;
     setSaving(true);
-    const supabase = createClient();
 
     const payload = {
       first_name: form.first_name.trim(),
@@ -204,20 +201,23 @@ export default function AnnuairePage() {
     };
 
     if (editContact) {
-      const { data } = await supabase
-        .from("contacts")
-        .update(payload)
-        .eq("id", editContact.id)
-        .select()
-        .single();
-      if (data) {
-        // Mettre à jour le contact sélectionné si c'est celui-ci
+      const res = await fetch("/api/contacts", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: editContact.id, ...payload }),
+      });
+      if (res.ok) {
+        const data = await res.json();
         if (selectedContact?.id === editContact.id) {
           setSelectedContact(data as Contact);
         }
       }
     } else {
-      await supabase.from("contacts").insert(payload);
+      await fetch("/api/contacts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
     }
 
     setSaving(false);
@@ -229,8 +229,7 @@ export default function AnnuairePage() {
   const handleDelete = async () => {
     if (!deleteTarget) return;
     setDeleting(true);
-    const supabase = createClient();
-    await supabase.from("contacts").delete().eq("id", deleteTarget.id);
+    await fetch(`/api/contacts?id=${deleteTarget.id}`, { method: "DELETE" });
     if (selectedContact?.id === deleteTarget.id) {
       setSelectedContact(null);
       setSheetOpen(false);

@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { sendReminderToGuest, sendReminderToAdmin } from "@/lib/mailjet";
 import { NextResponse } from "next/server";
 
@@ -19,7 +19,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
   }
 
-  const supabase = await createClient();
+  const supabase = createAdminClient();
   const now = new Date();
   const results: string[] = [];
 
@@ -31,6 +31,7 @@ export async function GET(request: Request) {
     .from("appointments")
     .select("*, appointment_types(name, duration_min)")
     .eq("status", "confirmed")
+    .eq("notify_on_event", true)
     .gte("start_at", h1Start.toISOString())
     .lte("start_at", h1End.toISOString());
 
@@ -60,6 +61,7 @@ export async function GET(request: Request) {
     .from("appointments")
     .select("*, appointment_types(name, duration_min)")
     .eq("status", "confirmed")
+    .eq("notify_on_event", true)
     .gte("start_at", d1Start.toISOString())
     .lte("start_at", d1End.toISOString());
 

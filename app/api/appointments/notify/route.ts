@@ -1,3 +1,4 @@
+import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { sendSMS } from "@/lib/twilio";
 import {
@@ -16,12 +17,13 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "ID requis" }, { status: 400 });
     }
 
-    const supabase = await createClient();
+    const supabase = createAdminClient();
 
     // Vérifier que l'utilisateur est admin
+    const authClient = await createClient();
     const {
       data: { user },
-    } = await supabase.auth.getUser();
+    } = await authClient.auth.getUser();
 
     if (!user) {
       return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
@@ -59,8 +61,8 @@ export async function POST(request: Request) {
         durationMin: appointment.appointment_types.duration_min,
       });
 
-      // ─── SMS au contact proche (si applicable) ───
-      if (appointment.is_close_contact && appointment.guest_phone) {
+      // ─── SMS de rappel (si notification activée sur l'événement) ───
+      if (appointment.notify_on_event && appointment.guest_phone) {
         const dateStr = format(
           new Date(appointment.start_at),
           "EEEE d MMMM yyyy 'à' HH:mm",

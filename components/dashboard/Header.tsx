@@ -2,7 +2,7 @@
 
 import { createClient } from "@/lib/supabase/client";
 import { useRouter, usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -10,17 +10,45 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { LogOut, User, Bell } from "lucide-react";
+import { LogOut, User, Bell, Check, CheckCheck, CalendarDays, ArrowRightLeft, XCircle, UserCheck, Info } from "lucide-react";
 import { LeafLogo } from "@/components/LeafLogo";
 import type { User as SupabaseUser } from "@supabase/supabase-js";
 import Link from "next/link";
 import { usePageTitle } from "@/lib/stores/dashboard-tabs";
+import { cn } from "@/lib/utils";
+
+type Notification = {
+  id: string;
+  type: string;
+  title: string;
+  body: string | null;
+  is_read: boolean;
+  created_at: string;
+  appointment_id: string | null;
+  from_name: string | null;
+};
+
+const notifIcons: Record<string, typeof Bell> = {
+  invitation: CalendarDays,
+  response: UserCheck,
+  confirmed: Check,
+  cancellation: XCircle,
+  declined: XCircle,
+  reschedule_request: ArrowRightLeft,
+  reschedule_approved: CheckCheck,
+  reschedule_rejected: XCircle,
+  info: Info,
+};
 
 export function Header({ title }: { title?: string }) {
   const router = useRouter();
   const pathname = usePathname();
   const [user, setUser] = useState<SupabaseUser | null>(null);
   const dynamicTitle = usePageTitle(pathname);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [showNotifs, setShowNotifs] = useState(false);
+  const notifRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const supabase = createClient();
@@ -28,6 +56,74 @@ export function Header({ title }: { title?: string }) {
       setUser(data.user);
     });
   }, []);
+
+  const fetchNotifications = useCallback(async () => {
+    try {
+      const res = await fetch("/api/notifications?limit=20");
+      if (res.ok) {
+        const data = await res.json();
+        setNotifications(data.notifications || []);
+        setUnreadCount(data.unread_count || 0);
+      }
+    } catch { /* ignore */ }
+  }, []);
+
+  // Fetch notifications on mount + poll every 15s
+  useEffect(() => {
+    fetchNotifications();
+    const interval = setInterval(fetchNotifications, 15000);
+    return () => clearInterval(interval);
+  }, [fetchNotifications]);
+
+  // Realtime: écouter les nouvelles notifications
+  useEffect(() => {
+    if (!user) return;
+    const supabase = createClient();
+    const channel = supabase
+      .channel("notifications-realtime")
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "notifications", filter: `user_id=eq.${user.id}` }, () => {
+        fetchNotifications();
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [user, fetchNotifications]);
+
+  // Click outside to close
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (notifRef.current && !notifRef.current.contains(e.target as Node)) {
+        setShowNotifs(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  const markAsRead = async (id: string) => {
+    setNotifications((prev) => prev.map((n) => n.id === id ? { ...n, is_read: true } : n));
+    setUnreadCount((c) => Math.max(0, c - 1));
+    await fetch("/api/notifications", {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id }),
+    });
+  };
+
+  const markAllRead = async () => {
+    setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
+    setUnreadCount(0);
+    await fetch("/api/notifications", {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ read_all: true }),
+    });
+  };
+
+  const handleNotifClick = (n: Notification) => {
+    if (!n.is_read) markAsRead(n.id);
+    if (n.appointment_id) {
+      router.push("/dashboard/agenda");
+      setShowNotifs(false);
+    }
+  };
 
   const handleSignOut = async () => {
     const supabase = createClient();
@@ -39,30 +135,98 @@ export function Header({ title }: { title?: string }) {
   const fullName = user?.user_metadata?.full_name ?? user?.email ?? "";
   const pageTitle = title ?? dynamicTitle;
 
+  const timeAgo = (dateStr: string) => {
+    const diff = Date.now() - new Date(dateStr).getTime();
+    const min = Math.floor(diff / 60000);
+    if (min < 1) return "À l'instant";
+    if (min < 60) return `Il y a ${min} min`;
+    const h = Math.floor(min / 60);
+    if (h < 24) return `Il y a ${h}h`;
+    const d = Math.floor(h / 24);
+    return `Il y a ${d}j`;
+  };
+
   return (
     <header className="flex h-[64px] shrink-0 items-center justify-between px-4 lg:px-8 z-10 bg-white/40 dark:bg-white/[0.06] backdrop-blur-2xl border-b border-white/30 dark:border-white/10">
       {/* Left: Logo (mobile only) + Title */}
       <div className="flex items-center gap-3">
-        {/* Logo visible only on mobile (sidebar hidden) */}
-        <Link
-          href="/dashboard"
-          className="flex lg:hidden"
-        >
+        <Link href="/dashboard" className="flex lg:hidden">
           <LeafLogo size={32} className="rounded-xl shadow-md shadow-teal-500/30" />
         </Link>
-
-        <h1 className="text-[17px] lg:text-xl font-bold tracking-tight">
-          {pageTitle}
-        </h1>
+        <h1 className="text-[17px] lg:text-xl font-bold tracking-tight">{pageTitle}</h1>
       </div>
 
       {/* Right: Actions */}
       <div className="flex items-center gap-1.5">
-        {/* Notifications */}
-        <button className="relative flex h-9 w-9 items-center justify-center rounded-xl text-muted-foreground transition-all duration-200 hover:bg-foreground/[0.06] hover:text-foreground">
-          <Bell className="h-[18px] w-[18px]" />
-          <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-red-500 ring-2 ring-background" />
-        </button>
+        {/* Notifications Bell */}
+        <div className="relative" ref={notifRef}>
+          <button
+            onClick={() => setShowNotifs(!showNotifs)}
+            className="relative flex h-9 w-9 items-center justify-center rounded-xl text-muted-foreground transition-all duration-200 hover:bg-foreground/[0.06] hover:text-foreground"
+          >
+            <Bell className="h-[18px] w-[18px]" />
+            {unreadCount > 0 && (
+              <span className="absolute -right-0.5 -top-0.5 flex h-4.5 min-w-4.5 items-center justify-center rounded-full bg-red-500 px-1 text-[9px] font-bold text-white ring-2 ring-background">
+                {unreadCount > 9 ? "9+" : unreadCount}
+              </span>
+            )}
+          </button>
+
+          {/* Notification Panel */}
+          {showNotifs && (
+            <div className="absolute right-0 top-full mt-2 w-[340px] sm:w-[380px] rounded-2xl border border-foreground/[0.08] bg-card shadow-xl shadow-black/10 z-50 overflow-hidden">
+              <div className="flex items-center justify-between px-4 py-3 border-b border-foreground/[0.06]">
+                <h3 className="text-[14px] font-semibold">Notifications</h3>
+                {unreadCount > 0 && (
+                  <button onClick={markAllRead} className="text-[11px] font-medium text-primary hover:underline">
+                    Tout marquer comme lu
+                  </button>
+                )}
+              </div>
+              <div className="max-h-[400px] overflow-y-auto">
+                {notifications.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-10 text-center">
+                    <Bell className="h-8 w-8 text-muted-foreground/30 mb-2" />
+                    <p className="text-[13px] text-muted-foreground">Aucune notification</p>
+                  </div>
+                ) : (
+                  notifications.map((n) => {
+                    const Icon = notifIcons[n.type] || Bell;
+                    return (
+                      <button
+                        key={n.id}
+                        onClick={() => handleNotifClick(n)}
+                        className={cn(
+                          "flex w-full items-start gap-3 px-4 py-3 text-left transition-colors hover:bg-foreground/[0.03] border-b border-foreground/[0.04] last:border-0",
+                          !n.is_read && "bg-primary/[0.04]"
+                        )}
+                      >
+                        <div className={cn(
+                          "flex h-8 w-8 shrink-0 items-center justify-center rounded-xl mt-0.5",
+                          !n.is_read ? "bg-primary/15 text-primary" : "bg-foreground/[0.06] text-muted-foreground"
+                        )}>
+                          <Icon className="h-3.5 w-3.5" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className={cn("text-[12px] leading-snug", !n.is_read ? "font-semibold" : "font-medium text-muted-foreground")}>
+                            {n.title}
+                          </p>
+                          {n.body && (
+                            <p className="text-[11px] text-muted-foreground mt-0.5 line-clamp-2">{n.body}</p>
+                          )}
+                          <p className="text-[10px] text-muted-foreground/60 mt-1">{timeAgo(n.created_at)}</p>
+                        </div>
+                        {!n.is_read && (
+                          <span className="mt-2 h-2 w-2 shrink-0 rounded-full bg-primary" />
+                        )}
+                      </button>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+          )}
+        </div>
 
         {/* Separator */}
         <div className="mx-1 h-5 w-px bg-border" />
@@ -72,28 +236,19 @@ export function Header({ title }: { title?: string }) {
           <DropdownMenuTrigger asChild>
             <button className="flex items-center gap-2 rounded-2xl px-2 py-1.5 transition-all duration-200 hover:bg-foreground/[0.06]">
               {avatarUrl ? (
-                <img
-                  src={avatarUrl}
-                  alt={fullName}
-                  className="h-8 w-8 rounded-full ring-2 ring-white/20"
-                  referrerPolicy="no-referrer"
-                />
+                <img src={avatarUrl} alt={fullName} className="h-8 w-8 rounded-full ring-2 ring-white/20" referrerPolicy="no-referrer" />
               ) : (
                 <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-blue-600 text-sm font-semibold text-white shadow-lg shadow-blue-500/20">
                   {fullName.charAt(0).toUpperCase()}
                 </div>
               )}
-              <span className="hidden text-[13px] font-medium md:block max-w-[120px] truncate">
-                {fullName}
-              </span>
+              <span className="hidden text-[13px] font-medium md:block max-w-[120px] truncate">{fullName}</span>
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-52 rounded-2xl p-1.5">
             <div className="px-3 py-2 mb-1">
               <p className="text-[13px] font-semibold truncate">{fullName}</p>
-              <p className="text-[11px] text-muted-foreground truncate">
-                {user?.email}
-              </p>
+              <p className="text-[11px] text-muted-foreground truncate">{user?.email}</p>
             </div>
             <DropdownMenuSeparator className="my-1" />
             <DropdownMenuItem className="rounded-xl px-3 py-2.5 text-[13px] cursor-pointer">
@@ -101,10 +256,7 @@ export function Header({ title }: { title?: string }) {
               Profil
             </DropdownMenuItem>
             <DropdownMenuSeparator className="my-1" />
-            <DropdownMenuItem
-              onClick={handleSignOut}
-              className="rounded-xl px-3 py-2.5 text-[13px] text-red-500 cursor-pointer focus:text-red-500"
-            >
+            <DropdownMenuItem onClick={handleSignOut} className="rounded-xl px-3 py-2.5 text-[13px] text-red-500 cursor-pointer focus:text-red-500">
               <LogOut className="mr-2 h-4 w-4" />
               Déconnexion
             </DropdownMenuItem>
