@@ -12,8 +12,7 @@ import {
 } from "lucide-react";
 import { LeafLogo } from "@/components/LeafLogo";
 import { useState } from "react";
-import { useRdvModal } from "@/contexts/rdv-modal-context";
-import { CalendarPlus } from "lucide-react";
+
 import {
   useVisibleTabs,
   useHiddenTabs,
@@ -26,7 +25,7 @@ export function Sidebar() {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
   const [showAddMenu, setShowAddMenu] = useState(false);
-  const { open: openRdv } = useRdvModal();
+
   const visibleTabs = useVisibleTabs();
   const hiddenTabs = useHiddenTabs();
   const { removeTab, addTab } = useDashboardTabs();
@@ -194,20 +193,6 @@ export function Sidebar() {
           </div>
         )}
       </nav>
-
-      {/* New RDV Button */}
-      <div className="px-3 pb-2">
-        <button
-          onClick={openRdv}
-          className={cn(
-            "flex w-full items-center gap-3 rounded-2xl bg-gradient-to-r from-primary/15 to-primary/5 px-3 py-2.5 text-[13px] font-semibold text-primary transition-all duration-200 hover:from-primary/25 hover:to-primary/10 hover:-translate-y-0.5",
-            collapsed && "justify-center"
-          )}
-        >
-          <CalendarPlus className="h-[18px] w-[18px] shrink-0" />
-          {!collapsed && <span>Prendre RDV</span>}
-        </button>
-      </div>
 
       {/* Collapse toggle */}
       <div className="px-3 pb-4">

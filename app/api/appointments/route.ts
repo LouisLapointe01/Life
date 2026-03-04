@@ -1,125 +1,323 @@
+import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { createAppointmentSchema } from "@/lib/validations";
+import { sendBookingConfirmationToGuest } from "@/lib/mailjet";
+import { sendSMS } from "@/lib/twilio";
 import { NextResponse } from "next/server";
-import {
-  sendBookingConfirmationToGuest,
-  sendNewBookingToAdmin,
-} from "@/lib/mailjet";
 
+/* ═══════════════════════════════════════════════════════
+   Helpers
+   ═══════════════════════════════════════════════════════ */
+async function getAuthUser() {
+  const authClient = await createClient();
+  const { data: { user } } = await authClient.auth.getUser();
+  return user;
+}
+
+async function getProfile(supabase: ReturnType<typeof createAdminClient>, userId: string) {
+  const { data } = await supabase.from("profiles").select("id, role, full_name, email").eq("id", userId).single();
+  return data;
+}
+
+async function notify(
+  supabase: ReturnType<typeof createAdminClient>,
+  p: { userId: string; type: string; appointmentId: string; fromUserId?: string; fromName?: string; title: string; body?: string }
+) {
+  await supabase.from("notifications").insert({
+    user_id: p.userId, type: p.type, appointment_id: p.appointmentId,
+    from_user_id: p.fromUserId || null, from_name: p.fromName || null,
+    title: p.title, body: p.body || null,
+  });
+}
+
+/* ═══════════════════════════════════════════════════════
+   GET /api/appointments
+   Retourne les RDV où je suis créateur OU participant.
+   ═══════════════════════════════════════════════════════ */
+export async function GET() {
+  try {
+    const user = await getAuthUser();
+    if (!user) return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+
+    const supabase = createAdminClient();
+    const profile = await getProfile(supabase, user.id);
+    const isAdmin = profile?.role === "admin";
+
+    const select = `
+      *,
+      creator:profiles!appointments_requester_id_fkey(id, full_name, avatar_url),
+      appointment_types!type_id(id, name, color, duration_min),
+      appointment_participants(
+        id, user_id, name, email, phone, type_id, status, is_organizer, is_close_contact, responded_at,
+        participant_type:appointment_types(id, name, color, duration_min)
+      )
+    `;
+
+    let data, error;
+
+    if (isAdmin) {
+      const res = await supabase.from("appointments").select(select).order("start_at", { ascending: true });
+      data = res.data; error = res.error;
+    } else {
+      // Trouver les appointments où je suis participant
+      const { data: parts } = await supabase.from("appointment_participants").select("appointment_id").eq("user_id", user.id);
+      const ids = (parts || []).map((p) => p.appointment_id);
+
+      const orFilter = ids.length > 0
+        ? `requester_id.eq.${user.id},id.in.(${ids.join(",")})`
+        : `requester_id.eq.${user.id}`;
+
+      const res = await supabase.from("appointments").select(select).or(orFilter).order("start_at", { ascending: true });
+      data = res.data; error = res.error;
+    }
+
+    if (error) {
+      console.error("[GET /api/appointments]", error);
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    return NextResponse.json(data || []);
+  } catch (err) {
+    console.error("[GET /api/appointments]", err);
+    return NextResponse.json({ error: "Erreur serveur" }, { status: 500 });
+  }
+}
+
+/* ═══════════════════════════════════════════════════════
+   POST /api/appointments
+   Crée un RDV + participants + notifications.
+   ═══════════════════════════════════════════════════════ */
 export async function POST(request: Request) {
   try {
     const body = await request.json();
     const parsed = createAppointmentSchema.safeParse(body);
-
     if (!parsed.success) {
-      return NextResponse.json(
-        { error: parsed.error.issues[0].message },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: parsed.error.issues[0].message }, { status: 400 });
     }
 
-    const { type_id, guest_name, guest_email, guest_phone, start_at, message } =
-      parsed.data;
+    const { type_id, start_at, message, participants, notify_on_event } = parsed.data;
+    const supabase = createAdminClient();
 
-    const supabase = await createClient();
+    const user = await getAuthUser();
+    if (!user) return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
 
-    // Récupérer la durée du type de RDV
-    const { data: appointmentType, error: typeError } = await supabase
-      .from("appointment_types")
-      .select("duration_min, name")
-      .eq("id", type_id)
-      .eq("is_active", true)
-      .single();
+    const creatorProfile = await getProfile(supabase, user.id);
+    const creatorName = creatorProfile?.full_name || user.email || "Inconnu";
 
-    if (typeError || !appointmentType) {
-      return NextResponse.json(
-        { error: "Type de rendez-vous invalide" },
-        { status: 400 }
-      );
+    // Type de RDV
+    const { data: aptType, error: typeErr } = await supabase
+      .from("appointment_types").select("duration_min, name").eq("id", type_id).eq("is_active", true).single();
+    if (typeErr || !aptType) {
+      return NextResponse.json({ error: "Type de RDV invalide ou inactif" }, { status: 400 });
     }
 
-    // Calculer end_at
     const startDate = new Date(start_at);
-    const endDate = new Date(
-      startDate.getTime() + appointmentType.duration_min * 60 * 1000
-    );
+    const endDate = new Date(startDate.getTime() + aptType.duration_min * 60 * 1000);
 
-    // Vérifier qu'il n'y a pas de conflit
-    const { data: conflicts } = await supabase
-      .from("appointments")
-      .select("id")
-      .neq("status", "cancelled")
-      .lt("start_at", endDate.toISOString())
-      .gt("end_at", startDate.toISOString());
+    // Contacts proches du créateur
+    const { data: closeCts } = await supabase.from("contacts").select("email").eq("user_id", user.id).eq("is_close", true);
+    const closeEmails = new Set((closeCts || []).map((c) => c.email?.toLowerCase()).filter(Boolean));
 
-    if (conflicts && conflicts.length > 0) {
-      return NextResponse.json(
-        { error: "Ce créneau n'est plus disponible" },
-        { status: 409 }
-      );
-    }
+    const first = participants[0];
 
-    // Vérifier si l'email correspond à un contact proche
-    const { data: closeContact } = await supabase
-      .from("contacts")
-      .select("id, phone")
-      .eq("email", guest_email)
-      .eq("is_close", true)
-      .single();
-
-    const isCloseContact = !!closeContact;
-
-    // Insérer le RDV
-    const { data: appointment, error: insertError } = await supabase
+    // Créer le RDV
+    const { data: apt, error: insErr } = await supabase
       .from("appointments")
       .insert({
         type_id,
-        guest_name,
-        guest_email,
-        guest_phone: guest_phone || closeContact?.phone || null,
+        requester_id: user.id,
+        user_id: first.user_id || null,
+        guest_name: first.name,
+        guest_email: first.email || "",
+        guest_phone: first.phone || null,
         start_at: startDate.toISOString(),
         end_at: endDate.toISOString(),
         message: message || null,
         status: "pending",
-        is_close_contact: isCloseContact,
+        is_close_contact: first.email ? closeEmails.has(first.email.toLowerCase()) : false,
+        notify_on_event: notify_on_event ?? true,
       })
-      .select()
-      .single();
+      .select().single();
 
-    if (insertError) {
-      console.error("[Appointments] Erreur insertion:", insertError);
-      return NextResponse.json(
-        { error: "Erreur lors de la création du rendez-vous" },
-        { status: 500 }
-      );
+    if (insErr) {
+      console.error("[POST] Insert:", insErr);
+      return NextResponse.json({ error: `Erreur: ${insErr.message}` }, { status: 500 });
     }
 
-    // Envoyer emails de confirmation (async, non-bloquant)
-    const emailData = {
-      guestName: guest_name,
-      guestEmail: guest_email,
-      typeName: appointmentType.name,
-      startAt: startDate.toISOString(),
-      endAt: endDate.toISOString(),
-      durationMin: appointmentType.duration_min,
-    };
+    // Participants
+    const rows: Array<{
+      appointment_id: string; user_id: string | null; name: string;
+      email: string | null; phone: string | null; type_id: string | null;
+      status: "accepted" | "pending"; is_organizer: boolean; is_close_contact: boolean;
+      responded_at: string | null;
+    }> = participants.map((p) => {
+      const isClose = p.email ? closeEmails.has(p.email.toLowerCase()) : false;
+      return {
+        appointment_id: apt.id, user_id: p.user_id || null, name: p.name,
+        email: p.email || null, phone: p.phone || null, type_id: null,
+        status: isClose ? "accepted" as const : "pending" as const,
+        is_organizer: false, is_close_contact: isClose,
+        responded_at: isClose ? new Date().toISOString() : null,
+      };
+    });
 
-    // Email au guest : "Demande enregistrée"
-    sendBookingConfirmationToGuest(emailData).catch(console.error);
+    // Créateur = organisateur auto-accepté
+    rows.push({
+      appointment_id: apt.id, user_id: user.id, name: creatorName,
+      email: user.email || null, phone: null, type_id: type_id,
+      status: "accepted" as const, is_organizer: true, is_close_contact: false,
+      responded_at: new Date().toISOString(),
+    });
 
-    // Email à l'admin : "Nouveau RDV à valider"
-    sendNewBookingToAdmin({
-      ...emailData,
-      guestPhone: guest_phone || closeContact?.phone || null,
-      message: message || null,
-      isCloseContact: isCloseContact,
-    }).catch(console.error);
+    await supabase.from("appointment_participants").insert(rows);
 
-    return NextResponse.json(appointment, { status: 201 });
-  } catch {
-    return NextResponse.json(
-      { error: "Erreur serveur" },
-      { status: 500 }
-    );
+    // Auto-confirm si tous acceptés
+    if (rows.every((r) => r.status === "accepted")) {
+      await supabase.from("appointments").update({ status: "confirmed" }).eq("id", apt.id);
+    }
+
+    // Notifications
+    const dateFr = startDate.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" });
+    const timeFr = startDate.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+
+    for (const p of participants) {
+      const isClose = p.email ? closeEmails.has(p.email.toLowerCase()) : false;
+
+      if (p.user_id && p.user_id !== user.id) {
+        // ── Participant avec compte → notification in-app ──
+        await notify(supabase, {
+          userId: p.user_id,
+          type: isClose ? "info" : "invitation",
+          appointmentId: apt.id,
+          fromUserId: user.id, fromName: creatorName,
+          title: isClose ? `${creatorName} a créé un RDV` : `${creatorName} vous invite à un RDV`,
+          body: `${aptType.name} — ${dateFr} à ${timeFr}`,
+        });
+      }
+
+      if (!p.user_id) {
+        // ── Participant sans compte → email et/ou SMS ──
+        if (p.email) {
+          await sendBookingConfirmationToGuest({
+            guestName: p.name,
+            guestEmail: p.email,
+            typeName: aptType.name,
+            startAt: startDate.toISOString(),
+            endAt: endDate.toISOString(),
+            durationMin: aptType.duration_min,
+          }).catch((e) => console.error("[POST] Email participant:", e));
+        }
+        if (p.phone) {
+          const smsBody = `Bonjour ${p.name}, ${creatorName} vous invite à un RDV "${aptType.name}" le ${dateFr} à ${timeFr}. — Life`;
+          await sendSMS(p.phone, smsBody).catch((e) => console.error("[POST] SMS participant:", e));
+        }
+      }
+    }
+
+    return NextResponse.json(apt, { status: 201 });
+  } catch (err) {
+    console.error("[POST /api/appointments]", err);
+    return NextResponse.json({ error: "Erreur serveur" }, { status: 500 });
+  }
+}
+
+/* ═══════════════════════════════════════════════════════
+   PATCH /api/appointments
+   Annuler un RDV (créateur ou admin uniquement).
+   Pour répondre en tant que participant → /api/appointments/participants
+   ═══════════════════════════════════════════════════════ */
+export async function PATCH(request: Request) {
+  try {
+    const { id, status } = await request.json();
+    if (!id) return NextResponse.json({ error: "id requis" }, { status: 400 });
+    if (status !== "cancelled") {
+      return NextResponse.json({ error: "Utilisez /api/appointments/participants pour répondre" }, { status: 400 });
+    }
+
+    const user = await getAuthUser();
+    if (!user) return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+
+    const supabase = createAdminClient();
+    const profile = await getProfile(supabase, user.id);
+
+    const { data: apt } = await supabase.from("appointments").select("requester_id, guest_name, start_at, type_id").eq("id", id).single();
+    if (!apt) return NextResponse.json({ error: "RDV introuvable" }, { status: 404 });
+
+    if (apt.requester_id !== user.id && profile?.role !== "admin") {
+      return NextResponse.json({ error: "Non autorisé" }, { status: 403 });
+    }
+
+    const { data, error } = await supabase
+      .from("appointments").update({ status: "cancelled", updated_at: new Date().toISOString() })
+      .eq("id", id).select().single();
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+    // Notifier tous les participants
+    const { data: parts } = await supabase
+      .from("appointment_participants").select("user_id, name, email, phone").eq("appointment_id", id);
+    const cName = profile?.full_name || user.email || "Quelqu'un";
+
+    for (const p of parts || []) {
+      if (p.user_id === user.id) continue;
+
+      if (p.user_id) {
+        // In-app
+        await notify(supabase, {
+          userId: p.user_id,
+          type: "cancellation", appointmentId: id,
+          fromUserId: user.id, fromName: cName,
+          title: `RDV annulé par ${cName}`,
+          body: `Le rendez-vous "${apt.guest_name}" a été annulé.`,
+        });
+      } else {
+        // Sans compte → email / SMS
+        if (p.email) {
+          const { sendCancellationToGuest } = await import("@/lib/mailjet");
+          await sendCancellationToGuest({
+            guestName: p.name || "Participant",
+            guestEmail: p.email,
+            typeName: apt.guest_name || "Rendez-vous",
+            startAt: apt.start_at,
+          }).catch((e) => console.error("[PATCH] Email annulation:", e));
+        }
+        if (p.phone) {
+          await sendSMS(p.phone, `Bonjour ${p.name || "Participant"}, le RDV "${apt.guest_name}" a été annulé par ${cName}. — Life`).catch((e) => console.error("[PATCH] SMS annulation:", e));
+        }
+      }
+    }
+
+    return NextResponse.json(data);
+  } catch (err) {
+    console.error("[PATCH /api/appointments]", err);
+    return NextResponse.json({ error: "Erreur serveur" }, { status: 500 });
+  }
+}
+
+/* ═══════════════════════════════════════════════════════
+   DELETE /api/appointments?id=UUID
+   ═══════════════════════════════════════════════════════ */
+export async function DELETE(request: Request) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get("id");
+    if (!id) return NextResponse.json({ error: "id requis" }, { status: 400 });
+
+    const user = await getAuthUser();
+    if (!user) return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+
+    const supabase = createAdminClient();
+    const profile = await getProfile(supabase, user.id);
+    const { data: apt } = await supabase.from("appointments").select("requester_id").eq("id", id).single();
+    if (!apt) return NextResponse.json({ error: "RDV introuvable" }, { status: 404 });
+    if (apt.requester_id !== user.id && profile?.role !== "admin") {
+      return NextResponse.json({ error: "Non autorisé" }, { status: 403 });
+    }
+
+    const { error } = await supabase.from("appointments").delete().eq("id", id);
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ success: true });
+  } catch (err) {
+    console.error("[DELETE /api/appointments]", err);
+    return NextResponse.json({ error: "Erreur serveur" }, { status: 500 });
   }
 }

@@ -88,14 +88,6 @@ export default function RdvPage() {
 
     useEffect(() => {
         const supabase = createClient();
-        supabase
-            .from("appointment_types")
-            .select("*")
-            .eq("is_active", true)
-            .order("sort_order")
-            .then(({ data }) => {
-                if (data) setTypes(data);
-            });
 
         async function loadUserData() {
             const { data: { user } } = await supabase.auth.getUser();
@@ -123,6 +115,17 @@ export default function RdvPage() {
             }
         }
         loadUserData();
+    }, []);
+
+    // Load types for selected recipient
+    const loadTypesForRecipient = useCallback(async (userId: string) => {
+        try {
+            const res = await fetch(`/api/appointments/types?user_id=${userId}`);
+            if (res.ok) {
+                const data = await res.json();
+                setTypes(data);
+            }
+        } catch { setTypes([]); }
     }, []);
 
     // Search recipients by name (logged-in users)
@@ -173,7 +176,9 @@ export default function RdvPage() {
         setSelectedSlot(null);
         try {
             const dateStr = format(date, "yyyy-MM-dd");
-            const res = await fetch(`/api/appointments/available?date=${dateStr}&type_id=${typeId}`);
+            let url = `/api/appointments/available?date=${dateStr}&type_id=${typeId}`;
+            if (selectedRecipient) url += `&user_id=${selectedRecipient.id}`;
+            const res = await fetch(url);
             const data = await res.json();
             setSlots(data.slots || []);
         } catch {
@@ -181,7 +186,7 @@ export default function RdvPage() {
         } finally {
             setLoadingSlots(false);
         }
-    }, []);
+    }, [selectedRecipient]);
 
     const handleDateSelect = (date: Date | undefined) => {
         if (!date || !selectedType) return;
@@ -351,6 +356,7 @@ export default function RdvPage() {
                                             key={user.id}
                                             onClick={() => {
                                                 setSelectedRecipient(user);
+                                                loadTypesForRecipient(user.id);
                                                 setStep("type");
                                             }}
                                             className="flex w-full items-center gap-3 rounded-2xl px-3 sm:px-4 py-3 text-left transition-all hover:bg-white/10 hover:-translate-y-0.5"
