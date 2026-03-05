@@ -46,6 +46,11 @@ type AppointmentType = {
     color: string;
 };
 
+type SlotInfo = {
+    time: string;
+    status: "available" | "busy" | "unavailable";
+};
+
 type Step = "recipient" | "type" | "date" | "slot" | "form" | "confirmation";
 
 const stepLabels = ["Destinataire", "Type", "Date", "Créneau", "Infos"];
@@ -55,7 +60,8 @@ export default function RdvPage() {
     const [types, setTypes] = useState<AppointmentType[]>([]);
     const [selectedType, setSelectedType] = useState<AppointmentType | null>(null);
     const [selectedDate, setSelectedDate] = useState<Date | undefined>();
-    const [slots, setSlots] = useState<string[]>([]);
+    const [slots, setSlots] = useState<SlotInfo[]>([]);
+    const [currentUserId, setCurrentUserId] = useState<string | null>(null);
     const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
     const [loadingSlots, setLoadingSlots] = useState(false);
     const [submitting, setSubmitting] = useState(false);
@@ -93,6 +99,7 @@ export default function RdvPage() {
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) return;
             setIsLoggedIn(true);
+            setCurrentUserId(user.id);
 
             setFormData((d) => ({
                 ...d,
@@ -176,17 +183,22 @@ export default function RdvPage() {
         setSelectedSlot(null);
         try {
             const dateStr = format(date, "yyyy-MM-dd");
+            const ids = [selectedRecipient?.id, currentUserId].filter(Boolean);
             let url = `/api/appointments/available?date=${dateStr}&type_id=${typeId}`;
-            if (selectedRecipient) url += `&user_id=${selectedRecipient.id}`;
+            if (ids.length > 0) url += `&user_ids=${ids.join(",")}`;
             const res = await fetch(url);
             const data = await res.json();
-            setSlots(data.slots || []);
+            const raw = data.slots || [];
+            setSlots(raw.map((s: { time: string; status?: string }) => ({
+                time: s.time ?? s,
+                status: s.status ?? "available",
+            })));
         } catch {
             setSlots([]);
         } finally {
             setLoadingSlots(false);
         }
-    }, [selectedRecipient]);
+    }, [selectedRecipient, currentUserId]);
 
     const handleDateSelect = (date: Date | undefined) => {
         if (!date || !selectedType) return;
@@ -540,17 +552,48 @@ export default function RdvPage() {
                                     <p className="text-[14px] text-white/50">Aucun créneau disponible pour cette date.</p>
                                 </div>
                             ) : (
-                                <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
-                                    {slots.map((slot) => (
-                                        <button
-                                            key={slot}
-                                            onClick={() => { setSelectedSlot(slot); setStep("form"); }}
-                                            className="rounded-2xl bg-white/10 border border-white/15 px-3 py-3 text-[14px] font-semibold text-white transition-all duration-200 hover:bg-white hover:text-[#185A9D] hover:shadow-lg hover:shadow-white/20 hover:-translate-y-0.5"
-                                        >
-                                            {format(new Date(slot), "HH:mm")}
-                                        </button>
-                                    ))}
-                                </div>
+                                <>
+                                    <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+                                        {slots.map((slot) => (
+                                            <button
+                                                key={slot.time}
+                                                onClick={() => {
+                                                    if (slot.status === "available") {
+                                                        setSelectedSlot(slot.time);
+                                                        setStep("form");
+                                                    }
+                                                }}
+                                                disabled={slot.status !== "available"}
+                                                className={cn(
+                                                    "rounded-2xl px-3 py-3 text-[14px] font-semibold transition-all duration-200 border",
+                                                    slot.status === "available" &&
+                                                        "bg-white text-[#185A9D] border-white/80 shadow-sm hover:shadow-lg hover:shadow-white/30 hover:-translate-y-0.5 cursor-pointer",
+                                                    slot.status === "busy" &&
+                                                        "bg-red-500/20 text-red-200 border-red-400/30 cursor-not-allowed",
+                                                    slot.status === "unavailable" &&
+                                                        "bg-white/5 text-white/25 border-white/8 cursor-not-allowed"
+                                                )}
+                                            >
+                                                {format(new Date(slot.time), "HH:mm")}
+                                            </button>
+                                        ))}
+                                    </div>
+                                    {/* Légende */}
+                                    <div className="mt-4 flex flex-wrap items-center justify-center gap-4 text-[11px] text-white/60">
+                                        <div className="flex items-center gap-1.5">
+                                            <div className="h-3 w-3 rounded-md bg-white border border-white/80 shadow-sm" />
+                                            <span>Disponible</span>
+                                        </div>
+                                        <div className="flex items-center gap-1.5">
+                                            <div className="h-3 w-3 rounded-md bg-red-500/20 border border-red-400/30" />
+                                            <span>Déjà pris</span>
+                                        </div>
+                                        <div className="flex items-center gap-1.5">
+                                            <div className="h-3 w-3 rounded-md bg-white/5 border border-white/8" />
+                                            <span>Non disponible</span>
+                                        </div>
+                                    </div>
+                                </>
                             )}
                         </div>
                         <div className="border-t border-white/10 px-4 sm:px-6 py-4">
