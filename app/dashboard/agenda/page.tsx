@@ -156,6 +156,14 @@ export default function AgendaPage() {
   const [recipientResults, setRecipientResults] = useState<UserProfile[]>([]);
   const [searchingRecipients, setSearchingRecipients] = useState(false);
 
+  // External participant form (step 1)
+  const [showExternalForm, setShowExternalForm] = useState(false);
+  const [externalDraft, setExternalDraft] = useState({ name: "", email: "", phone: "" });
+
+  // Save to annuaire (confirmation step)
+  const [savedContacts, setSavedContacts] = useState<Set<string>>(new Set());
+  const [confirmDuplicate, setConfirmDuplicate] = useState<{ participant: UserProfile; existing: Contact } | null>(null);
+
   const isAdmin = profile?.role === "admin";
 
   const fetchAppointments = useCallback(async () => {
@@ -339,6 +347,10 @@ export default function AgendaPage() {
     setRecipientSearch("");
     setRecipientResults([]);
     setRdvTypes([]);
+    setShowExternalForm(false);
+    setExternalDraft({ name: "", email: "", phone: "" });
+    setSavedContacts(new Set());
+    setConfirmDuplicate(null);
   };
 
   const selectContactForRdv = (contact: Contact) => {
@@ -369,6 +381,30 @@ export default function AgendaPage() {
 
   const removeParticipant = (userId: string) => {
     setRdvParticipants((prev) => prev.filter((p) => p.id !== userId));
+  };
+
+  const doSaveContact = async (p: UserProfile) => {
+    const [first_name, ...rest] = (p.full_name || "").split(" ");
+    await fetch("/api/contacts", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ first_name, last_name: rest.join(" ") || null, email: p.email || null, phone: p.phone || null }),
+    });
+    setSavedContacts((prev) => new Set([...prev, p.id]));
+    toast.success(`${p.full_name} ajouté à l'annuaire`);
+  };
+
+  const saveParticipantAsContact = async (p: UserProfile) => {
+    const duplicate = contacts.find(
+      (c) =>
+        (p.email && c.email?.toLowerCase() === p.email.toLowerCase()) ||
+        `${c.first_name} ${c.last_name || ""}`.trim().toLowerCase() === p.full_name?.toLowerCase()
+    );
+    if (duplicate) {
+      setConfirmDuplicate({ participant: p, existing: duplicate });
+      return;
+    }
+    await doSaveContact(p);
   };
 
   // ─── Computed ───
@@ -630,6 +666,12 @@ export default function AgendaPage() {
                   recipientResults={recipientResults} searchingRecipients={searchingRecipients}
                   onAddParticipant={addParticipant} onRemoveParticipant={removeParticipant}
                   onNextFromRecipients={() => { fetchMyTypes(); setRdvStep("type"); }}
+                  showExternalForm={showExternalForm} setShowExternalForm={setShowExternalForm}
+                  externalDraft={externalDraft} setExternalDraft={setExternalDraft}
+                  savedContacts={savedContacts} confirmDuplicate={confirmDuplicate}
+                  onSaveParticipant={saveParticipantAsContact}
+                  onConfirmDuplicate={async () => { if (confirmDuplicate) { await doSaveContact(confirmDuplicate.participant); setConfirmDuplicate(null); } }}
+                  onCancelDuplicate={() => setConfirmDuplicate(null)}
                 />
               ) : selectedAppointment ? (
                 <AppointmentDetail
@@ -679,6 +721,8 @@ function RdvCreationPanel({
   showContactPicker, setShowContactPicker, filteredContacts, selectContact,
   participants, recipientSearch, setRecipientSearch, recipientResults,
   searchingRecipients, onAddParticipant, onRemoveParticipant, onNextFromRecipients,
+  showExternalForm, setShowExternalForm, externalDraft, setExternalDraft,
+  savedContacts, confirmDuplicate, onSaveParticipant, onConfirmDuplicate, onCancelDuplicate,
 }: {
   step: RdvStep; setStep: (s: RdvStep) => void; stepIndex: number;
   types: AppointmentType[]; selectedType: AppointmentType | null; setSelectedType: (t: AppointmentType) => void;
@@ -694,6 +738,14 @@ function RdvCreationPanel({
   recipientResults: UserProfile[]; searchingRecipients: boolean;
   onAddParticipant: (u: UserProfile) => void; onRemoveParticipant: (id: string) => void;
   onNextFromRecipients: () => void;
+  showExternalForm: boolean; setShowExternalForm: (b: boolean) => void;
+  externalDraft: { name: string; email: string; phone: string };
+  setExternalDraft: (d: { name: string; email: string; phone: string }) => void;
+  savedContacts: Set<string>;
+  confirmDuplicate: { participant: UserProfile; existing: Contact } | null;
+  onSaveParticipant: (p: UserProfile) => void;
+  onConfirmDuplicate: () => void;
+  onCancelDuplicate: () => void;
 }) {
   return (
     <div className="glass-card overflow-hidden">
@@ -776,8 +828,74 @@ function RdvCreationPanel({
               </div>
             )}
             {!searchingRecipients && recipientSearch.length >= 2 && recipientResults.length === 0 && (
-              <p className="text-center text-[12px] text-muted-foreground py-4">Aucun utilisateur trouvé.</p>
+              <p className="text-center text-[12px] text-muted-foreground py-2">Aucun résultat — Ajouter comme externe ↓</p>
             )}
+
+            {/* External participant form */}
+            {!showExternalForm ? (
+              <button
+                type="button"
+                onClick={() => setShowExternalForm(true)}
+                className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-foreground/[0.15] px-3 py-2.5 text-[12px] font-medium text-muted-foreground transition-colors hover:border-primary/40 hover:text-primary"
+              >
+                <Plus className="h-4 w-4" /> Ajouter un externe
+              </button>
+            ) : (
+              <div className="rounded-xl border border-foreground/[0.08] bg-foreground/[0.02] p-3 space-y-2">
+                <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">Externe (sans compte)</p>
+                <input
+                  type="text"
+                  placeholder="Nom complet *"
+                  value={externalDraft.name}
+                  onChange={(e) => setExternalDraft({ ...externalDraft, name: e.target.value })}
+                  className="glass-input w-full py-2 px-3 text-[13px]"
+                />
+                <input
+                  type="email"
+                  placeholder="Email"
+                  value={externalDraft.email}
+                  onChange={(e) => setExternalDraft({ ...externalDraft, email: e.target.value })}
+                  className="glass-input w-full py-2 px-3 text-[13px]"
+                />
+                <input
+                  type="tel"
+                  placeholder="Téléphone"
+                  value={externalDraft.phone}
+                  onChange={(e) => setExternalDraft({ ...externalDraft, phone: e.target.value })}
+                  className="glass-input w-full py-2 px-3 text-[13px]"
+                />
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => { setShowExternalForm(false); setExternalDraft({ name: "", email: "", phone: "" }); }}
+                    className="flex-1 rounded-xl bg-foreground/[0.06] py-2 text-[12px] font-medium text-muted-foreground hover:bg-foreground/[0.1] transition-colors"
+                  >
+                    Annuler
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!externalDraft.name.trim()) return;
+                      onAddParticipant({
+                        id: crypto.randomUUID(),
+                        full_name: externalDraft.name.trim(),
+                        avatar_url: null,
+                        email: externalDraft.email || null,
+                        phone: externalDraft.phone || null,
+                        has_account: false,
+                        source: "contact",
+                      });
+                      setExternalDraft({ name: "", email: "", phone: "" });
+                      setShowExternalForm(false);
+                    }}
+                    className="flex-1 rounded-xl bg-primary py-2 text-[12px] font-semibold text-primary-foreground shadow-sm hover:shadow-md transition-all"
+                  >
+                    Ajouter
+                  </button>
+                </div>
+              </div>
+            )}
+
             {participants.length > 0 && (
               <button onClick={onNextFromRecipients} className="w-full flex items-center justify-center gap-2 rounded-2xl bg-primary py-2.5 text-[13px] font-semibold text-primary-foreground shadow-lg shadow-primary/25 transition-all hover:shadow-xl">
                 Continuer avec {participants.length} participant{participants.length > 1 ? "s" : ""} <ChevronRight className="h-4 w-4" />
@@ -873,39 +991,58 @@ function RdvCreationPanel({
         {/* Step: Form */}
         {step === "form" && (
           <form onSubmit={onSubmit} className="space-y-3">
-            {contacts.length > 0 && (
-              <div>
-                <button type="button" onClick={() => setShowContactPicker(!showContactPicker)} className="flex w-full items-center gap-2 rounded-xl bg-foreground/[0.04] px-3 py-2.5 text-[12px] font-medium text-muted-foreground transition-colors hover:bg-foreground/[0.06] hover:text-foreground">
-                  <Users className="h-4 w-4" />Remplir depuis un contact
-                </button>
-                {showContactPicker && (
-                  <div className="mt-2 rounded-xl border border-foreground/[0.06] bg-card p-2 space-y-2">
-                    <div className="relative">
-                      <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-                      <input type="text" placeholder="Rechercher..." value={contactSearch} onChange={(e) => setContactSearch(e.target.value)} className="w-full rounded-lg bg-foreground/[0.04] py-2 pl-8 pr-3 text-[12px]" />
+            {participants.length > 0 ? (
+              /* Participants already added at step 1 — show recap only */
+              <div className="space-y-2">
+                <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">Participants</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {participants.map((p) => (
+                    <div key={p.id} className={`flex items-center gap-1.5 rounded-xl px-2.5 py-1.5 text-[12px] font-medium ${p.has_account ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"}`}>
+                      {p.has_account ? <UserCheck className="h-3 w-3 shrink-0" /> : <User className="h-3 w-3 shrink-0" />}
+                      <span className="truncate max-w-[120px]">{p.full_name}</span>
                     </div>
-                    <div className="max-h-32 overflow-y-auto space-y-0.5">
-                      {filteredContacts.slice(0, 10).map((c) => (
-                        <button key={c.id} type="button" onClick={() => selectContact(c)} className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-[12px] transition-colors hover:bg-foreground/[0.04]">
-                          <div className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-[10px] font-bold text-primary">{c.first_name.charAt(0)}</div>
-                          <span className="font-medium truncate">{c.first_name} {c.last_name || ""}</span>
-                          {c.is_close && <Star className="h-3 w-3 fill-yellow-400 text-yellow-400 shrink-0 ml-auto" />}
-                        </button>
-                      ))}
-                    </div>
+                  ))}
+                </div>
+                <p className="text-[12px] text-muted-foreground">Les coordonnées ont déjà été renseignées à l&apos;étape précédente.</p>
+              </div>
+            ) : (
+              /* No participants yet — classic form with name/email/phone */
+              <>
+                {contacts.length > 0 && (
+                  <div>
+                    <button type="button" onClick={() => setShowContactPicker(!showContactPicker)} className="flex w-full items-center gap-2 rounded-xl bg-foreground/[0.04] px-3 py-2.5 text-[12px] font-medium text-muted-foreground transition-colors hover:bg-foreground/[0.06] hover:text-foreground">
+                      <Users className="h-4 w-4" />Remplir depuis un contact
+                    </button>
+                    {showContactPicker && (
+                      <div className="mt-2 rounded-xl border border-foreground/[0.06] bg-card p-2 space-y-2">
+                        <div className="relative">
+                          <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+                          <input type="text" placeholder="Rechercher..." value={contactSearch} onChange={(e) => setContactSearch(e.target.value)} className="w-full rounded-lg bg-foreground/[0.04] py-2 pl-8 pr-3 text-[12px]" />
+                        </div>
+                        <div className="max-h-32 overflow-y-auto space-y-0.5">
+                          {filteredContacts.slice(0, 10).map((c) => (
+                            <button key={c.id} type="button" onClick={() => selectContact(c)} className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-[12px] transition-colors hover:bg-foreground/[0.04]">
+                              <div className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-[10px] font-bold text-primary">{c.first_name.charAt(0)}</div>
+                              <span className="font-medium truncate">{c.first_name} {c.last_name || ""}</span>
+                              {c.is_close && <Star className="h-3 w-3 fill-yellow-400 text-yellow-400 shrink-0 ml-auto" />}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
-              </div>
+                <div className="space-y-1"><label className="text-[11px] font-medium text-muted-foreground">Nom *</label>
+                  <div className="relative"><User className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><input required value={formData.guest_name} onChange={(e) => setFormData({ ...formData, guest_name: e.target.value })} className="glass-input w-full py-2.5 pl-10 pr-4 text-[13px]" placeholder="Prénom Nom" /></div>
+                </div>
+                <div className="space-y-1"><label className="text-[11px] font-medium text-muted-foreground">Email *</label>
+                  <div className="relative"><Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><input required type="email" value={formData.guest_email} onChange={(e) => setFormData({ ...formData, guest_email: e.target.value })} className="glass-input w-full py-2.5 pl-10 pr-4 text-[13px]" placeholder="email@exemple.com" /></div>
+                </div>
+                <div className="space-y-1"><label className="text-[11px] font-medium text-muted-foreground">Téléphone</label>
+                  <div className="relative"><Phone className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><input value={formData.guest_phone} onChange={(e) => setFormData({ ...formData, guest_phone: e.target.value })} className="glass-input w-full py-2.5 pl-10 pr-4 text-[13px]" placeholder="+33 6 12 34 56 78" /></div>
+                </div>
+              </>
             )}
-            <div className="space-y-1"><label className="text-[11px] font-medium text-muted-foreground">Nom *</label>
-              <div className="relative"><User className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><input required value={formData.guest_name} onChange={(e) => setFormData({ ...formData, guest_name: e.target.value })} className="glass-input w-full py-2.5 pl-10 pr-4 text-[13px]" placeholder="Prénom Nom" /></div>
-            </div>
-            <div className="space-y-1"><label className="text-[11px] font-medium text-muted-foreground">Email *</label>
-              <div className="relative"><Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><input required type="email" value={formData.guest_email} onChange={(e) => setFormData({ ...formData, guest_email: e.target.value })} className="glass-input w-full py-2.5 pl-10 pr-4 text-[13px]" placeholder="email@exemple.com" /></div>
-            </div>
-            <div className="space-y-1"><label className="text-[11px] font-medium text-muted-foreground">Téléphone</label>
-              <div className="relative"><Phone className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><input value={formData.guest_phone} onChange={(e) => setFormData({ ...formData, guest_phone: e.target.value })} className="glass-input w-full py-2.5 pl-10 pr-4 text-[13px]" placeholder="+33 6 12 34 56 78" /></div>
-            </div>
             <div className="space-y-1"><label className="text-[11px] font-medium text-muted-foreground">Message</label>
               <div className="relative"><MessageSquare className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" /><textarea value={formData.message} onChange={(e) => setFormData({ ...formData, message: e.target.value })} className="glass-input w-full py-2.5 pl-10 pr-4 text-[13px] min-h-[70px] resize-none" placeholder="Infos complémentaires..." /></div>
             </div>
@@ -927,12 +1064,66 @@ function RdvCreationPanel({
 
         {/* Step: Confirmation */}
         {step === "confirmation" && (
-          <div className="flex flex-col items-center gap-4 py-8 text-center">
+          <div className="flex flex-col items-center gap-4 py-6 text-center">
             <div className="flex h-16 w-16 items-center justify-center rounded-3xl bg-green-500/15"><CheckCircle2 className="h-8 w-8 text-green-500" /></div>
             <div>
               <p className="text-[16px] font-bold">RDV créé !</p>
               <p className="mt-1 text-[13px] text-muted-foreground">Les participants ont été notifiés.</p>
             </div>
+
+            {/* Save external participants to annuaire */}
+            {participants.filter((p) => !p.has_account).length > 0 && (
+              <div className="w-full space-y-2 text-left">
+                <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground text-center">Sauvegarder dans l&apos;annuaire</p>
+                {participants.filter((p) => !p.has_account).map((p) => (
+                  <div key={p.id} className="flex items-center justify-between rounded-xl bg-foreground/[0.04] px-3 py-2.5">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-muted text-[11px] font-bold text-muted-foreground">
+                        {p.full_name?.charAt(0)?.toUpperCase() || "?"}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-[13px] font-medium truncate">{p.full_name}</p>
+                        {p.email && <p className="text-[11px] text-muted-foreground truncate">{p.email}</p>}
+                      </div>
+                    </div>
+                    {savedContacts.has(p.id) ? (
+                      <span className="flex shrink-0 items-center gap-1 rounded-lg bg-green-500/10 px-2 py-1 text-[11px] font-semibold text-green-600">
+                        <CheckCircle2 className="h-3 w-3" /> Ajouté
+                      </span>
+                    ) : (
+                      <button
+                        onClick={() => onSaveParticipant(p)}
+                        className="shrink-0 rounded-lg bg-primary/10 px-2.5 py-1.5 text-[11px] font-medium text-primary transition-colors hover:bg-primary/20"
+                      >
+                        Sauvegarder
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Duplicate detection dialog */}
+            {confirmDuplicate && (
+              <div className="w-full rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 space-y-3 text-left">
+                <p className="text-[12px] font-semibold text-amber-700 dark:text-amber-400">Un contact similaire existe déjà :</p>
+                <div className="flex items-center gap-2">
+                  <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-amber-500/20 text-[11px] font-bold text-amber-600">
+                    {confirmDuplicate.existing.first_name.charAt(0)}
+                  </div>
+                  <div>
+                    <p className="text-[12px] font-semibold">{confirmDuplicate.existing.first_name} {confirmDuplicate.existing.last_name || ""}</p>
+                    {confirmDuplicate.existing.email && <p className="text-[11px] text-muted-foreground">{confirmDuplicate.existing.email}</p>}
+                  </div>
+                </div>
+                <p className="text-[11px] text-muted-foreground">Ajouter quand même ?</p>
+                <div className="flex gap-2">
+                  <button onClick={onCancelDuplicate} className="flex-1 rounded-xl bg-foreground/[0.06] py-2 text-[12px] font-medium text-muted-foreground transition-colors hover:bg-foreground/[0.1]">Annuler</button>
+                  <button onClick={onConfirmDuplicate} className="flex-1 rounded-xl bg-primary py-2 text-[12px] font-semibold text-primary-foreground">Ajouter</button>
+                </div>
+              </div>
+            )}
+
             <button onClick={onClose} className="flex items-center gap-2 rounded-2xl bg-primary px-5 py-2.5 text-[13px] font-semibold text-primary-foreground shadow-lg shadow-primary/25">Fermer</button>
           </div>
         )}
