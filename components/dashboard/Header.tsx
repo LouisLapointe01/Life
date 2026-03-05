@@ -10,7 +10,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { LogOut, User, Bell, Check, CheckCheck, CalendarDays, ArrowRightLeft, XCircle, UserCheck, Info, UserPlus, ShieldX, Loader2 } from "lucide-react";
+import { LogOut, User, Bell, Check, CheckCheck, CalendarDays, ArrowRightLeft, XCircle, UserCheck, Info, UserPlus, ShieldX, Loader2, MessageCircle } from "lucide-react";
 import { LeafLogo } from "@/components/LeafLogo";
 import type { User as SupabaseUser } from "@supabase/supabase-js";
 import Link from "next/link";
@@ -40,6 +40,7 @@ const notifIcons: Record<string, typeof Bell> = {
   reschedule_rejected: XCircle,
   info: Info,
   contact_added: UserPlus,
+  message: MessageCircle,
 };
 
 export function Header({ title }: { title?: string }) {
@@ -122,7 +123,10 @@ export function Header({ title }: { title?: string }) {
 
   const handleNotifClick = (n: Notification) => {
     if (!n.is_read) markAsRead(n.id);
-    if (n.appointment_id) {
+    if (n.type === "message") {
+      router.push("/dashboard/messages");
+      setShowNotifs(false);
+    } else if (n.appointment_id) {
       router.push("/dashboard/agenda");
       setShowNotifs(false);
     }

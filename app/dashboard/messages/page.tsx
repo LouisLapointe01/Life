@@ -1,0 +1,545 @@
+"use client";
+
+import { useState, useEffect, useCallback, useRef } from "react";
+import { createClient } from "@/lib/supabase/client";
+import { cn } from "@/lib/utils";
+import {
+  MessageCircle,
+  Plus,
+  Search,
+  X,
+  ArrowLeft,
+  Send,
+  Loader2,
+} from "lucide-react";
+
+/* ═══════════════════════════════════════════
+   Types
+   ═══════════════════════════════════════════ */
+
+type Conversation = {
+  id: string;
+  other_user: { id: string; full_name: string; avatar_url: string | null };
+  last_message: { content: string; created_at: string; sender_id: string | null } | null;
+  unread_count: number;
+};
+
+type Message = {
+  id: string;
+  conversation_id: string;
+  sender_id: string | null;
+  content: string;
+  created_at: string;
+  sender: { full_name: string; avatar_url: string | null } | null;
+};
+
+type UserResult = {
+  id: string;
+  full_name: string;
+  avatar_url: string | null;
+  email: string | null;
+  has_account: boolean;
+};
+
+/* ═══════════════════════════════════════════
+   Helpers
+   ═══════════════════════════════════════════ */
+
+function timeAgo(dateStr: string) {
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const min = Math.floor(diff / 60000);
+  if (min < 1) return "À l'instant";
+  if (min < 60) return `${min}min`;
+  const h = Math.floor(min / 60);
+  if (h < 24) return `${h}h`;
+  const d = Math.floor(h / 24);
+  if (d === 1) return "Hier";
+  return `${d}j`;
+}
+
+function Avatar({
+  url,
+  name,
+  size = 40,
+}: {
+  url: string | null;
+  name: string;
+  size?: number;
+}) {
+  const initial = name.charAt(0).toUpperCase();
+  const style = { width: size, height: size };
+  if (url) {
+    return (
+      <img
+        src={url}
+        alt={name}
+        style={style}
+        className="rounded-full object-cover shrink-0"
+        referrerPolicy="no-referrer"
+      />
+    );
+  }
+  return (
+    <div
+      style={style}
+      className="rounded-full bg-gradient-to-br from-teal-500 to-teal-600 flex items-center justify-center text-white font-semibold shrink-0"
+    >
+      <span style={{ fontSize: size * 0.38 }}>{initial}</span>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════
+   Page
+   ═══════════════════════════════════════════ */
+
+export default function MessagesPage() {
+  const [myUserId, setMyUserId] = useState<string | null>(null);
+
+  // Conversations
+  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [loadingConvs, setLoadingConvs] = useState(true);
+
+  // Chat actif
+  const [activeConvId, setActiveConvId] = useState<string | null>(null);
+  const [activeConv, setActiveConv] = useState<Conversation | null>(null);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [loadingMessages, setLoadingMessages] = useState(false);
+
+  // Envoi
+  const [newMessage, setNewMessage] = useState("");
+  const [sending, setSending] = useState(false);
+
+  // Recherche nouvel utilisateur
+  const [showSearch, setShowSearch] = useState(false);
+  const [searchUser, setSearchUser] = useState("");
+  const [userResults, setUserResults] = useState<UserResult[]>([]);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [startingConv, setStartingConv] = useState<string | null>(null);
+
+  // Mobile view
+  const [mobileView, setMobileView] = useState<"list" | "chat">("list");
+
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
+  const searchDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  /* ─── Récupérer l'userId courant ─── */
+  useEffect(() => {
+    const supabase = createClient();
+    supabase.auth.getUser().then(({ data }) => setMyUserId(data.user?.id ?? null));
+  }, []);
+
+  /* ─── Fetch conversations ─── */
+  const fetchConversations = useCallback(async () => {
+    try {
+      const res = await fetch("/api/conversations");
+      if (res.ok) {
+        const data = await res.json();
+        setConversations(data.conversations || []);
+      }
+    } catch { /* ignore */ }
+    finally { setLoadingConvs(false); }
+  }, []);
+
+  useEffect(() => {
+    fetchConversations();
+    const interval = setInterval(fetchConversations, 15000);
+    return () => clearInterval(interval);
+  }, [fetchConversations]);
+
+  /* ─── Fetch messages ─── */
+  const fetchMessages = useCallback(async (convId: string) => {
+    setLoadingMessages(true);
+    try {
+      const res = await fetch(`/api/messages?conversation_id=${convId}`);
+      if (res.ok) {
+        const data = await res.json();
+        setMessages(data.messages || []);
+        // Réinitialiser le badge unread localement
+        setConversations((prev) =>
+          prev.map((c) => c.id === convId ? { ...c, unread_count: 0 } : c)
+        );
+      }
+    } catch { /* ignore */ }
+    finally { setLoadingMessages(false); }
+  }, []);
+
+  /* ─── Ouvrir une conversation ─── */
+  const openConversation = useCallback((conv: Conversation) => {
+    setActiveConvId(conv.id);
+    setActiveConv(conv);
+    setMessages([]);
+    fetchMessages(conv.id);
+    setMobileView("chat");
+  }, [fetchMessages]);
+
+  /* ─── Realtime messages ─── */
+  useEffect(() => {
+    if (!activeConvId) return;
+    const supabase = createClient();
+    const sub = supabase
+      .channel("msg-rt-" + activeConvId)
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "messages",
+          filter: `conversation_id=eq.${activeConvId}`,
+        },
+        () => fetchMessages(activeConvId)
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(sub); };
+  }, [activeConvId, fetchMessages]);
+
+  /* ─── Auto-scroll ─── */
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
+
+  /* ─── Envoyer un message ─── */
+  const sendMessage = async () => {
+    if (!newMessage.trim() || !activeConvId || sending) return;
+    const content = newMessage.trim();
+    setNewMessage("");
+    setSending(true);
+
+    // Optimistic update
+    const optimistic: Message = {
+      id: "opt-" + Date.now(),
+      conversation_id: activeConvId,
+      sender_id: myUserId,
+      content,
+      created_at: new Date().toISOString(),
+      sender: null,
+    };
+    setMessages((prev) => [...prev, optimistic]);
+
+    try {
+      const res = await fetch("/api/messages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ conversation_id: activeConvId, content }),
+      });
+      if (res.ok) {
+        await fetchMessages(activeConvId);
+        await fetchConversations();
+      }
+    } catch { /* ignore */ }
+    finally { setSending(false); }
+  };
+
+  /* ─── Recherche utilisateurs ─── */
+  useEffect(() => {
+    if (searchDebounce.current) clearTimeout(searchDebounce.current);
+    if (searchUser.length < 2) { setUserResults([]); return; }
+
+    searchDebounce.current = setTimeout(async () => {
+      setSearchLoading(true);
+      try {
+        const res = await fetch(`/api/appointments/users?q=${encodeURIComponent(searchUser)}&mode=all`);
+        if (res.ok) {
+          const data = await res.json();
+          setUserResults((data.users || []).filter((u: UserResult) => u.has_account));
+        }
+      } catch { /* ignore */ }
+      finally { setSearchLoading(false); }
+    }, 300);
+  }, [searchUser]);
+
+  /* ─── Démarrer une conversation ─── */
+  const startConversation = async (userId: string) => {
+    setStartingConv(userId);
+    try {
+      const res = await fetch("/api/conversations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ other_user_id: userId }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        await fetchConversations();
+        setShowSearch(false);
+        setSearchUser("");
+        setUserResults([]);
+        // Trouver la conv dans la liste et l'ouvrir
+        const convRes = await fetch("/api/conversations");
+        if (convRes.ok) {
+          const convData = await convRes.json();
+          const convs: Conversation[] = convData.conversations || [];
+          setConversations(convs);
+          const found = convs.find((c) => c.id === data.conversation_id);
+          if (found) openConversation(found);
+        }
+      }
+    } catch { /* ignore */ }
+    finally { setStartingConv(null); }
+  };
+
+  /* ─── Keyboard handler ─── */
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
+    }
+  };
+
+  /* ─── Render ─── */
+  return (
+    <div className="flex h-full overflow-hidden">
+      {/* ══════════════════════════════════
+          Colonne gauche — liste des convs
+          ══════════════════════════════════ */}
+      <div
+        className={cn(
+          "flex flex-col w-full lg:w-[300px] xl:w-[340px] shrink-0",
+          "border-r border-foreground/[0.06]",
+          // Mobile: masquer si on est en vue chat
+          mobileView === "chat" && "hidden lg:flex"
+        )}
+      >
+        {/* Header liste */}
+        <div className="flex items-center justify-between px-4 py-3 border-b border-foreground/[0.06]">
+          <h2 className="text-[15px] font-semibold">Messages</h2>
+          <button
+            onClick={() => { setShowSearch(true); setSearchUser(""); setUserResults([]); }}
+            className="flex h-8 w-8 items-center justify-center rounded-xl text-muted-foreground hover:bg-foreground/[0.06] hover:text-foreground transition-colors"
+            title="Nouvelle conversation"
+          >
+            <Plus className="h-4 w-4" />
+          </button>
+        </div>
+
+        {/* Recherche nouvelle conv */}
+        {showSearch && (
+          <div className="px-4 py-3 border-b border-foreground/[0.06] bg-foreground/[0.02]">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+              <input
+                autoFocus
+                value={searchUser}
+                onChange={(e) => setSearchUser(e.target.value)}
+                placeholder="Rechercher un utilisateur…"
+                className="w-full rounded-xl border border-foreground/[0.08] bg-background pl-9 pr-8 py-2 text-[13px] outline-none focus:border-primary/50"
+              />
+              <button
+                onClick={() => { setShowSearch(false); setSearchUser(""); setUserResults([]); }}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </div>
+
+            {/* Résultats recherche */}
+            {searchLoading && (
+              <div className="flex justify-center pt-3">
+                <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+              </div>
+            )}
+            {!searchLoading && userResults.length > 0 && (
+              <div className="mt-2 space-y-0.5">
+                {userResults.map((u) => (
+                  <button
+                    key={u.id}
+                    onClick={() => startConversation(u.id)}
+                    disabled={startingConv === u.id}
+                    className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left hover:bg-foreground/[0.06] transition-colors disabled:opacity-50"
+                  >
+                    <Avatar url={u.avatar_url} name={u.full_name} size={32} />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[13px] font-medium truncate">{u.full_name}</p>
+                      {u.email && <p className="text-[11px] text-muted-foreground truncate">{u.email}</p>}
+                    </div>
+                    {startingConv === u.id && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
+                  </button>
+                ))}
+              </div>
+            )}
+            {!searchLoading && searchUser.length >= 2 && userResults.length === 0 && (
+              <p className="pt-3 text-center text-[12px] text-muted-foreground">Aucun utilisateur trouvé</p>
+            )}
+          </div>
+        )}
+
+        {/* Liste des conversations */}
+        <div className="flex-1 overflow-y-auto">
+          {loadingConvs ? (
+            <div className="flex justify-center pt-10">
+              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+            </div>
+          ) : conversations.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-full py-16 text-center px-6">
+              <MessageCircle className="h-10 w-10 text-muted-foreground/20 mb-3" />
+              <p className="text-[13px] font-medium text-muted-foreground">Aucune conversation</p>
+              <p className="text-[12px] text-muted-foreground/60 mt-1">
+                Cliquez sur + pour démarrer une conversation
+              </p>
+            </div>
+          ) : (
+            conversations.map((conv) => (
+              <button
+                key={conv.id}
+                onClick={() => openConversation(conv)}
+                className={cn(
+                  "flex w-full items-center gap-3 px-4 py-3 text-left transition-colors border-b border-foreground/[0.04] last:border-0",
+                  activeConvId === conv.id
+                    ? "bg-primary/[0.06]"
+                    : "hover:bg-foreground/[0.04]"
+                )}
+              >
+                <Avatar url={conv.other_user.avatar_url} name={conv.other_user.full_name} size={40} />
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between">
+                    <p className={cn("text-[13px] truncate", conv.unread_count > 0 ? "font-semibold" : "font-medium")}>
+                      {conv.other_user.full_name}
+                    </p>
+                    {conv.last_message && (
+                      <span className="text-[10px] text-muted-foreground/60 shrink-0 ml-2">
+                        {timeAgo(conv.last_message.created_at)}
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-center justify-between mt-0.5">
+                    <p className={cn(
+                      "text-[12px] truncate",
+                      conv.unread_count > 0 ? "text-foreground" : "text-muted-foreground"
+                    )}>
+                      {conv.last_message?.content ?? "Démarrer la conversation"}
+                    </p>
+                    {conv.unread_count > 0 && (
+                      <span className="ml-2 flex h-4.5 min-w-4.5 items-center justify-center rounded-full bg-primary px-1 text-[9px] font-bold text-primary-foreground shrink-0">
+                        {conv.unread_count > 9 ? "9+" : conv.unread_count}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </button>
+            ))
+          )}
+        </div>
+      </div>
+
+      {/* ══════════════════════════════════
+          Colonne droite — chat actif
+          ══════════════════════════════════ */}
+      <div
+        className={cn(
+          "flex flex-col flex-1 overflow-hidden",
+          mobileView === "list" && "hidden lg:flex"
+        )}
+      >
+        {!activeConv ? (
+          /* État vide */
+          <div className="flex flex-col items-center justify-center h-full text-center px-6">
+            <div className="h-16 w-16 rounded-2xl bg-teal-500/10 flex items-center justify-center mb-4">
+              <MessageCircle className="h-8 w-8 text-teal-500" />
+            </div>
+            <p className="text-[15px] font-semibold">Vos messages</p>
+            <p className="text-[13px] text-muted-foreground mt-1">
+              Sélectionnez une conversation ou démarrez-en une nouvelle
+            </p>
+          </div>
+        ) : (
+          <>
+            {/* Header chat */}
+            <div className="flex items-center gap-3 px-4 py-3 border-b border-foreground/[0.06] bg-background/50">
+              {/* Bouton retour mobile */}
+              <button
+                onClick={() => setMobileView("list")}
+                className="flex lg:hidden h-8 w-8 items-center justify-center rounded-xl text-muted-foreground hover:bg-foreground/[0.06] transition-colors"
+              >
+                <ArrowLeft className="h-4 w-4" />
+              </button>
+              <Avatar url={activeConv.other_user.avatar_url} name={activeConv.other_user.full_name} size={36} />
+              <p className="text-[14px] font-semibold">{activeConv.other_user.full_name}</p>
+            </div>
+
+            {/* Zone messages */}
+            <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
+              {loadingMessages ? (
+                <div className="flex justify-center pt-8">
+                  <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                </div>
+              ) : messages.length === 0 ? (
+                <div className="flex flex-col items-center justify-center h-full text-center">
+                  <p className="text-[12px] text-muted-foreground">Aucun message. Dites bonjour !</p>
+                </div>
+              ) : (
+                messages.map((msg) => {
+                  const isMe = msg.sender_id === myUserId;
+                  return (
+                    <div key={msg.id} className={cn("flex gap-2", isMe ? "flex-row-reverse" : "flex-row")}>
+                      {!isMe && (
+                        <Avatar
+                          url={msg.sender?.avatar_url ?? activeConv.other_user.avatar_url}
+                          name={msg.sender?.full_name ?? activeConv.other_user.full_name}
+                          size={28}
+                        />
+                      )}
+                      <div className={cn("flex flex-col max-w-[70%]", isMe ? "items-end" : "items-start")}>
+                        <div
+                          className={cn(
+                            "px-3.5 py-2 text-[13px] leading-relaxed whitespace-pre-wrap break-words",
+                            isMe
+                              ? "bg-primary text-primary-foreground rounded-2xl rounded-br-sm"
+                              : "bg-foreground/[0.06] rounded-2xl rounded-bl-sm"
+                          )}
+                        >
+                          {msg.content}
+                        </div>
+                        <span className="mt-1 text-[10px] text-muted-foreground">
+                          {timeAgo(msg.created_at)}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+              <div ref={messagesEndRef} />
+            </div>
+
+            {/* Zone saisie */}
+            <div className="flex items-end gap-2 px-4 py-3 border-t border-foreground/[0.06]">
+              <textarea
+                ref={inputRef}
+                value={newMessage}
+                onChange={(e) => setNewMessage(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder="Écrire un message…"
+                rows={1}
+                className={cn(
+                  "flex-1 resize-none rounded-2xl border border-foreground/[0.08] bg-foreground/[0.03]",
+                  "px-4 py-2.5 text-[13px] outline-none focus:border-primary/40",
+                  "max-h-32 overflow-y-auto"
+                )}
+                style={{ minHeight: 42 }}
+                onInput={(e) => {
+                  const el = e.currentTarget;
+                  el.style.height = "auto";
+                  el.style.height = Math.min(el.scrollHeight, 128) + "px";
+                }}
+              />
+              <button
+                onClick={sendMessage}
+                disabled={!newMessage.trim() || sending}
+                className={cn(
+                  "flex h-[42px] w-[42px] shrink-0 items-center justify-center rounded-2xl transition-colors",
+                  newMessage.trim()
+                    ? "bg-primary text-primary-foreground hover:bg-primary/90"
+                    : "bg-foreground/[0.06] text-muted-foreground"
+                )}
+              >
+                {sending
+                  ? <Loader2 className="h-4 w-4 animate-spin" />
+                  : <Send className="h-4 w-4" />
+                }
+              </button>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
