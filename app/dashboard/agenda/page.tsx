@@ -207,9 +207,15 @@ export default function AgendaPage() {
       try {
         const res = await fetch(`/api/appointments/users?q=${encodeURIComponent(recipientSearch)}&mode=all`);
         const data = await res.json();
-        // Filtrer ceux déjà ajoutés + soi-même
+        // Filtrer ceux déjà ajoutés (par id OU par email) + soi-même
         const addedIds = new Set(rdvParticipants.map((p) => p.id));
-        setRecipientResults((data.users || []).filter((u: UserProfile) => u.id !== profile?.id && !addedIds.has(u.id)));
+        const addedEmails = new Set(rdvParticipants.filter((p) => p.email).map((p) => p.email!.toLowerCase()));
+        setRecipientResults((data.users || []).filter((u: UserProfile) => {
+          if (u.id === profile?.id) return false;
+          if (addedIds.has(u.id)) return false;
+          if (u.email && addedEmails.has(u.email.toLowerCase())) return false;
+          return true;
+        }));
       } catch { setRecipientResults([]); }
       setSearchingRecipients(false);
     }, 300);
