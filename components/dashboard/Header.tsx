@@ -44,7 +44,16 @@ const notifIcons: Record<string, typeof Bell> = {
 };
 
 // Sections de la barre latérale dans l'ordre d'affichage
-const NOTIF_SECTIONS = [
+type NotifSection = {
+  id: string;
+  label: string;
+  icon: typeof Bell;
+  types: Set<string>;
+  color: string;
+  fallback?: boolean;
+};
+
+const NOTIF_SECTIONS: NotifSection[] = [
   {
     id: "agenda",
     label: "Agenda",
@@ -74,7 +83,7 @@ const NOTIF_SECTIONS = [
     color: "text-muted-foreground",
     fallback: true, // reçoit tout ce qui ne correspond pas aux autres
   },
-] as const;
+];
 
 export function Header({ title }: { title?: string }) {
   const router = useRouter();
