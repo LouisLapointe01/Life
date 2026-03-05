@@ -10,7 +10,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { LogOut, User, Bell, Check, CheckCheck, CalendarDays, ArrowRightLeft, XCircle, UserCheck, Info } from "lucide-react";
+import { LogOut, User, Bell, Check, CheckCheck, CalendarDays, ArrowRightLeft, XCircle, UserCheck, Info, UserPlus, ShieldX, Loader2 } from "lucide-react";
 import { LeafLogo } from "@/components/LeafLogo";
 import type { User as SupabaseUser } from "@supabase/supabase-js";
 import Link from "next/link";
@@ -26,6 +26,7 @@ type Notification = {
   created_at: string;
   appointment_id: string | null;
   from_name: string | null;
+  from_user_id: string | null;
 };
 
 const notifIcons: Record<string, typeof Bell> = {
@@ -38,6 +39,7 @@ const notifIcons: Record<string, typeof Bell> = {
   reschedule_approved: CheckCheck,
   reschedule_rejected: XCircle,
   info: Info,
+  contact_added: UserPlus,
 };
 
 export function Header({ title }: { title?: string }) {
@@ -49,6 +51,7 @@ export function Header({ title }: { title?: string }) {
   const [unreadCount, setUnreadCount] = useState(0);
   const [showNotifs, setShowNotifs] = useState(false);
   const notifRef = useRef<HTMLDivElement>(null);
+  const [blockingId, setBlockingId] = useState<string | null>(null);
 
   useEffect(() => {
     const supabase = createClient();
@@ -125,6 +128,23 @@ export function Header({ title }: { title?: string }) {
     }
   };
 
+  const handleBlock = async (n: Notification) => {
+    if (!n.from_user_id) return;
+    setBlockingId(n.id);
+    try {
+      const res = await fetch("/api/contacts/block", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ from_user_id: n.from_user_id, notification_id: n.id }),
+      });
+      if (res.ok) {
+        setNotifications((prev) => prev.filter((x) => x.id !== n.id));
+        if (!n.is_read) setUnreadCount((c) => Math.max(0, c - 1));
+      }
+    } catch { /* ignore */ }
+    setBlockingId(null);
+  };
+
   const handleSignOut = async () => {
     const supabase = createClient();
     await supabase.auth.signOut();
@@ -192,34 +212,58 @@ export function Header({ title }: { title?: string }) {
                 ) : (
                   notifications.map((n) => {
                     const Icon = notifIcons[n.type] || Bell;
+                    const isContactAdded = n.type === "contact_added";
                     return (
-                      <button
+                      <div
                         key={n.id}
-                        onClick={() => handleNotifClick(n)}
                         className={cn(
-                          "flex w-full items-start gap-3 px-4 py-3 text-left transition-colors hover:bg-foreground/[0.03] border-b border-foreground/[0.04] last:border-0",
+                          "border-b border-foreground/[0.04] last:border-0",
                           !n.is_read && "bg-primary/[0.04]"
                         )}
                       >
-                        <div className={cn(
-                          "flex h-8 w-8 shrink-0 items-center justify-center rounded-xl mt-0.5",
-                          !n.is_read ? "bg-primary/15 text-primary" : "bg-foreground/[0.06] text-muted-foreground"
-                        )}>
-                          <Icon className="h-3.5 w-3.5" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className={cn("text-[12px] leading-snug", !n.is_read ? "font-semibold" : "font-medium text-muted-foreground")}>
-                            {n.title}
-                          </p>
-                          {n.body && (
-                            <p className="text-[11px] text-muted-foreground mt-0.5 line-clamp-2">{n.body}</p>
+                        {/* Ligne principale cliquable */}
+                        <button
+                          onClick={() => handleNotifClick(n)}
+                          className="flex w-full items-start gap-3 px-4 py-3 text-left transition-colors hover:bg-foreground/[0.03]"
+                        >
+                          <div className={cn(
+                            "flex h-8 w-8 shrink-0 items-center justify-center rounded-xl mt-0.5",
+                            isContactAdded
+                              ? "bg-blue-500/15 text-blue-500"
+                              : !n.is_read ? "bg-primary/15 text-primary" : "bg-foreground/[0.06] text-muted-foreground"
+                          )}>
+                            <Icon className="h-3.5 w-3.5" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className={cn("text-[12px] leading-snug", !n.is_read ? "font-semibold" : "font-medium text-muted-foreground")}>
+                              {n.title}
+                            </p>
+                            {n.body && (
+                              <p className="text-[11px] text-muted-foreground mt-0.5 line-clamp-2">{n.body}</p>
+                            )}
+                            <p className="text-[10px] text-muted-foreground/60 mt-1">{timeAgo(n.created_at)}</p>
+                          </div>
+                          {!n.is_read && (
+                            <span className="mt-2 h-2 w-2 shrink-0 rounded-full bg-primary" />
                           )}
-                          <p className="text-[10px] text-muted-foreground/60 mt-1">{timeAgo(n.created_at)}</p>
-                        </div>
-                        {!n.is_read && (
-                          <span className="mt-2 h-2 w-2 shrink-0 rounded-full bg-primary" />
+                        </button>
+
+                        {/* Bouton Bloquer (contact_added uniquement) */}
+                        {isContactAdded && n.from_user_id && (
+                          <div className="px-4 pb-3">
+                            <button
+                              onClick={() => handleBlock(n)}
+                              disabled={blockingId === n.id}
+                              className="flex items-center gap-1.5 rounded-lg bg-red-500/10 px-3 py-1.5 text-[11px] font-semibold text-red-500 transition-colors hover:bg-red-500/20 disabled:opacity-50"
+                            >
+                              {blockingId === n.id
+                                ? <Loader2 className="h-3 w-3 animate-spin" />
+                                : <ShieldX className="h-3 w-3" />}
+                              Bloquer
+                            </button>
+                          </div>
                         )}
-                      </button>
+                      </div>
                     );
                   })
                 )}

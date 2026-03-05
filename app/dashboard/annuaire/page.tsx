@@ -29,8 +29,10 @@ import {
   Copy,
   Tag,
   UserCheck,
+  UserX,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 
 /* ═══════════════════════════════════════════════════════
@@ -192,6 +194,31 @@ export default function AnnuairePage() {
       is_close: contact.is_close,
     });
     setDialogOpen(true);
+  };
+
+  /* ─── Sauvegarde directe depuis la recherche ─── */
+  const handleDirectSave = async (user: UserResult) => {
+    const parts = user.full_name.trim().split(" ");
+    const payload = {
+      first_name: parts[0] || user.full_name,
+      last_name: parts.slice(1).join(" ") || null,
+      email: user.email || null,
+      phone: user.phone || null,
+      notes: null,
+      tags: [],
+      is_close: false,
+      updated_at: new Date().toISOString(),
+    };
+    const res = await fetch("/api/contacts", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    if (res.ok) {
+      setDialogOpen(false);
+      await fetchContacts();
+      toast.success(`${user.full_name} ajouté à l'annuaire`);
+    }
   };
 
   /* ─── Sauvegarder (ajout ou modif) ─── */
@@ -477,6 +504,7 @@ export default function AnnuairePage() {
             form={form}
             onChange={setForm}
             onSubmit={handleSave}
+            onDirectSave={handleDirectSave}
             saving={saving}
             isEdit={!!editContact}
           />
@@ -851,12 +879,14 @@ function ContactForm({
   form,
   onChange,
   onSubmit,
+  onDirectSave,
   saving,
   isEdit,
 }: {
   form: ContactFormData;
   onChange: (f: ContactFormData) => void;
   onSubmit: () => void;
+  onDirectSave: (user: UserResult) => Promise<void>;
   saving: boolean;
   isEdit: boolean;
 }) {
@@ -864,8 +894,16 @@ function ContactForm({
     (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
       onChange({ ...form, [key]: e.target.value });
 
-  // ── Mode (saisie manuelle vs recherche plateforme) ──
-  const [mode, setMode] = useState<"manual" | "search">("manual");
+  // ── Mode (recherche par défaut, manuel si édition) ──
+  const [mode, setMode] = useState<"manual" | "search">(isEdit ? "manual" : "search");
+
+  // Réinitialiser le mode quand on bascule add/edit
+  useEffect(() => {
+    setMode(isEdit ? "manual" : "search");
+  }, [isEdit]);
+
+  // Sauvegarde directe depuis les résultats de recherche
+  const [savingUserId, setSavingUserId] = useState<string | null>(null);
 
   // ── Recherche plateforme ──
   const [userSearch, setUserSearch] = useState("");
@@ -1014,13 +1052,18 @@ function ContactForm({
           )}
 
           {userResults.length > 0 && (
-            <div className="space-y-1.5 max-h-64 overflow-y-auto">
+            <div className="space-y-1.5 max-h-52 overflow-y-auto">
               {userResults.map((user) => (
                 <button
                   key={user.id}
                   type="button"
-                  onClick={() => fillFromUser(user)}
-                  className="flex w-full items-center gap-3 rounded-xl p-2.5 text-left transition-all hover:bg-foreground/[0.04]"
+                  disabled={savingUserId !== null}
+                  onClick={async () => {
+                    setSavingUserId(user.id);
+                    await onDirectSave(user);
+                    setSavingUserId(null);
+                  }}
+                  className="flex w-full items-center gap-3 rounded-xl p-2.5 text-left transition-all hover:bg-foreground/[0.04] disabled:opacity-60"
                 >
                   <div className={cn(
                     "flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-[14px] font-bold",
@@ -1045,22 +1088,24 @@ function ContactForm({
                     {user.email && <p className="text-[11px] text-muted-foreground truncate">{user.email}</p>}
                     {user.phone && <p className="text-[11px] text-muted-foreground">{user.phone}</p>}
                   </div>
-                  <Plus className="h-4 w-4 shrink-0 text-muted-foreground/50" />
+                  {savingUserId === user.id
+                    ? <Loader2 className="h-4 w-4 shrink-0 animate-spin text-primary" />
+                    : <Plus className="h-4 w-4 shrink-0 text-muted-foreground/50" />}
                 </button>
               ))}
             </div>
           )}
 
-          {/* Accès rapide au formulaire manuel si rien trouvé */}
-          {!searchingUsers && userSearch.length >= 2 && userResults.length === 0 && (
+          {/* Bouton permanent — contact pas inscrit */}
+          <div className="border-t border-foreground/[0.06] pt-3">
             <button
               type="button"
-              onClick={() => { setMode("manual"); onChange({ ...form, first_name: userSearch }); }}
+              onClick={() => { setMode("manual"); if (userSearch) onChange({ ...form, first_name: userSearch }); }}
               className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-foreground/[0.15] py-2.5 text-[12px] font-medium text-muted-foreground transition-colors hover:border-primary/40 hover:text-primary"
             >
-              <Plus className="h-4 w-4" /> Ajouter &laquo;{userSearch}&raquo; manuellement
+              <UserX className="h-4 w-4" /> Contact pas inscrit
             </button>
-          )}
+          </div>
         </div>
       )}
 

@@ -54,6 +54,38 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
+    // Notifier l'utilisateur ajouté s'il a un compte
+    if (data && body.email) {
+      const { data: targetProfile } = await supabase
+        .from("profiles")
+        .select("id")
+        .ilike("email", body.email)
+        .neq("id", user.id)
+        .limit(1)
+        .maybeSingle();
+
+      if (targetProfile) {
+        const { data: adderProfile } = await supabase
+          .from("profiles")
+          .select("full_name")
+          .eq("id", user.id)
+          .maybeSingle();
+
+        const adderName = adderProfile?.full_name || "Quelqu'un";
+        const isClose = !!body.is_close;
+        await supabase.from("notifications").insert({
+          user_id: targetProfile.id,
+          type: "contact_added",
+          from_user_id: user.id,
+          from_name: adderName,
+          title: isClose
+            ? `${adderName} vous a ajouté comme contact proche ⭐`
+            : `${adderName} vous a ajouté comme contact`,
+          body: "Vous pouvez bloquer cet ajout si vous ne le souhaitez pas.",
+        });
+      }
+    }
+
     return NextResponse.json(data, { status: 201 });
   } catch {
     return NextResponse.json({ error: "Erreur serveur" }, { status: 500 });
