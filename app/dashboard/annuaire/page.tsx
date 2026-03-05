@@ -61,6 +61,16 @@ type ContactFormData = {
   is_close: boolean;
 };
 
+type UserResult = {
+  id: string;
+  full_name: string;
+  email: string | null;
+  phone: string | null;
+  has_account: boolean;
+  is_close: boolean;
+  avatar_url: string | null;
+};
+
 const FORM_INITIAL: ContactFormData = {
   first_name: "",
   last_name: "",
@@ -854,146 +864,285 @@ function ContactForm({
     (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
       onChange({ ...form, [key]: e.target.value });
 
+  // ── Mode (saisie manuelle vs recherche plateforme) ──
+  const [mode, setMode] = useState<"manual" | "search">("manual");
+
+  // ── Recherche plateforme ──
+  const [userSearch, setUserSearch] = useState("");
+  const [userResults, setUserResults] = useState<UserResult[]>([]);
+  const [searchingUsers, setSearchingUsers] = useState(false);
+
+  // ── Détection utilisateur inscrit (email manuel) ──
+  const [suggestedUser, setSuggestedUser] = useState<UserResult | null>(null);
+  const [checkingEmail, setCheckingEmail] = useState(false);
+
+  // Recherche temps réel en mode "search"
+  useEffect(() => {
+    if (mode !== "search" || userSearch.length < 2) { setUserResults([]); return; }
+    const timer = setTimeout(async () => {
+      setSearchingUsers(true);
+      try {
+        const res = await fetch(`/api/appointments/users?q=${encodeURIComponent(userSearch)}&mode=all`);
+        const data = await res.json();
+        setUserResults(data.users || []);
+      } catch { setUserResults([]); }
+      setSearchingUsers(false);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [userSearch, mode]);
+
+  // Détection utilisateur inscrit via email (mode manuel)
+  useEffect(() => {
+    if (mode !== "manual" || !form.email || form.email.length < 5) {
+      setSuggestedUser(null);
+      return;
+    }
+    const timer = setTimeout(async () => {
+      setCheckingEmail(true);
+      try {
+        const res = await fetch(`/api/appointments/users?q=${encodeURIComponent(form.email)}&mode=email`);
+        const data = await res.json();
+        const match = (data.users || []).find((u: UserResult) => u.has_account);
+        setSuggestedUser(match || null);
+      } catch { setSuggestedUser(null); }
+      setCheckingEmail(false);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [form.email, mode]);
+
+  // Remplir le formulaire depuis un utilisateur trouvé
+  const fillFromUser = (user: UserResult) => {
+    const parts = user.full_name.trim().split(" ");
+    const first = parts[0] || "";
+    const last = parts.slice(1).join(" ");
+    onChange({
+      ...form,
+      first_name: first,
+      last_name: last,
+      email: user.email || form.email,
+      phone: user.phone || form.phone,
+    });
+    setMode("manual");
+    setUserSearch("");
+    setUserResults([]);
+    setSuggestedUser(null);
+  };
+
+  // Champs communs (proche toggle + bouton submit)
+  const CloseToggle = () => (
+    <button
+      type="button"
+      onClick={() => onChange({ ...form, is_close: !form.is_close })}
+      className={cn(
+        "flex w-full items-center gap-3 rounded-2xl border p-4 text-left transition-all duration-200",
+        form.is_close
+          ? "border-yellow-400/40 bg-yellow-500/10"
+          : "border-foreground/[0.08] bg-foreground/[0.02] hover:bg-foreground/[0.04]"
+      )}
+    >
+      <div className={cn("flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-colors", form.is_close ? "bg-yellow-400/20" : "bg-foreground/[0.06]")}>
+        <Star className={cn("h-4 w-4 transition-colors", form.is_close ? "fill-yellow-400 text-yellow-400" : "text-muted-foreground")} />
+      </div>
+      <div className="flex-1">
+        <p className="text-[13px] font-semibold">Contact proche</p>
+        <p className="text-[11px] text-muted-foreground">Les proches peuvent recevoir des notifications.</p>
+      </div>
+      <div className={cn("h-5 w-9 rounded-full transition-colors duration-200 relative", form.is_close ? "bg-yellow-400" : "bg-foreground/20")}>
+        <div className={cn("absolute top-0.5 h-4 w-4 rounded-full bg-white shadow-sm transition-all duration-200", form.is_close ? "left-4" : "left-0.5")} />
+      </div>
+    </button>
+  );
+
+  const SubmitBtn = () => (
+    <button
+      onClick={onSubmit}
+      disabled={!form.first_name.trim() || saving}
+      className="w-full rounded-2xl bg-primary py-3 text-[14px] font-semibold text-primary-foreground shadow-lg shadow-primary/25 transition-all hover:shadow-xl disabled:opacity-50"
+    >
+      {saving ? <Loader2 className="mx-auto h-4 w-4 animate-spin" /> : isEdit ? "Enregistrer les modifications" : "Créer le contact"}
+    </button>
+  );
+
   return (
     <div className="space-y-4 pt-2">
-      {/* Prénom + Nom */}
-      <div className="grid grid-cols-2 gap-3">
-        <div className="space-y-1.5">
-          <label className="text-[13px] font-medium">
-            Prénom <span className="text-red-500">*</span>
-          </label>
-          <input
-            value={form.first_name}
-            onChange={set("first_name")}
-            placeholder="Marie"
-            className="glass-input w-full py-2.5 px-4 text-[14px]"
-            autoFocus
-          />
+      {/* ── Toggle mode (ajout uniquement) ── */}
+      {!isEdit && (
+        <div className="flex rounded-xl bg-foreground/[0.04] p-0.5">
+          <button
+            type="button"
+            onClick={() => setMode("manual")}
+            className={cn("flex flex-1 items-center justify-center gap-1.5 rounded-lg py-2 text-[12px] font-medium transition-all", mode === "manual" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground")}
+          >
+            <Pencil className="h-3.5 w-3.5" /> Saisie manuelle
+          </button>
+          <button
+            type="button"
+            onClick={() => setMode("search")}
+            className={cn("flex flex-1 items-center justify-center gap-1.5 rounded-lg py-2 text-[12px] font-medium transition-all", mode === "search" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground")}
+          >
+            <Search className="h-3.5 w-3.5" /> Rechercher
+          </button>
         </div>
-        <div className="space-y-1.5">
-          <label className="text-[13px] font-medium">Nom</label>
-          <input
-            value={form.last_name}
-            onChange={set("last_name")}
-            placeholder="Dupont"
-            className="glass-input w-full py-2.5 px-4 text-[14px]"
-          />
-        </div>
-      </div>
+      )}
 
-      {/* Email */}
-      <div className="space-y-1.5">
-        <label className="text-[13px] font-medium">Email</label>
-        <input
-          type="email"
-          value={form.email}
-          onChange={set("email")}
-          placeholder="marie@exemple.fr"
-          className="glass-input w-full py-2.5 px-4 text-[14px]"
-        />
-      </div>
-
-      {/* Téléphone */}
-      <div className="space-y-1.5">
-        <label className="text-[13px] font-medium">Téléphone</label>
-        <input
-          type="tel"
-          value={form.phone}
-          onChange={set("phone")}
-          placeholder="+33 6 12 34 56 78"
-          className="glass-input w-full py-2.5 px-4 text-[14px]"
-        />
-      </div>
-
-      {/* Tags */}
-      <div className="space-y-1.5">
-        <label className="text-[13px] font-medium flex items-center gap-1.5">
-          <Tag className="h-3.5 w-3.5 text-muted-foreground" />
-          Tags
-          <span className="text-muted-foreground font-normal">(séparés par des virgules)</span>
-        </label>
-        <input
-          value={form.tags}
-          onChange={set("tags")}
-          placeholder="famille, travail, ami…"
-          className="glass-input w-full py-2.5 px-4 text-[14px]"
-        />
-      </div>
-
-      {/* Notes */}
-      <div className="space-y-1.5">
-        <label className="text-[13px] font-medium">Notes</label>
-        <textarea
-          value={form.notes}
-          onChange={set("notes")}
-          placeholder="Informations complémentaires…"
-          rows={3}
-          className="glass-input w-full py-2.5 px-4 text-[14px] resize-none"
-        />
-      </div>
-
-      {/* Contact proche */}
-      <button
-        type="button"
-        onClick={() => onChange({ ...form, is_close: !form.is_close })}
-        className={cn(
-          "flex w-full items-center gap-3 rounded-2xl border p-4 text-left transition-all duration-200",
-          form.is_close
-            ? "border-yellow-400/40 bg-yellow-500/10"
-            : "border-foreground/[0.08] bg-foreground/[0.02] hover:bg-foreground/[0.04]"
-        )}
-      >
-        <div
-          className={cn(
-            "flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-colors",
-            form.is_close ? "bg-yellow-400/20" : "bg-foreground/[0.06]"
-          )}
-        >
-          <Star
-            className={cn(
-              "h-4 w-4 transition-colors",
-              form.is_close
-                ? "fill-yellow-400 text-yellow-400"
-                : "text-muted-foreground"
-            )}
-          />
-        </div>
-        <div className="flex-1">
-          <p className="text-[13px] font-semibold">Contact proche</p>
-          <p className="text-[11px] text-muted-foreground">
-            Les proches peuvent recevoir des notifications.
+      {/* ── Mode : Recherche plateforme ── */}
+      {mode === "search" && (
+        <div className="space-y-3">
+          <p className="text-[12px] text-muted-foreground text-center">
+            Recherchez un utilisateur inscrit sur la plateforme pour l&apos;ajouter directement.
           </p>
-        </div>
-        {/* Toggle visuel */}
-        <div
-          className={cn(
-            "h-5 w-9 rounded-full transition-colors duration-200 relative",
-            form.is_close ? "bg-yellow-400" : "bg-foreground/20"
-          )}
-        >
-          <div
-            className={cn(
-              "absolute top-0.5 h-4 w-4 rounded-full bg-white shadow-sm transition-all duration-200",
-              form.is_close ? "left-4" : "left-0.5"
-            )}
-          />
-        </div>
-      </button>
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <input
+              type="text"
+              placeholder="Nom, email…"
+              value={userSearch}
+              onChange={(e) => setUserSearch(e.target.value)}
+              className="glass-input w-full py-2.5 pl-10 pr-4 text-[13px]"
+              autoFocus
+            />
+          </div>
 
-      {/* Bouton submit */}
-      <button
-        onClick={onSubmit}
-        disabled={!form.first_name.trim() || saving}
-        className="w-full rounded-2xl bg-primary py-3 text-[14px] font-semibold text-primary-foreground shadow-lg shadow-primary/25 transition-all hover:shadow-xl disabled:opacity-50"
-      >
-        {saving ? (
-          <Loader2 className="mx-auto h-4 w-4 animate-spin" />
-        ) : isEdit ? (
-          "Enregistrer les modifications"
-        ) : (
-          "Créer le contact"
-        )}
-      </button>
+          {searchingUsers && (
+            <div className="flex justify-center py-4"><Loader2 className="h-5 w-5 animate-spin text-primary" /></div>
+          )}
+          {!searchingUsers && userSearch.length >= 2 && userResults.length === 0 && (
+            <p className="text-center text-[12px] text-muted-foreground py-4">Aucun résultat trouvé.</p>
+          )}
+          {!searchingUsers && userSearch.length < 2 && (
+            <p className="text-center text-[12px] text-muted-foreground py-2">Tapez au moins 2 caractères pour rechercher.</p>
+          )}
+
+          {userResults.length > 0 && (
+            <div className="space-y-1.5 max-h-64 overflow-y-auto">
+              {userResults.map((user) => (
+                <button
+                  key={user.id}
+                  type="button"
+                  onClick={() => fillFromUser(user)}
+                  className="flex w-full items-center gap-3 rounded-xl p-2.5 text-left transition-all hover:bg-foreground/[0.04]"
+                >
+                  <div className={cn(
+                    "flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-[14px] font-bold",
+                    user.has_account ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"
+                  )}>
+                    {user.full_name.charAt(0).toUpperCase()}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1.5">
+                      <p className="text-[13px] font-semibold truncate">{user.full_name}</p>
+                      {user.has_account ? (
+                        <span className="shrink-0 inline-flex items-center gap-0.5 rounded-md bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-600">
+                          <UserCheck className="h-2.5 w-2.5" /> Inscrit
+                        </span>
+                      ) : (
+                        <span className="shrink-0 inline-flex items-center gap-0.5 rounded-md bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">
+                          Contact
+                        </span>
+                      )}
+                      {user.is_close && <Star className="h-3 w-3 shrink-0 fill-amber-400 text-amber-400" />}
+                    </div>
+                    {user.email && <p className="text-[11px] text-muted-foreground truncate">{user.email}</p>}
+                    {user.phone && <p className="text-[11px] text-muted-foreground">{user.phone}</p>}
+                  </div>
+                  <Plus className="h-4 w-4 shrink-0 text-muted-foreground/50" />
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Accès rapide au formulaire manuel si rien trouvé */}
+          {!searchingUsers && userSearch.length >= 2 && userResults.length === 0 && (
+            <button
+              type="button"
+              onClick={() => { setMode("manual"); onChange({ ...form, first_name: userSearch }); }}
+              className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-foreground/[0.15] py-2.5 text-[12px] font-medium text-muted-foreground transition-colors hover:border-primary/40 hover:text-primary"
+            >
+              <Plus className="h-4 w-4" /> Ajouter &laquo;{userSearch}&raquo; manuellement
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* ── Mode : Saisie manuelle ── */}
+      {mode === "manual" && (
+        <>
+          {/* Bannière utilisateur inscrit détecté via email */}
+          {suggestedUser && (
+            <div className="flex items-start gap-3 rounded-xl border border-emerald-500/20 bg-emerald-500/10 p-3">
+              <UserCheck className="h-5 w-5 shrink-0 text-emerald-600 mt-0.5" />
+              <div className="flex-1 min-w-0">
+                <p className="text-[12px] font-semibold text-emerald-700 dark:text-emerald-400">
+                  Utilisateur inscrit : {suggestedUser.full_name}
+                </p>
+                <p className="text-[11px] text-emerald-600/80 mt-0.5">Cet email correspond à un compte existant sur la plateforme.</p>
+                <button
+                  type="button"
+                  onClick={() => fillFromUser(suggestedUser)}
+                  className="mt-1.5 text-[11px] font-semibold text-emerald-600 hover:underline"
+                >
+                  Utiliser ses informations →
+                </button>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSuggestedUser(null)}
+                className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          )}
+          {checkingEmail && !suggestedUser && (
+            <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+              <Loader2 className="h-3 w-3 animate-spin" /> Vérification de l&apos;email…
+            </div>
+          )}
+
+          {/* Prénom + Nom */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <label className="text-[13px] font-medium">Prénom <span className="text-red-500">*</span></label>
+              <input value={form.first_name} onChange={set("first_name")} placeholder="Marie" className="glass-input w-full py-2.5 px-4 text-[14px]" autoFocus />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-[13px] font-medium">Nom</label>
+              <input value={form.last_name} onChange={set("last_name")} placeholder="Dupont" className="glass-input w-full py-2.5 px-4 text-[14px]" />
+            </div>
+          </div>
+
+          {/* Email */}
+          <div className="space-y-1.5">
+            <label className="text-[13px] font-medium">Email</label>
+            <input type="email" value={form.email} onChange={set("email")} placeholder="marie@exemple.fr" className="glass-input w-full py-2.5 px-4 text-[14px]" />
+          </div>
+
+          {/* Téléphone */}
+          <div className="space-y-1.5">
+            <label className="text-[13px] font-medium">Téléphone</label>
+            <input type="tel" value={form.phone} onChange={set("phone")} placeholder="+33 6 12 34 56 78" className="glass-input w-full py-2.5 px-4 text-[14px]" />
+          </div>
+
+          {/* Tags */}
+          <div className="space-y-1.5">
+            <label className="text-[13px] font-medium flex items-center gap-1.5">
+              <Tag className="h-3.5 w-3.5 text-muted-foreground" />
+              Tags
+              <span className="text-muted-foreground font-normal">(séparés par des virgules)</span>
+            </label>
+            <input value={form.tags} onChange={set("tags")} placeholder="famille, travail, ami…" className="glass-input w-full py-2.5 px-4 text-[14px]" />
+          </div>
+
+          {/* Notes */}
+          <div className="space-y-1.5">
+            <label className="text-[13px] font-medium">Notes</label>
+            <textarea value={form.notes} onChange={set("notes")} placeholder="Informations complémentaires…" rows={3} className="glass-input w-full py-2.5 px-4 text-[14px] resize-none" />
+          </div>
+
+          <CloseToggle />
+          <SubmitBtn />
+        </>
+      )}
     </div>
   );
 }
