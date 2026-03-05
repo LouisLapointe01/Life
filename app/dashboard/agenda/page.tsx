@@ -179,6 +179,15 @@ export default function AgendaPage() {
 
   useEffect(() => { fetchAppointments(); }, [fetchAppointments]);
 
+  // Sync selectedAppointment avec les données fraîches après chaque refresh
+  useEffect(() => {
+    setSelectedAppointment((prev) => {
+      if (!prev) return null;
+      const fresh = appointments.find((a) => a.id === prev.id);
+      return fresh ?? prev;
+    });
+  }, [appointments]);
+
   // Realtime
   useEffect(() => {
     const supabase = createClient();
@@ -436,9 +445,17 @@ export default function AgendaPage() {
   const appointmentsForDay = useMemo(() => {
     return appointments
       .filter((a) => isSameDay(new Date(a.start_at), selectedDate))
+      .filter((a) => a.status !== "cancelled")
       .filter((a) => filter === "all" || a.status === filter)
       .filter((a) => !search || a.guest_name.toLowerCase().includes(search.toLowerCase()) || a.guest_email.toLowerCase().includes(search.toLowerCase()));
   }, [appointments, selectedDate, filter, search]);
+
+  const cancelledForDay = useMemo(() => {
+    return appointments
+      .filter((a) => isSameDay(new Date(a.start_at), selectedDate))
+      .filter((a) => a.status === "cancelled")
+      .filter((a) => !search || a.guest_name.toLowerCase().includes(search.toLowerCase()) || a.guest_email.toLowerCase().includes(search.toLowerCase()));
+  }, [appointments, selectedDate, search]);
 
   const appointmentCountForDay = useCallback(
     (day: Date) => appointments.filter((a) => isSameDay(new Date(a.start_at), day) && a.status !== "cancelled").length,
@@ -594,59 +611,113 @@ export default function AgendaPage() {
 
           {/* Appointments List */}
           <div className="space-y-2">
-            <div className="px-1 text-[13px] font-semibold text-muted-foreground">
-              {isToday(selectedDate) ? "Aujourd'hui" : isTomorrow(selectedDate) ? "Demain" : format(selectedDate, "EEEE d MMMM", { locale: fr })}
-              {" · "}{appointmentsForDay.length} rendez-vous
-            </div>
-            {appointmentsForDay.length === 0 ? (
-              <div className="glass-card flex flex-col items-center gap-3 py-16">
-                <CalendarIcon className="h-12 w-12 text-muted-foreground/40" />
-                <p className="text-[14px] text-muted-foreground">Aucun rendez-vous ce jour.</p>
-                <button onClick={() => { resetRdvForm(); setShowRdvForm(true); }} className="flex items-center gap-2 rounded-2xl bg-primary/10 px-4 py-2.5 text-[13px] font-medium text-primary hover:bg-primary/20"><Plus className="h-4 w-4" /> Créer un rendez-vous</button>
-              </div>
+            {filter === "cancelled" ? (
+              /* ── Section Annulés ── */
+              <>
+                <div className="px-1 text-[13px] font-semibold text-muted-foreground flex items-center gap-2">
+                  <XCircle className="h-3.5 w-3.5 text-red-500" />
+                  {isToday(selectedDate) ? "Aujourd'hui" : isTomorrow(selectedDate) ? "Demain" : format(selectedDate, "EEEE d MMMM", { locale: fr })}
+                  {" · "}{cancelledForDay.length} annulé{cancelledForDay.length !== 1 ? "s" : ""}
+                </div>
+                {cancelledForDay.length === 0 ? (
+                  <div className="glass-card flex flex-col items-center gap-3 py-16">
+                    <XCircle className="h-12 w-12 text-muted-foreground/40" />
+                    <p className="text-[14px] text-muted-foreground">Aucun rendez-vous annulé ce jour.</p>
+                  </div>
+                ) : (
+                  cancelledForDay.map((apt) => {
+                    const isSelected = selectedAppointment?.id === apt.id;
+                    const myType = getMyType(apt, profile?.id);
+                    const participantCount = apt.appointment_participants?.length || 0;
+                    return (
+                      <button key={apt.id} onClick={() => setSelectedAppointment(apt)} className={cn("group w-full text-left rounded-2xl p-3 sm:p-4 transition-all duration-300 opacity-60", isSelected ? "glass-card shadow-lg opacity-100" : "hover:bg-foreground/[0.04] hover:opacity-80")}>
+                        <div className="flex items-start gap-3 sm:gap-4">
+                          <div className="flex flex-col items-center text-center min-w-[48px] sm:min-w-[56px]">
+                            <span className="text-base sm:text-lg font-bold line-through text-muted-foreground">{format(new Date(apt.start_at), "HH:mm")}</span>
+                            <span className="text-[10px] sm:text-[11px] text-muted-foreground">{myType.duration_min} min</span>
+                          </div>
+                          <div className="mt-1 h-10 sm:h-12 w-1 rounded-full shrink-0 bg-red-500/40" />
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <span className="text-[13px] sm:text-[14px] font-semibold truncate line-through text-muted-foreground">{apt.guest_name}</span>
+                            </div>
+                            <div className="flex items-center gap-2 mt-0.5">
+                              <span className="text-[11px] sm:text-[12px] font-medium text-muted-foreground/60">{myType.name}</span>
+                              {participantCount > 1 && (
+                                <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                                  <Users className="h-3 w-3" /> {participantCount}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-1.5 rounded-xl bg-red-500/10 px-2 py-1 shrink-0">
+                            <span className="h-1.5 w-1.5 rounded-full bg-red-500" />
+                            <span className="text-[10px] sm:text-[11px] font-medium text-red-500">Annulé</span>
+                          </div>
+                        </div>
+                      </button>
+                    );
+                  })
+                )}
+              </>
             ) : (
-              appointmentsForDay.map((apt) => {
-                const config = statusConfig[apt.status] || statusConfig.pending;
-                const isSelected = selectedAppointment?.id === apt.id;
-                const myType = getMyType(apt, profile?.id);
-                const myPart = getMyParticipant(apt, profile?.id);
-                const participantCount = apt.appointment_participants?.length || 0;
-                return (
-                  <button key={apt.id} onClick={() => setSelectedAppointment(apt)} className={cn("group w-full text-left rounded-2xl p-3 sm:p-4 transition-all duration-300", isSelected ? "glass-card shadow-lg" : "hover:bg-foreground/[0.04]")}>
-                    <div className="flex items-start gap-3 sm:gap-4">
-                      <div className="flex flex-col items-center text-center min-w-[48px] sm:min-w-[56px]">
-                        <span className="text-base sm:text-lg font-bold">{format(new Date(apt.start_at), "HH:mm")}</span>
-                        <span className="text-[10px] sm:text-[11px] text-muted-foreground">{myType.duration_min} min</span>
-                      </div>
-                      <div className="mt-1 h-10 sm:h-12 w-1 rounded-full shrink-0" style={{ backgroundColor: myType.color }} />
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span className="text-[13px] sm:text-[14px] font-semibold truncate">{apt.guest_name}</span>
-                          {apt.is_close_contact && <Star className="h-3.5 w-3.5 fill-yellow-400 text-yellow-400 shrink-0" />}
+              /* ── Section normale ── */
+              <>
+                <div className="px-1 text-[13px] font-semibold text-muted-foreground">
+                  {isToday(selectedDate) ? "Aujourd'hui" : isTomorrow(selectedDate) ? "Demain" : format(selectedDate, "EEEE d MMMM", { locale: fr })}
+                  {" · "}{appointmentsForDay.length} rendez-vous
+                </div>
+                {appointmentsForDay.length === 0 ? (
+                  <div className="glass-card flex flex-col items-center gap-3 py-16">
+                    <CalendarIcon className="h-12 w-12 text-muted-foreground/40" />
+                    <p className="text-[14px] text-muted-foreground">Aucun rendez-vous ce jour.</p>
+                    <button onClick={() => { resetRdvForm(); setShowRdvForm(true); }} className="flex items-center gap-2 rounded-2xl bg-primary/10 px-4 py-2.5 text-[13px] font-medium text-primary hover:bg-primary/20"><Plus className="h-4 w-4" /> Créer un rendez-vous</button>
+                  </div>
+                ) : (
+                  appointmentsForDay.map((apt) => {
+                    const config = statusConfig[apt.status] || statusConfig.pending;
+                    const isSelected = selectedAppointment?.id === apt.id;
+                    const myType = getMyType(apt, profile?.id);
+                    const myPart = getMyParticipant(apt, profile?.id);
+                    const participantCount = apt.appointment_participants?.length || 0;
+                    return (
+                      <button key={apt.id} onClick={() => setSelectedAppointment(apt)} className={cn("group w-full text-left rounded-2xl p-3 sm:p-4 transition-all duration-300", isSelected ? "glass-card shadow-lg" : "hover:bg-foreground/[0.04]")}>
+                        <div className="flex items-start gap-3 sm:gap-4">
+                          <div className="flex flex-col items-center text-center min-w-[48px] sm:min-w-[56px]">
+                            <span className="text-base sm:text-lg font-bold">{format(new Date(apt.start_at), "HH:mm")}</span>
+                            <span className="text-[10px] sm:text-[11px] text-muted-foreground">{myType.duration_min} min</span>
+                          </div>
+                          <div className="mt-1 h-10 sm:h-12 w-1 rounded-full shrink-0" style={{ backgroundColor: myType.color }} />
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <span className="text-[13px] sm:text-[14px] font-semibold truncate">{apt.guest_name}</span>
+                              {apt.is_close_contact && <Star className="h-3.5 w-3.5 fill-yellow-400 text-yellow-400 shrink-0" />}
+                            </div>
+                            <div className="flex items-center gap-2 mt-0.5">
+                              <span className="text-[11px] sm:text-[12px] font-medium" style={{ color: myType.color }}>{myType.name}</span>
+                              {participantCount > 1 && (
+                                <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                                  <Users className="h-3 w-3" /> {participantCount}
+                                </span>
+                              )}
+                            </div>
+                            {/* Mon statut de participant */}
+                            {myPart && !myPart.is_organizer && myPart.status === "pending" && (
+                              <span className="inline-flex items-center gap-1 mt-1 text-[10px] font-medium text-amber-600 bg-amber-500/10 rounded-lg px-1.5 py-0.5">
+                                <AlertTriangle className="h-3 w-3" /> Réponse attendue
+                              </span>
+                            )}
+                          </div>
+                          <div className={cn("flex items-center gap-1.5 rounded-xl px-2 py-1 shrink-0", config.bg)}>
+                            <span className={cn("h-1.5 w-1.5 rounded-full", config.dot)} />
+                            <span className={cn("text-[10px] sm:text-[11px] font-medium", config.color)}>{config.label}</span>
+                          </div>
                         </div>
-                        <div className="flex items-center gap-2 mt-0.5">
-                          <span className="text-[11px] sm:text-[12px] font-medium" style={{ color: myType.color }}>{myType.name}</span>
-                          {participantCount > 1 && (
-                            <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
-                              <Users className="h-3 w-3" /> {participantCount}
-                            </span>
-                          )}
-                        </div>
-                        {/* Mon statut de participant */}
-                        {myPart && !myPart.is_organizer && myPart.status === "pending" && (
-                          <span className="inline-flex items-center gap-1 mt-1 text-[10px] font-medium text-amber-600 bg-amber-500/10 rounded-lg px-1.5 py-0.5">
-                            <AlertTriangle className="h-3 w-3" /> Réponse attendue
-                          </span>
-                        )}
-                      </div>
-                      <div className={cn("flex items-center gap-1.5 rounded-xl px-2 py-1 shrink-0", config.bg)}>
-                        <span className={cn("h-1.5 w-1.5 rounded-full", config.dot)} />
-                        <span className={cn("text-[10px] sm:text-[11px] font-medium", config.color)}>{config.label}</span>
-                      </div>
-                    </div>
-                  </button>
-                );
-              })
+                      </button>
+                    );
+                  })
+                )}
+              </>
             )}
           </div>
         </div>
