@@ -10,7 +10,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { LogOut, User, Bell, Check, CheckCheck, CalendarDays, ArrowRightLeft, XCircle, UserCheck, Info, UserPlus, ShieldX, Loader2, MessageCircle } from "lucide-react";
+import { LogOut, User, Bell, Check, CheckCheck, CalendarDays, ArrowRightLeft, XCircle, UserCheck, Info, UserPlus, ShieldX, Loader2, MessageCircle, Users, Calendar } from "lucide-react";
 import { LeafLogo } from "@/components/LeafLogo";
 import type { User as SupabaseUser } from "@supabase/supabase-js";
 import Link from "next/link";
@@ -42,6 +42,39 @@ const notifIcons: Record<string, typeof Bell> = {
   contact_added: UserPlus,
   message: MessageCircle,
 };
+
+// Sections de la barre latérale dans l'ordre d'affichage
+const NOTIF_SECTIONS = [
+  {
+    id: "agenda",
+    label: "Agenda",
+    icon: Calendar,
+    types: new Set(["invitation", "response", "confirmed", "cancellation", "declined", "reschedule_request", "reschedule_approved", "reschedule_rejected"]),
+    color: "text-orange-500",
+  },
+  {
+    id: "annuaire",
+    label: "Annuaire",
+    icon: Users,
+    types: new Set(["contact_added"]),
+    color: "text-purple-500",
+  },
+  {
+    id: "messages",
+    label: "Messages",
+    icon: MessageCircle,
+    types: new Set(["message"]),
+    color: "text-teal-500",
+  },
+  {
+    id: "autres",
+    label: "Autres",
+    icon: Bell,
+    types: new Set(["info"]),
+    color: "text-muted-foreground",
+    fallback: true, // reçoit tout ce qui ne correspond pas aux autres
+  },
+] as const;
 
 export function Header({ title }: { title?: string }) {
   const router = useRouter();
@@ -214,62 +247,83 @@ export function Header({ title }: { title?: string }) {
                     <p className="text-[13px] text-muted-foreground">Aucune notification</p>
                   </div>
                 ) : (
-                  notifications.map((n) => {
-                    const Icon = notifIcons[n.type] || Bell;
-                    const isContactAdded = n.type === "contact_added";
-                    return (
-                      <div
-                        key={n.id}
-                        className={cn(
-                          "border-b border-foreground/[0.04] last:border-0",
-                          !n.is_read && "bg-primary/[0.04]"
-                        )}
-                      >
-                        {/* Ligne principale cliquable */}
-                        <button
-                          onClick={() => handleNotifClick(n)}
-                          className="flex w-full items-start gap-3 px-4 py-3 text-left transition-colors hover:bg-foreground/[0.03]"
-                        >
-                          <div className={cn(
-                            "flex h-8 w-8 shrink-0 items-center justify-center rounded-xl mt-0.5",
-                            isContactAdded
-                              ? "bg-blue-500/15 text-blue-500"
-                              : !n.is_read ? "bg-primary/15 text-primary" : "bg-foreground/[0.06] text-muted-foreground"
-                          )}>
-                            <Icon className="h-3.5 w-3.5" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className={cn("text-[12px] leading-snug", !n.is_read ? "font-semibold" : "font-medium text-muted-foreground")}>
-                              {n.title}
-                            </p>
-                            {n.body && (
-                              <p className="text-[11px] text-muted-foreground mt-0.5 line-clamp-2">{n.body}</p>
-                            )}
-                            <p className="text-[10px] text-muted-foreground/60 mt-1">{timeAgo(n.created_at)}</p>
-                          </div>
-                          {!n.is_read && (
-                            <span className="mt-2 h-2 w-2 shrink-0 rounded-full bg-primary" />
-                          )}
-                        </button>
+                  (() => {
+                    // Grouper les notifications par section (ordre barre latérale)
+                    const assignedIds = new Set<string>();
+                    const groups = NOTIF_SECTIONS.map((section) => {
+                      const items = section.fallback
+                        ? notifications.filter((n) => !assignedIds.has(n.id) && !NOTIF_SECTIONS.filter((s) => !s.fallback).some((s) => s.types.has(n.type)))
+                        : notifications.filter((n) => section.types.has(n.type));
+                      items.forEach((n) => assignedIds.add(n.id));
+                      return { section, items };
+                    }).filter((g) => g.items.length > 0);
 
-                        {/* Bouton Bloquer (contact_added uniquement) */}
-                        {isContactAdded && n.from_user_id && (
-                          <div className="px-4 pb-3">
-                            <button
-                              onClick={() => handleBlock(n)}
-                              disabled={blockingId === n.id}
-                              className="flex items-center gap-1.5 rounded-lg bg-red-500/10 px-3 py-1.5 text-[11px] font-semibold text-red-500 transition-colors hover:bg-red-500/20 disabled:opacity-50"
+                    return groups.map(({ section, items }) => (
+                      <div key={section.id}>
+                        {/* En-tête de section */}
+                        <div className="flex items-center gap-2 px-4 py-2 bg-foreground/[0.02] border-b border-foreground/[0.04]">
+                          <section.icon className={cn("h-3 w-3 shrink-0", section.color)} />
+                          <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                            {section.label}
+                          </span>
+                        </div>
+                        {/* Notifications de la section */}
+                        {items.map((n) => {
+                          const Icon = notifIcons[n.type] || Bell;
+                          const isContactAdded = n.type === "contact_added";
+                          return (
+                            <div
+                              key={n.id}
+                              className={cn(
+                                "border-b border-foreground/[0.04] last:border-0",
+                                !n.is_read && "bg-primary/[0.04]"
+                              )}
                             >
-                              {blockingId === n.id
-                                ? <Loader2 className="h-3 w-3 animate-spin" />
-                                : <ShieldX className="h-3 w-3" />}
-                              Bloquer
-                            </button>
-                          </div>
-                        )}
+                              <button
+                                onClick={() => handleNotifClick(n)}
+                                className="flex w-full items-start gap-3 px-4 py-3 text-left transition-colors hover:bg-foreground/[0.03]"
+                              >
+                                <div className={cn(
+                                  "flex h-8 w-8 shrink-0 items-center justify-center rounded-xl mt-0.5",
+                                  isContactAdded
+                                    ? "bg-blue-500/15 text-blue-500"
+                                    : !n.is_read ? "bg-primary/15 text-primary" : "bg-foreground/[0.06] text-muted-foreground"
+                                )}>
+                                  <Icon className="h-3.5 w-3.5" />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <p className={cn("text-[12px] leading-snug", !n.is_read ? "font-semibold" : "font-medium text-muted-foreground")}>
+                                    {n.title}
+                                  </p>
+                                  {n.body && (
+                                    <p className="text-[11px] text-muted-foreground mt-0.5 line-clamp-2">{n.body}</p>
+                                  )}
+                                  <p className="text-[10px] text-muted-foreground/60 mt-1">{timeAgo(n.created_at)}</p>
+                                </div>
+                                {!n.is_read && (
+                                  <span className="mt-2 h-2 w-2 shrink-0 rounded-full bg-primary" />
+                                )}
+                              </button>
+                              {isContactAdded && n.from_user_id && (
+                                <div className="px-4 pb-3">
+                                  <button
+                                    onClick={() => handleBlock(n)}
+                                    disabled={blockingId === n.id}
+                                    className="flex items-center gap-1.5 rounded-lg bg-red-500/10 px-3 py-1.5 text-[11px] font-semibold text-red-500 transition-colors hover:bg-red-500/20 disabled:opacity-50"
+                                  >
+                                    {blockingId === n.id
+                                      ? <Loader2 className="h-3 w-3 animate-spin" />
+                                      : <ShieldX className="h-3 w-3" />}
+                                    Bloquer
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
                       </div>
-                    );
-                  })
+                    ));
+                  })()
                 )}
               </div>
             </div>
