@@ -206,16 +206,27 @@ export default function MessagesPage() {
     setNewMessage("");
     setSending(true);
 
-    // Optimistic update
+    // Optimistic update — ajout immédiat sans attendre le serveur
+    const optId = "opt-" + Date.now();
+    const now = new Date().toISOString();
     const optimistic: Message = {
-      id: "opt-" + Date.now(),
+      id: optId,
       conversation_id: activeConvId,
       sender_id: myUserId,
       content,
-      created_at: new Date().toISOString(),
+      created_at: now,
       sender: null,
     };
     setMessages((prev) => [...prev, optimistic]);
+
+    // Mettre à jour la conversation localement
+    setConversations((prev) =>
+      prev.map((c) =>
+        c.id === activeConvId
+          ? { ...c, last_message: { content, created_at: now, sender_id: myUserId } }
+          : c
+      )
+    );
 
     try {
       const res = await fetch("/api/messages", {
@@ -224,11 +235,24 @@ export default function MessagesPage() {
         body: JSON.stringify({ conversation_id: activeConvId, content }),
       });
       if (res.ok) {
-        await fetchMessages(activeConvId);
-        await fetchConversations();
+        const data = await res.json();
+        // Remplacer le message optimiste par le vrai message retourné
+        if (data.message) {
+          setMessages((prev) =>
+            prev.map((m) => m.id === optId ? data.message : m)
+          );
+        }
+      } else {
+        // Rollback en cas d'erreur
+        setMessages((prev) => prev.filter((m) => m.id !== optId));
+        setNewMessage(content);
       }
-    } catch { /* ignore */ }
-    finally { setSending(false); }
+    } catch {
+      setMessages((prev) => prev.filter((m) => m.id !== optId));
+      setNewMessage(content);
+    } finally {
+      setSending(false);
+    }
   };
 
   /* ─── Recherche utilisateurs ─── */
@@ -288,7 +312,9 @@ export default function MessagesPage() {
 
   /* ─── Render ─── */
   return (
-    <div className="flex h-full overflow-hidden">
+    <div
+      className="-mx-4 -mt-4 -mb-24 lg:-mx-8 lg:-mt-6 lg:-mb-6 flex overflow-hidden h-[calc(100dvh-64px-3.5rem)] lg:h-[calc(100dvh-64px)]"
+    >
       {/* ══════════════════════════════════
           Colonne gauche — liste des convs
           ══════════════════════════════════ */}
@@ -501,7 +527,7 @@ export default function MessagesPage() {
             </div>
 
             {/* Zone saisie */}
-            <div className="flex items-end gap-2 px-4 py-3 border-t border-foreground/[0.06]">
+            <div className="flex items-end gap-2 px-4 py-3 border-t border-foreground/[0.06] shrink-0">
               <textarea
                 ref={inputRef}
                 value={newMessage}
