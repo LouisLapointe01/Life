@@ -8,6 +8,7 @@ import {
     FolderOpen,
     Users,
     Settings,
+    MessageCircle,
     type LucideIcon,
 } from "lucide-react";
 
@@ -22,6 +23,7 @@ export type TabId =
     | "logement"
     | "fichiers"
     | "annuaire"
+    | "messages"
     | "parametres";
 
 export interface TabDefinition {
@@ -85,6 +87,14 @@ export const ALL_TABS: TabDefinition[] = [
         icon: Users,
         color: "from-purple-500/20 to-purple-600/20",
         iconColor: "text-purple-500",
+    },
+    {
+        id: "messages",
+        href: "/dashboard/messages",
+        label: "Messages",
+        icon: MessageCircle,
+        color: "from-teal-500/20 to-teal-600/20",
+        iconColor: "text-teal-500",
     },
     {
         id: "parametres",
