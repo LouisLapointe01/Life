@@ -515,9 +515,9 @@ export default function MessagesPage() {
                         </span>
                       )}
                     </div>
-                    <div className="flex items-center justify-between mt-0.5">
+                    <div className="flex items-center justify-between mt-0.5 gap-2">
                       <p className={cn(
-                        "text-[12px] truncate",
+                        "text-[12px] truncate flex-1 min-w-0",
                         conv.unread_count > 0 ? "text-foreground" : "text-muted-foreground"
                       )}>
                         {conv.last_message?.content ?? "Démarrer la conversation"}
@@ -563,23 +563,23 @@ export default function MessagesPage() {
             </p>
           </div>
         ) : (
-          <div className="flex flex-col flex-1 overflow-hidden">
-            {/* Header chat — toujours visible, hors scroll */}
-            <div className="shrink-0 flex items-center gap-2 px-3 py-3 z-10">
+          <div className="relative flex-1 overflow-hidden">
+            {/* Header chat — flottant au-dessus des messages */}
+            <div className="absolute top-3 left-3 z-20 flex items-center gap-2">
               <button
                 onClick={() => setMobileView("list")}
-                className="flex lg:hidden h-9 w-9 items-center justify-center rounded-full bg-foreground/[0.06] backdrop-blur-xl text-muted-foreground hover:bg-foreground/[0.1] hover:text-foreground transition-all shadow-sm"
+                className="flex lg:hidden h-9 w-9 items-center justify-center rounded-full bg-background/70 backdrop-blur-xl text-muted-foreground hover:bg-background/90 hover:text-foreground transition-all shadow-md"
               >
                 <ArrowLeft className="h-4 w-4" />
               </button>
-              <div className="flex items-center gap-2 rounded-full bg-foreground/[0.06] backdrop-blur-xl pl-1 pr-3 py-1 shadow-sm">
+              <div className="flex items-center gap-2 rounded-full bg-background/70 backdrop-blur-xl pl-1 pr-3 py-1 shadow-md">
                 <Avatar url={activeConv.other_user.avatar_url} name={activeConv.other_user.full_name} size={28} />
                 <p className="text-[13px] font-semibold">{activeConv.other_user.full_name}</p>
               </div>
             </div>
 
-            {/* Zone messages — seule partie scrollable */}
-            <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3 min-h-0">
+            {/* Zone messages — scrollable, avec padding pour les éléments flottants */}
+            <div className="absolute inset-0 overflow-y-auto px-4 pt-14 pb-[72px] space-y-3">
               {loadingMessages ? (
                 <div className="flex justify-center pt-8">
                   <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
@@ -600,10 +600,10 @@ export default function MessagesPage() {
                           size={28}
                         />
                       )}
-                      <div className={cn("flex flex-col max-w-[70%]", isMe ? "items-end" : "items-start")}>
+                      <div className={cn("flex flex-col min-w-0", isMe ? "items-end max-w-[75%]" : "items-start max-w-[75%]")}>
                         <div
                           className={cn(
-                            "px-3.5 py-2 text-[13px] leading-relaxed whitespace-pre-wrap break-words",
+                            "px-3.5 py-2 text-[13px] leading-relaxed whitespace-pre-wrap break-words overflow-hidden",
                             isMe
                               ? "bg-primary text-primary-foreground rounded-2xl rounded-br-sm"
                               : "bg-foreground/[0.06] rounded-2xl rounded-bl-sm"
@@ -622,8 +622,8 @@ export default function MessagesPage() {
               <div ref={messagesEndRef} />
             </div>
 
-            {/* Zone saisie — toujours visible, hors scroll */}
-            <div className="shrink-0 flex items-end gap-2 px-3 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] lg:pb-3 z-10">
+            {/* Zone saisie — flottante en bas */}
+            <div className="absolute bottom-0 left-0 right-0 z-20 flex items-end gap-2 px-3 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] lg:pb-3">
               <textarea
                 ref={inputRef}
                 value={newMessage}
