@@ -107,38 +107,9 @@ export default function ParametresPage() {
   const [activeTab, setActiveTab] = useState<Tab>("types");
 
   return (
-    <div className="mx-auto w-full max-w-4xl space-y-4 sm:space-y-6">
-      {/* Tab Navigation */}
-      <div
-        className="-mx-1 overflow-x-auto rounded-2xl bg-foreground/[0.04] p-1 scrollbar-thin"
-      >
-        <div className="flex gap-0.5 sm:gap-1">
-          {tabs.map((tab) => {
-            const isActive = activeTab === tab.key;
-            return (
-              <button
-                key={tab.key}
-                onClick={() => setActiveTab(tab.key)}
-                className={cn(
-                  "flex flex-1 items-center justify-center gap-1.5 sm:gap-2 rounded-xl px-2.5 sm:px-4 py-2 sm:py-2.5 text-[11px] sm:text-[13px] font-medium transition-all duration-300 whitespace-nowrap",
-                  isActive
-                    ? "bg-card text-foreground shadow-sm"
-                    : "text-muted-foreground hover:text-foreground"
-                )}
-              >
-                <tab.icon className="h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0" />
-                <span className="hidden xs:inline sm:inline">{tab.label}</span>
-                <span className="xs:hidden">{tab.label.split(" ")[0]}</span>
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
+    <div className="mx-auto w-full max-w-4xl pb-16 lg:pb-0">
       {/* Content */}
-      <div
-        className="w-full"
-      >
+      <div className="w-full">
         {activeTab === "sections" && <DashboardSectionsSettings />}
         {activeTab === "types" && (
           profile?.id ? <AppointmentTypesSection userId={profile.id} /> : (
@@ -151,6 +122,33 @@ export default function ParametresPage() {
           )
         )}
         {activeTab === "contacts" && <ContactsSection />}
+      </div>
+
+      {/* Tab Navigation — barre fixe en bas */}
+      <div className="fixed bottom-[3.5rem] left-0 right-0 z-40 lg:bottom-0 lg:left-[280px]">
+        <div className="overflow-x-auto bg-white/50 dark:bg-white/[0.06] backdrop-blur-2xl border-t border-white/30 dark:border-white/10 px-2 py-1.5">
+          <div className="flex gap-0.5 sm:gap-1 max-w-4xl mx-auto">
+            {tabs.map((tab) => {
+              const isActive = activeTab === tab.key;
+              return (
+                <button
+                  key={tab.key}
+                  onClick={() => setActiveTab(tab.key)}
+                  className={cn(
+                    "flex flex-1 items-center justify-center gap-1.5 sm:gap-2 rounded-xl px-2.5 sm:px-4 py-2 sm:py-2.5 text-[11px] sm:text-[13px] font-medium transition-all duration-300 whitespace-nowrap",
+                    isActive
+                      ? "bg-card text-foreground shadow-sm"
+                      : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  <tab.icon className="h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0" />
+                  <span className="hidden xs:inline sm:inline">{tab.label}</span>
+                  <span className="xs:hidden">{tab.label.split(" ")[0]}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
       </div>
     </div>
   );

@@ -978,7 +978,7 @@ export default function LogementPage() {
                     setNewRoom(selectedRoom);
                     setAddOpen(true);
                 }}
-                className="fixed bottom-20 right-4 z-40 flex h-11 w-11 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg shadow-primary/25 transition-all hover:shadow-xl hover:scale-105 active:scale-95 lg:bottom-6"
+                className="fixed bottom-20 right-4 z-40 flex h-11 w-11 items-center justify-center rounded-full bg-foreground/10 backdrop-blur-xl text-muted-foreground shadow-md transition-all hover:shadow-lg hover:scale-105 active:scale-95 border border-white/10 lg:bottom-6"
                 aria-label="Ajouter appareil"
             >
                 <Plus className="h-5 w-5" />
