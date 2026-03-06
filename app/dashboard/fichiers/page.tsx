@@ -315,20 +315,6 @@ export default function FichiersPage() {
     <div className="mx-auto max-w-6xl space-y-4 lg:space-y-6">
       <input ref={fileInputRef} type="file" multiple className="hidden" onChange={handleFilesSelected} accept="*/*" />
 
-      {/* Breadcrumb */}
-      <div className="flex items-center gap-1 text-[13px] overflow-x-auto scrollbar-thin pb-1">
-        <button onClick={() => navigateToFolder(null)} className={cn("flex items-center gap-1 shrink-0 rounded-lg px-2 py-1 transition-colors", currentFolderId === null ? "font-semibold text-foreground" : "text-muted-foreground hover:text-foreground hover:bg-foreground/[0.04]")}>
-          <Home className="h-3.5 w-3.5" />
-          <span className="hidden sm:inline">Racine</span>
-        </button>
-        {breadcrumb.map((folder) => (
-          <div key={folder.id} className="flex items-center gap-1 shrink-0">
-            <ChevronRight className="h-3 w-3 text-muted-foreground/50" />
-            <button onClick={() => navigateToFolder(folder.id)} className={cn("rounded-lg px-2 py-1 transition-colors truncate max-w-[120px]", currentFolderId === folder.id ? "font-semibold text-foreground" : "text-muted-foreground hover:text-foreground hover:bg-foreground/[0.04]")}>{folder.name}</button>
-          </div>
-        ))}
-      </div>
-
       {/* Search + Actions */}
       <div className="glass-card flex flex-col gap-3 p-3 sm:p-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="relative flex-1 max-w-md">
@@ -350,11 +336,27 @@ export default function FichiersPage() {
       </div>
 
       {/* Categories */}
-      <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-thin">
+      <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
         {allCategories.map((cat) => (
           <button key={cat} onClick={() => setCategory(cat)} className={cn("shrink-0 rounded-2xl px-3 sm:px-4 py-2 text-[12px] sm:text-[13px] font-medium transition-all duration-200", category === cat ? "bg-primary/15 text-primary shadow-sm" : "bg-foreground/[0.04] text-muted-foreground hover:text-foreground hover:bg-foreground/[0.08]")}>{cat}</button>
         ))}
       </div>
+
+      {/* Breadcrumb — sous les catégories */}
+      {(currentFolderId !== null || breadcrumb.length > 0) && (
+        <div className="flex items-center gap-1 text-[13px] overflow-x-auto no-scrollbar pb-1">
+          <button onClick={() => navigateToFolder(null)} className={cn("flex items-center gap-1 shrink-0 rounded-lg px-2 py-1 transition-colors", currentFolderId === null ? "font-semibold text-foreground" : "text-muted-foreground hover:text-foreground hover:bg-foreground/[0.04]")}>
+            <Home className="h-3.5 w-3.5" />
+            <span>Racine</span>
+          </button>
+          {breadcrumb.map((folder) => (
+            <div key={folder.id} className="flex items-center gap-1 shrink-0">
+              <ChevronRight className="h-3 w-3 text-muted-foreground/50" />
+              <button onClick={() => navigateToFolder(folder.id)} className={cn("rounded-lg px-2 py-1 transition-colors truncate max-w-[120px]", currentFolderId === folder.id ? "font-semibold text-foreground" : "text-muted-foreground hover:text-foreground hover:bg-foreground/[0.04]")}>{folder.name}</button>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Content */}
       {totalItemsInCurrent === 0 && !search ? (

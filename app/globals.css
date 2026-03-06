@@ -286,6 +286,17 @@
     background: rgba(255, 255, 255, 0.15);
   }
 
+  /* Hide all scrollbars globally — scroll via mouse/touch only */
+  .no-scrollbar,
+  .no-scrollbar * {
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* IE/Edge */
+  }
+  .no-scrollbar::-webkit-scrollbar,
+  .no-scrollbar *::-webkit-scrollbar {
+    display: none; /* Webkit */
+  }
+
   /* ── Enhanced Glassmorphism Utilities ── */
 
   .glass-gradient-bg {
