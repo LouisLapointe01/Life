@@ -139,30 +139,28 @@ export default function ParametresPage() {
         </button>
       )}
 
-      {/* Tab Navigation — barre fixe en bas (mobile) / pill flottant (pc) */}
-      <div className="fixed bottom-[3.5rem] left-0 right-0 z-40 pointer-events-none lg:bottom-4 lg:left-[260px] lg:right-0 lg:flex lg:justify-center lg:items-end">
-        <div className="pointer-events-auto w-full overflow-x-auto bg-white/50 dark:bg-white/[0.06] backdrop-blur-2xl border-t border-white/30 dark:border-white/10 px-2 py-1.5 lg:w-auto lg:overflow-visible lg:rounded-2xl lg:bg-white/15 lg:dark:bg-white/[0.04] lg:backdrop-blur-xl lg:border lg:border-white/10 lg:dark:border-white/[0.06] lg:px-1.5 lg:py-1 lg:shadow-sm">
-          <div className="flex gap-0.5 sm:gap-1 max-w-4xl mx-auto lg:max-w-none lg:mx-0 lg:gap-0.5">
-            {tabs.map((tab) => {
-              const isActive = activeTab === tab.key;
-              return (
-                <button
-                  key={tab.key}
-                  onClick={() => setActiveTab(tab.key)}
-                  className={cn(
-                    "flex flex-1 lg:flex-none items-center justify-center gap-1.5 sm:gap-2 rounded-xl px-2.5 sm:px-4 py-2 sm:py-2.5 lg:px-3 lg:py-2 text-[11px] sm:text-[13px] lg:text-[12px] font-medium transition-all duration-300 whitespace-nowrap",
-                    isActive
-                      ? "bg-card text-foreground shadow-sm"
-                      : "text-muted-foreground hover:text-foreground hover:bg-foreground/[0.06]"
-                  )}
-                >
-                  <tab.icon className="h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0" />
-                  <span className="hidden xs:inline sm:inline">{tab.label}</span>
-                  <span className="xs:hidden">{tab.label.split(" ")[0]}</span>
-                </button>
-              );
-            })}
-          </div>
+      {/* Tab Navigation — pill flottant (mobile + pc) */}
+      <div className="fixed bottom-[4.5rem] left-0 right-0 z-40 pointer-events-none flex justify-center items-end lg:bottom-4 lg:left-[260px] lg:right-0">
+        <div className="pointer-events-auto flex items-center gap-0.5 rounded-2xl bg-white/15 dark:bg-white/[0.04] backdrop-blur-xl border border-white/10 dark:border-white/[0.06] px-1.5 py-1 shadow-sm">
+          {tabs.map((tab) => {
+            const isActive = activeTab === tab.key;
+            return (
+              <button
+                key={tab.key}
+                onClick={() => setActiveTab(tab.key)}
+                className={cn(
+                  "flex items-center justify-center gap-1.5 rounded-xl px-3 py-2 text-[12px] font-medium transition-all duration-300 whitespace-nowrap",
+                  isActive
+                    ? "bg-card text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground hover:bg-foreground/[0.06]"
+                )}
+              >
+                <tab.icon className="h-3.5 w-3.5 shrink-0" />
+                <span className="hidden sm:inline">{tab.label}</span>
+                <span className="sm:hidden">{tab.label.split(" ")[0]}</span>
+              </button>
+            );
+          })}
         </div>
       </div>
     </div>
@@ -840,14 +838,14 @@ function ContactsSection() {
   const [loading, setLoading] = useState(true);
 
   const fetchContacts = useCallback(async () => {
-    const cached = clientCache.get<Contact[]>("contacts");
+    const cached = clientCache.get<Contact[]>("contacts-parametres");
     if (cached) { setContacts(cached); setLoading(false); }
     const supabase = createClient();
     const { data } = await supabase
       .from("contacts")
       .select("id, first_name, last_name, email, phone, is_close")
       .order("first_name");
-    if (data) { setContacts(data); clientCache.set("contacts", data); }
+    if (data) { setContacts(data); clientCache.set("contacts-parametres", data); }
     setLoading(false);
   }, []);
 
