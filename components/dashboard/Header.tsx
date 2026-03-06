@@ -194,7 +194,7 @@ export function Header({ title }: { title?: string }) {
   const handleSignOut = async () => {
     const supabase = createClient();
     await supabase.auth.signOut();
-    router.push("/login");
+    window.location.href = "/login";
   };
 
   const avatarUrl = user?.user_metadata?.avatar_url;
