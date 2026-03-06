@@ -396,16 +396,13 @@ export default function MessagesPage() {
     }
   };
 
-  /* ─── Désactiver le scroll du main en mode chat mobile ─── */
+  /* ─── Désactiver le scroll du main (desktop + mobile chat) ─── */
   useEffect(() => {
-    if (mobileView === "chat") {
-      const main = document.querySelector("main");
-      if (main) {
-        main.style.overflow = "hidden";
-        return () => { main.style.overflow = ""; };
-      }
-    }
-  }, [mobileView]);
+    const main = document.querySelector("main");
+    if (!main) return;
+    main.style.overflow = "hidden";
+    return () => { main.style.overflow = ""; };
+  }, []);
 
   /* ─── Render ─── */
   return (
