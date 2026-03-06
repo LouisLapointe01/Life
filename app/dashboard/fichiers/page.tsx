@@ -315,15 +315,6 @@ export default function FichiersPage() {
     <div className="mx-auto max-w-6xl space-y-4 lg:space-y-6">
       <input ref={fileInputRef} type="file" multiple className="hidden" onChange={handleFilesSelected} accept="*/*" />
 
-      {/* Header */}
-      <div>
-        <h2 className="text-2xl lg:text-3xl font-bold tracking-tight">Fichiers</h2>
-        <p className="mt-1 text-[13px] lg:text-[15px] text-muted-foreground">
-          Vos documents importants, organisés et sécurisés.
-          {files.length > 0 && <span className="ml-1 font-medium text-foreground">({files.length})</span>}
-        </p>
-      </div>
-
       {/* Breadcrumb */}
       <div className="flex items-center gap-1 text-[13px] overflow-x-auto scrollbar-thin pb-1">
         <button onClick={() => navigateToFolder(null)} className={cn("flex items-center gap-1 shrink-0 rounded-lg px-2 py-1 transition-colors", currentFolderId === null ? "font-semibold text-foreground" : "text-muted-foreground hover:text-foreground hover:bg-foreground/[0.04]")}>
@@ -367,12 +358,12 @@ export default function FichiersPage() {
 
       {/* Content */}
       {totalItemsInCurrent === 0 && !search ? (
-        <div className="glass-card flex flex-col items-center gap-3 py-16">
-          <FolderOpen className="h-12 w-12 text-muted-foreground/40" />
-          <p className="text-[14px] text-muted-foreground">{files.length === 0 && folders.length === 0 ? "Aucun fichier. Importez votre premier document." : "Ce dossier est vide."}</p>
-          <div className="flex gap-2">
-            <button onClick={() => setFolderDialogOpen(true)} className="flex items-center gap-2 rounded-2xl bg-foreground/[0.06] px-4 py-2.5 text-[13px] font-medium text-muted-foreground transition-all hover:bg-foreground/[0.1] hover:text-foreground"><FolderPlus className="h-4 w-4" />Créer un dossier</button>
-            <button onClick={handleImportClick} className="flex items-center gap-2 rounded-2xl bg-primary px-5 py-2.5 text-[13px] font-semibold text-primary-foreground shadow-lg shadow-primary/25"><Plus className="h-4 w-4" />Importer</button>
+        <div className="glass-card flex flex-col items-center gap-3 px-4 py-12 sm:py-16 text-center">
+          <FolderOpen className="h-10 w-10 sm:h-12 sm:w-12 text-muted-foreground/40" />
+          <p className="text-[13px] sm:text-[14px] text-muted-foreground">{files.length === 0 && folders.length === 0 ? "Aucun fichier. Importez votre premier document." : "Ce dossier est vide."}</p>
+          <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+            <button onClick={() => setFolderDialogOpen(true)} className="flex items-center justify-center gap-2 rounded-2xl bg-foreground/[0.06] px-4 py-2.5 text-[13px] font-medium text-muted-foreground transition-all hover:bg-foreground/[0.1] hover:text-foreground"><FolderPlus className="h-4 w-4" />Créer un dossier</button>
+            <button onClick={handleImportClick} className="flex items-center justify-center gap-2 rounded-2xl bg-primary px-5 py-2.5 text-[13px] font-semibold text-primary-foreground shadow-lg shadow-primary/25"><Plus className="h-4 w-4" />Importer</button>
           </div>
         </div>
       ) : (
@@ -559,8 +550,8 @@ export default function FichiersPage() {
 
       {/* Dialog Import */}
       <Dialog open={importDialogOpen} onOpenChange={setImportDialogOpen}>
-        <DialogContent className="rounded-3xl sm:max-w-md">
-          <DialogHeader><DialogTitle>Importer {pendingFileNames.length > 1 ? `${pendingFileNames.length} fichiers` : pendingFileNames[0]?.name ?? "un fichier"}</DialogTitle></DialogHeader>
+        <DialogContent className="rounded-3xl sm:max-w-md overflow-hidden">
+          <DialogHeader><DialogTitle className="truncate pr-8">{pendingFileNames.length > 1 ? `Importer ${pendingFileNames.length} fichiers` : <span className="flex items-center gap-1 min-w-0">Importer <span className="truncate">{pendingFileNames[0]?.name ?? "un fichier"}</span></span>}</DialogTitle></DialogHeader>
           <div className="space-y-4 pt-2">
             <div className="space-y-1.5">
               <label className="text-[13px] font-medium">Catégorie</label>
@@ -574,7 +565,7 @@ export default function FichiersPage() {
               <div className="space-y-1.5">
                 <label className="text-[13px] font-medium">Fichiers sélectionnés</label>
                 <div className="max-h-40 space-y-1 overflow-y-auto rounded-xl bg-foreground/[0.03] p-2">
-                  {pendingFileNames.map((f, i) => (<div key={i} className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-[12px]"><FileText className="h-3.5 w-3.5 text-muted-foreground shrink-0" /><span className="truncate">{f.name}</span><span className="ml-auto text-muted-foreground shrink-0">{formatSize(f.size)}</span></div>))}
+                  {pendingFileNames.map((f, i) => (<div key={i} className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-[12px] min-w-0"><FileText className="h-3.5 w-3.5 text-muted-foreground shrink-0" /><span className="truncate min-w-0 flex-1">{f.name}</span><span className="ml-2 text-muted-foreground shrink-0">{formatSize(f.size)}</span></div>))}
                 </div>
               </div>
             )}

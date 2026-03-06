@@ -151,19 +151,7 @@ export default function DashboardPage() {
         <div className="mx-auto max-w-6xl space-y-5 lg:space-y-8">
             {/* ─── Header ─── */}
             <div>
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div>
-                        <h2 className="text-2xl lg:text-3xl font-bold tracking-tight">{greeting} 👋</h2>
-                        <p className="mt-1.5 text-[15px] text-muted-foreground">
-                            Voici un aperçu de votre journée du{" "}
-                            {now.toLocaleDateString("fr-FR", {
-                                weekday: "long",
-                                day: "numeric",
-                                month: "long",
-                            })}
-                            .
-                        </p>
-                    </div>
+                <div className="flex flex-wrap items-center justify-end gap-3">
                     <div className="flex items-center gap-2">
                         <button
                             onClick={() => setEditMode(!editMode)}

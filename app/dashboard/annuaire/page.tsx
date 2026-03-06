@@ -295,13 +295,7 @@ export default function AnnuairePage() {
   return (
     <div className="mx-auto max-w-7xl space-y-6">
       {/* ─── Header ─── */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-3xl font-bold tracking-tight">Annuaire</h2>
-          <p className="mt-1 text-[15px] text-muted-foreground">
-            Gérez vos contacts et identifiez vos proches.
-          </p>
-        </div>
+      <div className="flex items-center justify-end">
         <button
           onClick={handleOpenAdd}
           className="flex items-center gap-2 rounded-2xl bg-primary px-5 py-2.5 text-[13px] font-medium text-primary-foreground shadow-lg shadow-primary/25 transition-all hover:shadow-xl hover:-translate-y-0.5"
