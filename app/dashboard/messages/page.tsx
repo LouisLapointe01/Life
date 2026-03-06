@@ -293,18 +293,13 @@ export default function MessagesPage() {
 
   /* ─── Scroll instantané vers le bas après chargement initial ou envoi ─── */
   useEffect(() => {
-    if (shouldScrollToBottom.current) {
-      // Toujours remettre le flag à false pour éviter qu'il reste bloqué
+    if (shouldScrollToBottom.current && !loadingMessages) {
+      // Effacer le flag seulement quand le chargement est terminé pour éviter
+      // qu'il reste bloqué à true si le ref DOM était null au premier déclenchement
       shouldScrollToBottom.current = false;
-      if (!loadingMessages && scrollContainerRef.current) {
+      if (scrollContainerRef.current) {
         scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight;
         userScrolledUp.current = false;
-      }
-    } else if (!loadingMessages && scrollContainerRef.current) {
-      // Nouveau message realtime : scroller vers le bas uniquement si l'utilisateur
-      // n'a pas scrollé vers le haut manuellement
-      if (!userScrolledUp.current) {
-        scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight;
       }
     }
   }, [messages, loadingMessages]);
