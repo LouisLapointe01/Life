@@ -579,7 +579,7 @@ export default function MessagesPage() {
             </div>
 
             {/* Zone messages */}
-            <div className="flex-1 overflow-y-auto px-4 pt-14 pb-4 space-y-3">
+            <div className="flex-1 overflow-y-auto px-4 pt-14 pb-20 space-y-3">
               {loadingMessages ? (
                 <div className="flex justify-center pt-8">
                   <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
@@ -622,8 +622,8 @@ export default function MessagesPage() {
               <div ref={messagesEndRef} />
             </div>
 
-            {/* Zone saisie */}
-            <div className="flex items-end gap-2 px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] lg:pb-3 shrink-0">
+            {/* Zone saisie — flottante en bas */}
+            <div className="absolute bottom-0 left-0 right-0 z-10 flex items-end gap-2 px-3 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] lg:pb-3 pointer-events-none">
               <textarea
                 ref={inputRef}
                 value={newMessage}
@@ -632,9 +632,9 @@ export default function MessagesPage() {
                 placeholder="Écrire un message…"
                 rows={1}
                 className={cn(
-                  "flex-1 resize-none rounded-2xl border border-foreground/[0.08] bg-foreground/[0.03]",
+                  "pointer-events-auto flex-1 resize-none rounded-2xl border border-foreground/[0.08] bg-background/80 backdrop-blur-xl",
                   "px-4 py-2.5 text-[13px] outline-none focus:border-primary/40",
-                  "max-h-32 overflow-y-auto"
+                  "max-h-32 overflow-y-auto shadow-sm"
                 )}
                 style={{ minHeight: 42 }}
                 onInput={(e) => {
@@ -647,10 +647,10 @@ export default function MessagesPage() {
                 onClick={sendMessage}
                 disabled={!newMessage.trim()}
                 className={cn(
-                  "flex h-[42px] w-[42px] shrink-0 items-center justify-center rounded-2xl transition-colors",
+                  "pointer-events-auto flex h-[42px] w-[42px] shrink-0 items-center justify-center rounded-full transition-all shadow-sm",
                   newMessage.trim()
                     ? "bg-primary text-primary-foreground hover:bg-primary/90"
-                    : "bg-foreground/[0.06] text-muted-foreground"
+                    : "bg-foreground/[0.06] backdrop-blur-xl text-muted-foreground"
                 )}
               >
                 <Send className="h-4 w-4" />
