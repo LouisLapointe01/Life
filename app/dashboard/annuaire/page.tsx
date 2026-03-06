@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
+import { clientCache } from "@/lib/client-cache";
 import {
   Dialog,
   DialogContent,
@@ -137,10 +138,13 @@ export default function AnnuairePage() {
 
   /* ─── Fetch ─── */
   const fetchContacts = useCallback(async () => {
+    const cached = clientCache.get<Contact[]>("contacts");
+    if (cached) { setContacts(cached); setLoading(false); }
     const res = await fetch("/api/contacts");
     if (res.ok) {
       const data = await res.json();
       setContacts(data as Contact[]);
+      clientCache.set("contacts", data as Contact[]);
     }
     setLoading(false);
   }, []);
