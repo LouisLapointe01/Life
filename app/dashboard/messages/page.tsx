@@ -112,6 +112,7 @@ export default function MessagesPage() {
   const [activeConv, setActiveConv] = useState<Conversation | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [loadingMessages, setLoadingMessages] = useState(false);
+  const [initializing, setInitializing] = useState(false);
 
   // Envoi
   const [newMessage, setNewMessage] = useState("");
@@ -252,6 +253,7 @@ export default function MessagesPage() {
   /* ─── Ouvrir une conversation ─── */
   const openConversation = useCallback((conv: Conversation) => {
     userScrolledUp.current = false;
+    setInitializing(true);
     setActiveConvId(conv.id);
     setActiveConv(conv);
     setMessages([]);
@@ -312,13 +314,16 @@ export default function MessagesPage() {
 
   /* ─── Auto-remplissage : charger plus si le contenu ne remplit pas l'écran ─── */
   useEffect(() => {
-    if (!loadingMessages && !loadingMore && hasMore && scrollContainerRef.current) {
+    if (!loadingMessages && !loadingMore && scrollContainerRef.current) {
       const el = scrollContainerRef.current;
-      if (el.scrollHeight <= el.clientHeight) {
-        // Marquer qu'on est en auto-fill pour ne pas préserver la position scroll
+      if (hasMore && el.scrollHeight <= el.clientHeight) {
+        // Écran pas encore plein : charger plus sans décalage visible
         autoFillingRef.current = true;
         shouldScrollToBottom.current = true;
         loadMoreMessages();
+      } else {
+        // Écran plein ou plus de messages : fin de l'initialisation
+        setInitializing(false);
       }
     }
   }, [messages, loadingMessages, loadingMore, hasMore, loadMoreMessages]);
@@ -665,16 +670,16 @@ export default function MessagesPage() {
               onScroll={handleScroll}
               className="absolute inset-0 overflow-y-auto overscroll-contain no-scrollbar px-4 pt-14 pb-[72px] space-y-3"
             >
-              {/* Indicateur chargement messages plus anciens */}
-              {loadingMore && (
+              {/* Indicateur chargement messages plus anciens (scroll manuel uniquement) */}
+              {loadingMore && !initializing && (
                 <div className="flex justify-center py-2">
                   <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
                 </div>
               )}
-              {!hasMore && messages.length > 0 && (
+              {!hasMore && messages.length > 0 && !initializing && (
                 <p className="text-center text-[11px] text-muted-foreground/40 py-2">Début de la conversation</p>
               )}
-              {loadingMessages ? (
+              {loadingMessages || initializing ? (
                 <div className="flex justify-center pt-8">
                   <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
                 </div>
