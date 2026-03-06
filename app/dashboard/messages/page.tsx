@@ -136,6 +136,7 @@ export default function MessagesPage() {
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const shouldScrollToBottom = useRef(false);
+  const userScrolledUp = useRef(false);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const searchDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -244,6 +245,7 @@ export default function MessagesPage() {
 
   /* ─── Ouvrir une conversation ─── */
   const openConversation = useCallback((conv: Conversation) => {
+    userScrolledUp.current = false;
     setActiveConvId(conv.id);
     setActiveConv(conv);
     setMessages([]);
@@ -291,15 +293,28 @@ export default function MessagesPage() {
 
   /* ─── Scroll instantané vers le bas après chargement initial ou envoi ─── */
   useEffect(() => {
-    if (shouldScrollToBottom.current && !loadingMessages && scrollContainerRef.current) {
-      scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight;
+    if (shouldScrollToBottom.current) {
+      // Toujours remettre le flag à false pour éviter qu'il reste bloqué
       shouldScrollToBottom.current = false;
+      if (!loadingMessages && scrollContainerRef.current) {
+        scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight;
+        userScrolledUp.current = false;
+      }
+    } else if (!loadingMessages && scrollContainerRef.current) {
+      // Nouveau message realtime : scroller vers le bas uniquement si l'utilisateur
+      // n'a pas scrollé vers le haut manuellement
+      if (!userScrolledUp.current) {
+        scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight;
+      }
     }
   }, [messages, loadingMessages]);
 
   /* ─── Handler scroll : charger plus en haut ─── */
   const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
-    if (e.currentTarget.scrollTop < 80 && hasMore && !loadingMore) {
+    const el = e.currentTarget;
+    // Détecter si l'utilisateur a scrollé vers le haut (plus de 100px du bas)
+    userScrolledUp.current = el.scrollHeight - el.scrollTop - el.clientHeight > 100;
+    if (el.scrollTop < 80 && hasMore && !loadingMore) {
       loadMoreMessages();
     }
   }, [hasMore, loadingMore, loadMoreMessages]);
