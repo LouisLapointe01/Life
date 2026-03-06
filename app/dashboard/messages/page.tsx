@@ -526,7 +526,7 @@ export default function MessagesPage() {
                         </span>
                       )}
                     </div>
-                    <div className="flex items-center justify-between mt-0.5 gap-2">
+                    <div className="flex items-center justify-between mt-0.5 gap-2 min-w-0 overflow-hidden">
                       <p className={cn(
                         "text-[12px] truncate flex-1 min-w-0",
                         conv.unread_count > 0 ? "text-foreground" : "text-muted-foreground"
