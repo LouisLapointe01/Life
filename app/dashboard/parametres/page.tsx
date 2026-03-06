@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { clientCache } from "@/lib/client-cache";
 import { useProfile } from "@/hooks/use-profile";
 import { Switch } from "@/components/ui/switch";
 import {
@@ -387,6 +388,9 @@ function AppointmentTypesSection({ userId }: { userId?: string }) {
   const [saving, setSaving] = useState(false);
 
   const fetchTypes = useCallback(async () => {
+    const cacheKey = `appt-types:${userId || ""}`;
+    const cached = clientCache.get<AppointmentType[]>(cacheKey);
+    if (cached) { setTypes(cached); setLoading(false); }
     try {
       const url = userId
         ? `/api/appointments/types?user_id=${userId}&all=true`
@@ -395,6 +399,7 @@ function AppointmentTypesSection({ userId }: { userId?: string }) {
       if (res.ok) {
         const data = await res.json();
         setTypes(data);
+        clientCache.set(cacheKey, data);
       }
     } catch { /* ignore */ }
     setLoading(false);
@@ -645,6 +650,9 @@ function AvailabilitySection({ userId }: { userId?: string }) {
   const [saving, setSaving] = useState(false);
 
   const fetchRules = useCallback(async () => {
+    const cacheKey = `availability:${userId || ""}`;
+    const cached = clientCache.get<AvailabilityRule[]>(cacheKey);
+    if (cached) { setRules(cached); setLoading(false); }
     try {
       const url = userId
         ? `/api/appointments/availability?user_id=${userId}`
@@ -653,6 +661,7 @@ function AvailabilitySection({ userId }: { userId?: string }) {
       if (res.ok) {
         const data = await res.json();
         setRules(data);
+        clientCache.set(cacheKey, data);
       }
     } catch { /* ignore */ }
     setLoading(false);
@@ -880,12 +889,14 @@ function ContactsSection() {
   const [loading, setLoading] = useState(true);
 
   const fetchContacts = useCallback(async () => {
+    const cached = clientCache.get<Contact[]>("contacts");
+    if (cached) { setContacts(cached); setLoading(false); }
     const supabase = createClient();
     const { data } = await supabase
       .from("contacts")
       .select("id, first_name, last_name, email, phone, is_close")
       .order("first_name");
-    if (data) setContacts(data);
+    if (data) { setContacts(data); clientCache.set("contacts", data); }
     setLoading(false);
   }, []);
 
