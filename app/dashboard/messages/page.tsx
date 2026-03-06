@@ -144,9 +144,45 @@ export default function MessagesPage() {
 
   useEffect(() => {
     fetchConversations();
-    const interval = setInterval(fetchConversations, 15000);
+    const interval = setInterval(fetchConversations, 30000);
     return () => clearInterval(interval);
   }, [fetchConversations]);
+
+  /* ─── Realtime: mise à jour liste conversations ─── */
+  useEffect(() => {
+    if (!myUserId) return;
+    const supabase = createClient();
+    const sub = supabase
+      .channel("conv-list-rt")
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "messages" },
+        (payload) => {
+          const msg = payload.new as { id: string; conversation_id: string; sender_id: string | null; content: string; created_at: string };
+          // Ignorer nos propres messages (déjà mis à jour en optimistic)
+          if (msg.sender_id === myUserId) return;
+          setConversations((prev) => {
+            const updated = prev.map((c) =>
+              c.id === msg.conversation_id
+                ? {
+                    ...c,
+                    last_message: { content: msg.content, created_at: msg.created_at, sender_id: msg.sender_id },
+                    unread_count: c.id === activeConvId ? c.unread_count : c.unread_count + 1,
+                  }
+                : c
+            );
+            // Trier : conversation avec le dernier message en premier
+            return updated.sort((a, b) => {
+              const ta = a.last_message?.created_at ?? "";
+              const tb = b.last_message?.created_at ?? "";
+              return tb.localeCompare(ta);
+            });
+          });
+        }
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(sub); };
+  }, [myUserId, activeConvId]);
 
   /* ─── Fetch messages ─── */
   const fetchMessages = useCallback(async (convId: string) => {
@@ -565,7 +601,7 @@ export default function MessagesPage() {
               />
               <button
                 onClick={sendMessage}
-                disabled={!newMessage.trim() || sending}
+                disabled={!newMessage.trim()}
                 className={cn(
                   "flex h-[42px] w-[42px] shrink-0 items-center justify-center rounded-2xl transition-colors",
                   newMessage.trim()
@@ -573,10 +609,7 @@ export default function MessagesPage() {
                     : "bg-foreground/[0.06] text-muted-foreground"
                 )}
               >
-                {sending
-                  ? <Loader2 className="h-4 w-4 animate-spin" />
-                  : <Send className="h-4 w-4" />
-                }
+                <Send className="h-4 w-4" />
               </button>
             </div>
           </>
