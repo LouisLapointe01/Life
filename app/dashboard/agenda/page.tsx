@@ -660,7 +660,6 @@ export default function AgendaPage() {
                   <div className="glass-card flex flex-col items-center gap-3 py-16">
                     <CalendarIcon className="h-12 w-12 text-muted-foreground/40" />
                     <p className="text-[14px] text-muted-foreground">Aucun rendez-vous ce jour.</p>
-                    <button onClick={() => { resetRdvForm(); setShowRdvForm(true); }} className="flex items-center gap-2 rounded-2xl bg-primary/10 px-4 py-2.5 text-[13px] font-medium text-primary hover:bg-primary/20"><Plus className="h-4 w-4" /> Créer un rendez-vous</button>
                   </div>
                 ) : (
                   appointmentsForDay.map((apt) => {
@@ -760,15 +759,14 @@ export default function AgendaPage() {
               <div className="flex h-16 w-16 items-center justify-center rounded-3xl bg-primary/10 mb-4"><CalendarIcon className="h-7 w-7 text-primary" /></div>
               <p className="text-[14px] font-medium">Aucun RDV sélectionné</p>
               <p className="mt-1 text-[12px] text-muted-foreground max-w-[200px]">Cliquez sur un rendez-vous pour voir les détails.</p>
-              <button onClick={() => { resetRdvForm(); setShowRdvForm(true); }} className="mt-4 flex items-center gap-2 rounded-2xl bg-primary/10 px-4 py-2.5 text-[13px] font-medium text-primary hover:bg-primary/20"><Plus className="h-4 w-4" /> Nouveau RDV</button>
             </div>
           </div>
         )}
       </div>
 
-      {/* FAB Mobile */}
+      {/* FAB — toujours visible */}
       {!showRdvForm && !selectedAppointment && (
-        <button onClick={() => { resetRdvForm(); setShowRdvForm(true); }} className="fixed bottom-20 right-4 z-40 flex h-11 w-11 items-center justify-center rounded-full bg-foreground/10 backdrop-blur-xl text-muted-foreground shadow-md transition-all hover:shadow-lg hover:scale-105 active:scale-95 border border-white/10 lg:bottom-6" aria-label="Nouveau rendez-vous">
+        <button onClick={() => { resetRdvForm(); setShowRdvForm(true); }} className="fixed bottom-20 right-4 z-40 flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg shadow-primary/30 transition-all hover:shadow-xl hover:scale-105 active:scale-95 lg:bottom-6" aria-label="Nouveau rendez-vous">
           <Plus className="h-5 w-5" />
         </button>
       )}

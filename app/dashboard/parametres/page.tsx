@@ -16,7 +16,6 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import {
   Plus,
@@ -124,6 +123,21 @@ export default function ParametresPage() {
         {activeTab === "contacts" && <ContactsSection />}
       </div>
 
+      {/* FAB flottant contextuel */}
+      {activeTab === "sections" && (
+        <button
+          onClick={() => {
+            const { resetToDefault } = useDashboardTabs.getState();
+            resetToDefault();
+          }}
+          className="fixed bottom-28 right-4 z-40 flex h-12 w-12 items-center justify-center rounded-full bg-foreground/10 backdrop-blur-xl text-muted-foreground shadow-lg transition-all hover:shadow-xl hover:scale-105 active:scale-95 border border-white/10 lg:bottom-6"
+          aria-label="Réinitialiser"
+          title="Réinitialiser"
+        >
+          <RotateCcw className="h-5 w-5" />
+        </button>
+      )}
+
       {/* Tab Navigation — barre fixe en bas */}
       <div className="fixed bottom-[3.5rem] left-0 right-0 z-40 lg:bottom-0 lg:left-[280px]">
         <div className="overflow-x-auto bg-white/50 dark:bg-white/[0.06] backdrop-blur-2xl border-t border-white/30 dark:border-white/10 px-2 py-1.5">
@@ -175,27 +189,17 @@ function DashboardSectionsSettings() {
 
   return (
     <div className="space-y-4 sm:space-y-6">
-      {/* Header + Reset */}
-      <div className="flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
-          <div className="flex h-9 w-9 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500/20 to-indigo-600/20">
-            <LayoutGrid className="h-4 w-4 sm:h-5 sm:w-5 text-indigo-500" />
-          </div>
-          <div className="min-w-0">
-            <h3 className="text-[14px] sm:text-[16px] font-semibold truncate">Sections du dashboard</h3>
-            <p className="text-[11px] sm:text-[12px] text-muted-foreground truncate">
-              Choisissez les sections visibles et leur ordre.
-            </p>
-          </div>
+      {/* Header */}
+      <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+        <div className="flex h-9 w-9 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500/20 to-indigo-600/20">
+          <LayoutGrid className="h-4 w-4 sm:h-5 sm:w-5 text-indigo-500" />
         </div>
-        <button
-          onClick={resetToDefault}
-          className="flex shrink-0 items-center gap-1.5 sm:gap-2 rounded-2xl bg-foreground/[0.06] px-3 sm:px-4 py-2 sm:py-2.5 text-[11px] sm:text-[13px] font-medium text-muted-foreground transition-all hover:bg-foreground/[0.1] hover:text-foreground"
-        >
-          <RotateCcw className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
-          <span className="hidden sm:inline">Réinitialiser</span>
-          <span className="sm:hidden">Reset</span>
-        </button>
+        <div className="min-w-0">
+          <h3 className="text-[14px] sm:text-[16px] font-semibold truncate">Sections du dashboard</h3>
+          <p className="text-[11px] sm:text-[12px] text-muted-foreground truncate">
+            Choisissez les sections visibles et leur ordre.
+          </p>
+        </div>
       </div>
 
       {/* Sections sidebar (visibles) */}
@@ -476,27 +480,30 @@ function AppointmentTypesSection({ userId }: { userId?: string }) {
   return (
     <div className="space-y-4">
       {/* Header row */}
-      <div className="flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
-          <div className="flex h-9 w-9 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500/20 to-blue-600/20">
-            <CalendarDays className="h-4 w-4 sm:h-5 sm:w-5 text-blue-500" />
-          </div>
-          <div className="min-w-0">
-            <h3 className="text-[14px] sm:text-[16px] font-semibold truncate">Types de rendez-vous</h3>
-            <p className="text-[11px] sm:text-[12px] text-muted-foreground">
-              {types.length} type{types.length > 1 ? "s" : ""} configuré
-              {types.length > 1 ? "s" : ""}
-            </p>
-          </div>
+      <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+        <div className="flex h-9 w-9 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500/20 to-blue-600/20">
+          <CalendarDays className="h-4 w-4 sm:h-5 sm:w-5 text-blue-500" />
         </div>
+        <div className="min-w-0">
+          <h3 className="text-[14px] sm:text-[16px] font-semibold truncate">Types de rendez-vous</h3>
+          <p className="text-[11px] sm:text-[12px] text-muted-foreground">
+            {types.length} type{types.length > 1 ? "s" : ""} configuré
+            {types.length > 1 ? "s" : ""}
+          </p>
+        </div>
+      </div>
 
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogTrigger asChild>
-            <button className="flex shrink-0 items-center gap-1.5 sm:gap-2 rounded-2xl bg-primary px-3 sm:px-4 py-2 sm:py-2.5 text-[11px] sm:text-[13px] font-medium text-primary-foreground shadow-lg shadow-primary/25 transition-all hover:shadow-xl hover:-translate-y-0.5">
-              <Plus className="h-4 w-4" />
-              Ajouter
-            </button>
-          </DialogTrigger>
+      {/* FAB Ajouter type */}
+      <button
+        onClick={() => setDialogOpen(true)}
+        className="fixed bottom-28 right-4 z-40 flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg shadow-primary/30 transition-all hover:shadow-xl hover:scale-105 active:scale-95 lg:bottom-6"
+        aria-label="Ajouter un type"
+        title="Ajouter un type"
+      >
+        <Plus className="h-5 w-5" />
+      </button>
+
+      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogContent className="rounded-3xl">
             <DialogHeader>
               <DialogTitle>Nouveau type de rendez-vous</DialogTitle>
@@ -722,27 +729,30 @@ function AvailabilitySection({ userId }: { userId?: string }) {
   return (
     <div className="space-y-4">
       {/* Header row */}
-      <div className="flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
-          <div className="flex h-9 w-9 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-orange-500/20 to-orange-600/20">
-            <Clock className="h-4 w-4 sm:h-5 sm:w-5 text-orange-500" />
-          </div>
-          <div className="min-w-0">
-            <h3 className="text-[14px] sm:text-[16px] font-semibold truncate">Plages horaires</h3>
-            <p className="text-[11px] sm:text-[12px] text-muted-foreground">
-              {rules.length} plage{rules.length > 1 ? "s" : ""} configurée
-              {rules.length > 1 ? "s" : ""}
-            </p>
-          </div>
+      <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+        <div className="flex h-9 w-9 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-orange-500/20 to-orange-600/20">
+          <Clock className="h-4 w-4 sm:h-5 sm:w-5 text-orange-500" />
         </div>
+        <div className="min-w-0">
+          <h3 className="text-[14px] sm:text-[16px] font-semibold truncate">Plages horaires</h3>
+          <p className="text-[11px] sm:text-[12px] text-muted-foreground">
+            {rules.length} plage{rules.length > 1 ? "s" : ""} configurée
+            {rules.length > 1 ? "s" : ""}
+          </p>
+        </div>
+      </div>
 
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogTrigger asChild>
-            <button className="flex shrink-0 items-center gap-1.5 sm:gap-2 rounded-2xl bg-primary px-3 sm:px-4 py-2 sm:py-2.5 text-[11px] sm:text-[13px] font-medium text-primary-foreground shadow-lg shadow-primary/25 transition-all hover:shadow-xl hover:-translate-y-0.5">
-              <Plus className="h-4 w-4" />
-              Ajouter
-            </button>
-          </DialogTrigger>
+      {/* FAB Ajouter plage */}
+      <button
+        onClick={() => setDialogOpen(true)}
+        className="fixed bottom-28 right-4 z-40 flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg shadow-primary/30 transition-all hover:shadow-xl hover:scale-105 active:scale-95 lg:bottom-6"
+        aria-label="Ajouter une plage"
+        title="Ajouter une plage"
+      >
+        <Plus className="h-5 w-5" />
+      </button>
+
+      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogContent className="rounded-3xl">
             <DialogHeader>
               <DialogTitle>Nouvelle plage horaire</DialogTitle>
