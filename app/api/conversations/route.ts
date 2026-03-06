@@ -20,11 +20,12 @@ export async function GET() {
 
     const supabase = createAdminClient();
 
-    // 1. Récupérer les participations du user courant
+    // 1. Récupérer les participations du user courant (exclure les supprimées)
     const { data: participations, error: pErr } = await supabase
       .from("conversation_participants")
       .select("conversation_id, unread_count")
-      .eq("user_id", user.id);
+      .eq("user_id", user.id)
+      .is("deleted_at", null);
 
     if (pErr) return NextResponse.json({ error: pErr.message }, { status: 500 });
     if (!participations || participations.length === 0) {
@@ -122,7 +123,7 @@ export async function POST(request: Request) {
 
     const supabase = createAdminClient();
 
-    // 1. Chercher si une conversation existe déjà entre ces 2 users
+    // 1. Chercher si une conversation existe déjà entre ces 2 users (inclure les deleted)
     const { data: myConvs } = await supabase
       .from("conversation_participants")
       .select("conversation_id")
@@ -137,6 +138,12 @@ export async function POST(request: Request) {
         .in("conversation_id", myConvIds);
 
       if (sharedConvs && sharedConvs.length > 0) {
+        // Restaurer la participation si elle avait été soft-deleted
+        await supabase
+          .from("conversation_participants")
+          .update({ deleted_at: null })
+          .eq("conversation_id", sharedConvs[0].conversation_id)
+          .eq("user_id", user.id);
         return NextResponse.json({ conversation_id: sharedConvs[0].conversation_id });
       }
     }
@@ -163,6 +170,37 @@ export async function POST(request: Request) {
     return NextResponse.json({ conversation_id: conv.id });
   } catch (err) {
     console.error("[POST /api/conversations]", err);
+    return NextResponse.json({ error: "Erreur serveur" }, { status: 500 });
+  }
+}
+
+/* ═══════════════════════════════════════════════════════
+   DELETE /api/conversations
+   Body: { conversation_id }
+   Soft-delete : marque deleted_at sur la participation du user.
+   ═══════════════════════════════════════════════════════ */
+export async function DELETE(request: Request) {
+  try {
+    const user = await getAuthUser();
+    if (!user) return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+
+    const body = await request.json();
+    const { conversation_id } = body;
+    if (!conversation_id) return NextResponse.json({ error: "conversation_id requis" }, { status: 400 });
+
+    const supabase = createAdminClient();
+
+    const { error } = await supabase
+      .from("conversation_participants")
+      .update({ deleted_at: new Date().toISOString() })
+      .eq("conversation_id", conversation_id)
+      .eq("user_id", user.id);
+
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+    return NextResponse.json({ success: true });
+  } catch (err) {
+    console.error("[DELETE /api/conversations]", err);
     return NextResponse.json({ error: "Erreur serveur" }, { status: 500 });
   }
 }

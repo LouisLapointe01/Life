@@ -11,7 +11,15 @@ import {
   ArrowLeft,
   Send,
   Loader2,
+  Trash2,
+  MoreVertical,
 } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 /* ═══════════════════════════════════════════
    Types
@@ -119,6 +127,10 @@ export default function MessagesPage() {
 
   // Mobile view
   const [mobileView, setMobileView] = useState<"list" | "chat">("list");
+
+  // Suppression conversation
+  const [deleteConvTarget, setDeleteConvTarget] = useState<Conversation | null>(null);
+  const [deletingConv, setDeletingConv] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -354,6 +366,31 @@ export default function MessagesPage() {
     finally { setStartingConv(null); }
   };
 
+  /* ─── Supprimer une conversation ─── */
+  const deleteConversation = async (conv: Conversation) => {
+    setDeletingConv(true);
+    try {
+      const res = await fetch("/api/conversations", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ conversation_id: conv.id }),
+      });
+      if (res.ok) {
+        setConversations((prev) => prev.filter((c) => c.id !== conv.id));
+        if (activeConvId === conv.id) {
+          setActiveConvId(null);
+          setActiveConv(null);
+          setMessages([]);
+          setMobileView("list");
+        }
+      }
+    } catch { /* ignore */ }
+    finally {
+      setDeletingConv(false);
+      setDeleteConvTarget(null);
+    }
+  };
+
   /* ─── Keyboard handler ─── */
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -365,7 +402,7 @@ export default function MessagesPage() {
   /* ─── Render ─── */
   return (
     <div
-      className="-mx-4 -mt-4 -mb-[120px] lg:-mx-8 lg:-mt-6 lg:-mb-6 flex overflow-hidden h-[calc(100dvh-64px-3.5rem)] lg:h-[calc(100dvh-64px)]"
+      className="-mx-4 -mt-4 -mb-[120px] lg:-mx-8 lg:-mt-6 lg:-mb-6 flex overflow-hidden h-[calc(100dvh-3.5rem)] lg:h-dvh"
     >
       {/* ══════════════════════════════════
           Colonne gauche — liste des convs
@@ -457,43 +494,50 @@ export default function MessagesPage() {
             </div>
           ) : (
             conversations.map((conv) => (
-              <button
+              <div
                 key={conv.id}
-                onClick={() => openConversation(conv)}
                 className={cn(
-                  "flex w-full items-center gap-3 px-4 py-3 text-left transition-colors border-b border-foreground/[0.04] last:border-0",
+                  "group flex w-full items-center gap-3 px-4 py-3 text-left transition-colors border-b border-foreground/[0.04] last:border-0",
                   activeConvId === conv.id
                     ? "bg-primary/[0.06]"
                     : "hover:bg-foreground/[0.04]"
                 )}
               >
-                <Avatar url={conv.other_user.avatar_url} name={conv.other_user.full_name} size={40} />
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between">
-                    <p className={cn("text-[13px] truncate", conv.unread_count > 0 ? "font-semibold" : "font-medium")}>
-                      {conv.other_user.full_name}
-                    </p>
-                    {conv.last_message && (
-                      <span className="text-[10px] text-muted-foreground/60 shrink-0 ml-2">
-                        {timeAgo(conv.last_message.created_at)}
-                      </span>
-                    )}
+                <button onClick={() => openConversation(conv)} className="flex flex-1 items-center gap-3 min-w-0">
+                  <Avatar url={conv.other_user.avatar_url} name={conv.other_user.full_name} size={40} />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between">
+                      <p className={cn("text-[13px] truncate", conv.unread_count > 0 ? "font-semibold" : "font-medium")}>
+                        {conv.other_user.full_name}
+                      </p>
+                      {conv.last_message && (
+                        <span className="text-[10px] text-muted-foreground/60 shrink-0 ml-2">
+                          {timeAgo(conv.last_message.created_at)}
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center justify-between mt-0.5">
+                      <p className={cn(
+                        "text-[12px] truncate",
+                        conv.unread_count > 0 ? "text-foreground" : "text-muted-foreground"
+                      )}>
+                        {conv.last_message?.content ?? "Démarrer la conversation"}
+                      </p>
+                      {conv.unread_count > 0 && (
+                        <span className="ml-2 flex h-4.5 min-w-4.5 items-center justify-center rounded-full bg-primary px-1 text-[9px] font-bold text-primary-foreground shrink-0">
+                          {conv.unread_count > 9 ? "9+" : conv.unread_count}
+                        </span>
+                      )}
+                    </div>
                   </div>
-                  <div className="flex items-center justify-between mt-0.5">
-                    <p className={cn(
-                      "text-[12px] truncate",
-                      conv.unread_count > 0 ? "text-foreground" : "text-muted-foreground"
-                    )}>
-                      {conv.last_message?.content ?? "Démarrer la conversation"}
-                    </p>
-                    {conv.unread_count > 0 && (
-                      <span className="ml-2 flex h-4.5 min-w-4.5 items-center justify-center rounded-full bg-primary px-1 text-[9px] font-bold text-primary-foreground shrink-0">
-                        {conv.unread_count > 9 ? "9+" : conv.unread_count}
-                      </span>
-                    )}
-                  </div>
-                </div>
-              </button>
+                </button>
+                <button
+                  onClick={(e) => { e.stopPropagation(); setDeleteConvTarget(conv); }}
+                  className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-muted-foreground/50 transition-all hover:bg-foreground/[0.06] hover:text-foreground opacity-0 group-hover:opacity-100"
+                >
+                  <MoreVertical className="h-3.5 w-3.5" />
+                </button>
+              </div>
             ))
           )}
         </div>
@@ -615,6 +659,25 @@ export default function MessagesPage() {
           </>
         )}
       </div>
+
+      {/* Dialog suppression conversation */}
+      <Dialog open={!!deleteConvTarget} onOpenChange={(o) => !o && setDeleteConvTarget(null)}>
+        <DialogContent className="rounded-3xl sm:max-w-sm">
+          <DialogHeader><DialogTitle>Supprimer la conversation</DialogTitle></DialogHeader>
+          <div className="space-y-5 pt-1">
+            <p className="text-[14px] text-white/60 leading-relaxed">
+              Supprimer la conversation avec <span className="font-semibold text-white">{deleteConvTarget?.other_user.full_name}</span> ? Les messages resteront visibles pour l&apos;autre personne.
+            </p>
+            <div className="flex gap-3">
+              <button onClick={() => setDeleteConvTarget(null)} className="flex-1 rounded-2xl bg-white/[0.06] py-3 text-[13px] font-medium text-white/60 transition-all hover:bg-white/[0.1] hover:text-white">Annuler</button>
+              <button onClick={() => deleteConvTarget && deleteConversation(deleteConvTarget)} disabled={deletingConv} className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-red-500 py-3 text-[13px] font-semibold text-white shadow-lg shadow-red-500/25 transition-all hover:shadow-xl disabled:opacity-50">
+                {deletingConv ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                Supprimer
+              </button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
