@@ -312,7 +312,7 @@ export default function FichiersPage() {
   const totalItemsInCurrent = filteredFolders.length + filtered.length;
 
   return (
-    <div className="mx-auto max-w-6xl space-y-4 lg:space-y-6">
+    <div className="mx-auto max-w-6xl space-y-4 lg:space-y-6 overflow-hidden">
       <input ref={fileInputRef} type="file" multiple className="hidden" onChange={handleFilesSelected} accept="*/*" />
 
       {/* Search + Actions */}
