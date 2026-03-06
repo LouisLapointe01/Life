@@ -207,14 +207,14 @@ export function Header() {
   };
 
   return (
-    <div className="fixed top-4 right-4 z-30 flex items-center gap-1.5 rounded-2xl bg-white/40 dark:bg-white/[0.08] backdrop-blur-2xl border border-white/30 dark:border-white/10 px-2 py-1.5 shadow-lg shadow-black/5">
+    <div className="fixed top-4 right-4 z-30 flex items-center gap-1 rounded-2xl bg-white/15 dark:bg-white/[0.04] backdrop-blur-xl border border-white/10 dark:border-white/[0.06] px-1.5 py-1 shadow-sm">
       {/* Notifications Bell */}
       <div className="relative" ref={notifRef}>
         <button
           onClick={() => setShowNotifs(!showNotifs)}
-          className="relative flex h-9 w-9 items-center justify-center rounded-xl text-muted-foreground transition-all duration-200 hover:bg-foreground/[0.06] hover:text-foreground"
+          className="relative flex h-8 w-8 items-center justify-center rounded-xl text-muted-foreground/70 transition-all duration-200 hover:bg-foreground/[0.06] hover:text-foreground"
         >
-          <Bell className="h-[18px] w-[18px]" />
+          <Bell className="h-4 w-4" />
           {unreadCount > 0 && (
             <span className="absolute -right-0.5 -top-0.5 flex h-4.5 min-w-4.5 items-center justify-center rounded-full bg-red-500 px-1 text-[9px] font-bold text-white ring-2 ring-background">
               {unreadCount > 9 ? "9+" : unreadCount}
@@ -321,16 +321,16 @@ export function Header() {
       </div>
 
       {/* Separator */}
-      <div className="h-5 w-px bg-border" />
+      <div className="h-4 w-px bg-border/50" />
 
       {/* Profile */}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <button className="flex items-center rounded-xl p-1 transition-all duration-200 hover:bg-foreground/[0.06]">
+          <button className="flex items-center rounded-xl p-0.5 transition-all duration-200 hover:bg-foreground/[0.06]">
             {avatarUrl ? (
-              <img src={avatarUrl} alt={fullName} className="h-8 w-8 rounded-full ring-2 ring-white/20" referrerPolicy="no-referrer" />
+              <img src={avatarUrl} alt={fullName} className="h-7 w-7 rounded-full ring-1 ring-white/10" referrerPolicy="no-referrer" />
             ) : (
-              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-blue-600 text-sm font-semibold text-white shadow-lg shadow-blue-500/20">
+              <div className="flex h-7 w-7 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-blue-600 text-xs font-semibold text-white">
                 {fullName.charAt(0).toUpperCase()}
               </div>
             )}

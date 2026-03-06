@@ -534,25 +534,25 @@ export default function SantePage() {
       </Dialog>
 
       {/* FABs flottants */}
-      <div className="fixed bottom-20 right-4 z-40 flex flex-col gap-3 lg:bottom-6">
+      <div className="fixed bottom-20 right-4 z-40 flex flex-col gap-2 lg:bottom-6">
         <button
           onClick={() => setSettingsOpen(true)}
-          className="flex h-12 w-12 items-center justify-center rounded-full bg-foreground/10 backdrop-blur-xl text-muted-foreground shadow-lg transition-all hover:shadow-xl hover:scale-105 active:scale-95 border border-white/10"
+          className="flex h-10 w-10 items-center justify-center rounded-full bg-foreground/10 backdrop-blur-xl text-muted-foreground shadow-md transition-all hover:shadow-lg hover:scale-105 active:scale-95 border border-white/10"
           title="Gérer les sections"
         >
-          <Settings2 className="h-5 w-5" />
+          <Settings2 className="h-4 w-4" />
         </button>
         <button
           onClick={() => setEditMode(!editMode)}
           className={cn(
-            "flex h-14 w-14 items-center justify-center rounded-full shadow-xl transition-all hover:shadow-2xl hover:scale-105 active:scale-95",
+            "flex h-11 w-11 items-center justify-center rounded-full shadow-lg transition-all hover:shadow-xl hover:scale-105 active:scale-95",
             editMode
-              ? "bg-primary text-primary-foreground shadow-primary/30"
+              ? "bg-primary text-primary-foreground shadow-primary/25"
               : "bg-foreground/10 backdrop-blur-xl text-muted-foreground border border-white/10"
           )}
           title={editMode ? "Terminer" : "Modifier"}
         >
-          {editMode ? <X className="h-6 w-6" /> : <Pencil className="h-5 w-5" />}
+          {editMode ? <X className="h-5 w-5" /> : <Pencil className="h-4 w-4" />}
         </button>
       </div>
     </div>

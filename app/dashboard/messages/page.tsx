@@ -678,6 +678,17 @@ export default function MessagesPage() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* FAB Nouvelle conversation */}
+      {mobileView === "list" && (
+        <button
+          onClick={() => { setShowSearch(true); setSearchUser(""); setUserResults([]); }}
+          className="fixed bottom-20 right-4 z-40 flex h-11 w-11 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg shadow-primary/25 transition-all hover:shadow-xl hover:scale-105 active:scale-95 lg:bottom-6"
+          aria-label="Nouvelle conversation"
+        >
+          <Plus className="h-5 w-5" />
+        </button>
+      )}
     </div>
   );
 }
