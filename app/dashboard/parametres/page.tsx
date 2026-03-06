@@ -130,7 +130,7 @@ export default function ParametresPage() {
             const { resetToDefault } = useDashboardTabs.getState();
             resetToDefault();
           }}
-          className="fixed bottom-28 right-4 z-40 flex h-12 w-12 items-center justify-center rounded-full bg-foreground/10 backdrop-blur-xl text-muted-foreground shadow-lg transition-all hover:shadow-xl hover:scale-105 active:scale-95 border border-white/10 lg:bottom-6"
+          className="fixed bottom-28 right-4 z-40 flex h-11 w-11 items-center justify-center rounded-full bg-foreground/10 backdrop-blur-xl text-muted-foreground shadow-md transition-all hover:shadow-lg hover:scale-105 active:scale-95 border border-white/10 lg:bottom-14"
           aria-label="Réinitialiser"
           title="Réinitialiser"
         >
@@ -496,7 +496,7 @@ function AppointmentTypesSection({ userId }: { userId?: string }) {
       {/* FAB Ajouter type */}
       <button
         onClick={() => setDialogOpen(true)}
-        className="fixed bottom-28 right-4 z-40 flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg shadow-primary/30 transition-all hover:shadow-xl hover:scale-105 active:scale-95 lg:bottom-6"
+        className="fixed bottom-28 right-4 z-40 flex h-11 w-11 items-center justify-center rounded-full bg-foreground/10 backdrop-blur-xl text-muted-foreground shadow-md transition-all hover:shadow-lg hover:scale-105 active:scale-95 border border-white/10 lg:bottom-14"
         aria-label="Ajouter un type"
         title="Ajouter un type"
       >
@@ -572,7 +572,6 @@ function AppointmentTypesSection({ userId }: { userId?: string }) {
             </div>
           </DialogContent>
         </Dialog>
-      </div>
 
       {/* List */}
       {types.length === 0 ? (
@@ -745,7 +744,7 @@ function AvailabilitySection({ userId }: { userId?: string }) {
       {/* FAB Ajouter plage */}
       <button
         onClick={() => setDialogOpen(true)}
-        className="fixed bottom-28 right-4 z-40 flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg shadow-primary/30 transition-all hover:shadow-xl hover:scale-105 active:scale-95 lg:bottom-6"
+        className="fixed bottom-28 right-4 z-40 flex h-11 w-11 items-center justify-center rounded-full bg-foreground/10 backdrop-blur-xl text-muted-foreground shadow-md transition-all hover:shadow-lg hover:scale-105 active:scale-95 border border-white/10 lg:bottom-14"
         aria-label="Ajouter une plage"
         title="Ajouter une plage"
       >
@@ -816,7 +815,6 @@ function AvailabilitySection({ userId }: { userId?: string }) {
             </div>
           </DialogContent>
         </Dialog>
-      </div>
 
       {/* List grouped by day */}
       {rules.length === 0 ? (
