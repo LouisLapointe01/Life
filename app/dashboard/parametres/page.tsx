@@ -327,11 +327,11 @@ function DashboardSectionsSettings() {
         <div className="flex items-center gap-2 px-1">
           <Smartphone className="h-3.5 w-3.5 text-muted-foreground" />
           <p className="text-[11px] sm:text-[12px] font-semibold uppercase tracking-widest text-muted-foreground">
-            Barre mobile (max 4)
+            Barre mobile (max 8)
           </p>
         </div>
         <p className="text-[11px] sm:text-[12px] text-muted-foreground px-1">
-          Sélectionnez jusqu&apos;à 4 sections pour la navigation mobile.
+          Sélectionnez jusqu&apos;à 8 sections pour la navigation mobile.
         </p>
         <div className="grid grid-cols-3 gap-1.5 sm:grid-cols-4 sm:gap-2">
           {ALL_TABS.map((tab) => {

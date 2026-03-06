@@ -240,7 +240,7 @@ export function Header({ title }: { title?: string }) {
 
           {/* Notification Panel */}
           {showNotifs && (
-            <div className="absolute right-0 top-full mt-2 w-[340px] sm:w-[380px] rounded-2xl border border-foreground/[0.08] bg-card shadow-xl shadow-black/10 z-50 overflow-hidden">
+            <div className="absolute right-0 top-full mt-2 w-[340px] sm:w-[380px] rounded-2xl border border-white/20 bg-background/80 backdrop-blur-2xl shadow-xl shadow-black/10 z-50 overflow-hidden">
               <div className="flex items-center justify-between px-4 py-3 border-b border-foreground/[0.06]">
                 <h3 className="text-[14px] font-semibold">Notifications</h3>
                 {unreadCount > 0 && (
