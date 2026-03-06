@@ -5,7 +5,6 @@ import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 import {
   MessageCircle,
-  Plus,
   Search,
   X,
   ArrowLeft,
@@ -119,7 +118,6 @@ export default function MessagesPage() {
   const [sending, setSending] = useState(false);
 
   // Recherche nouvel utilisateur
-  const [showSearch, setShowSearch] = useState(false);
   const [searchUser, setSearchUser] = useState("");
   const [userResults, setUserResults] = useState<UserResult[]>([]);
   const [searchLoading, setSearchLoading] = useState(false);
@@ -349,7 +347,6 @@ export default function MessagesPage() {
       if (res.ok) {
         const data = await res.json();
         await fetchConversations();
-        setShowSearch(false);
         setSearchUser("");
         setUserResults([]);
         // Trouver la conv dans la liste et l'ouvrir
@@ -415,50 +412,48 @@ export default function MessagesPage() {
           mobileView === "chat" && "hidden lg:flex"
         )}
       >
-        {/* Header liste */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-foreground/[0.06]">
-          <h2 className="text-[15px] font-semibold">Messages</h2>
-          <button
-            onClick={() => { setShowSearch(true); setSearchUser(""); setUserResults([]); }}
-            className="flex h-8 w-8 items-center justify-center rounded-xl text-muted-foreground hover:bg-foreground/[0.06] hover:text-foreground transition-colors"
-            title="Nouvelle conversation"
-          >
-            <Plus className="h-4 w-4" />
-          </button>
-        </div>
-
-        {/* Recherche nouvelle conv */}
-        {showSearch && (
-          <div className="px-4 py-3 border-b border-foreground/[0.06] bg-foreground/[0.02]">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-              <input
-                autoFocus
-                value={searchUser}
-                onChange={(e) => setSearchUser(e.target.value)}
-                placeholder="Rechercher un utilisateur…"
-                className="w-full rounded-xl border border-foreground/[0.08] bg-background pl-9 pr-8 py-2 text-[13px] outline-none focus:border-primary/50"
-              />
+        {/* Recherche utilisateur — toujours visible */}
+        <div className="px-4 py-3 border-b border-foreground/[0.06]">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+            <input
+              value={searchUser}
+              onChange={(e) => setSearchUser(e.target.value)}
+              placeholder="Rechercher un utilisateur…"
+              className="w-full rounded-xl border border-foreground/[0.08] bg-foreground/[0.03] pl-9 pr-8 py-2 text-[13px] outline-none focus:border-primary/50 transition-colors"
+            />
+            {searchUser && (
               <button
-                onClick={() => { setShowSearch(false); setSearchUser(""); setUserResults([]); }}
+                onClick={() => { setSearchUser(""); setUserResults([]); }}
                 className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
               >
                 <X className="h-3.5 w-3.5" />
               </button>
-            </div>
-
-            {/* Résultats recherche */}
-            {searchLoading && (
-              <div className="flex justify-center pt-3">
-                <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-              </div>
             )}
-            {!searchLoading && userResults.length > 0 && (
-              <div className="mt-2 space-y-0.5">
-                {userResults.map((u) => (
+          </div>
+
+          {/* Résultats recherche */}
+          {searchLoading && (
+            <div className="flex justify-center pt-3">
+              <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+            </div>
+          )}
+          {!searchLoading && userResults.length > 0 && (
+            <div className="mt-2 space-y-0.5">
+              {userResults.map((u) => {
+                const existingConv = conversations.find((c) => c.other_user.id === u.id);
+                return (
                   <button
                     key={u.id}
-                    onClick={() => startConversation(u.id)}
+                    onClick={() => {
+                      if (existingConv) {
+                        openConversation(existingConv);
+                        setSearchUser("");
+                        setUserResults([]);
+                      } else {
+                        startConversation(u.id);
+                      }
+                    }}
                     disabled={startingConv === u.id}
                     className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left hover:bg-foreground/[0.06] transition-colors disabled:opacity-50"
                   >
@@ -467,16 +462,20 @@ export default function MessagesPage() {
                       <p className="text-[13px] font-medium truncate">{u.full_name}</p>
                       {u.email && <p className="text-[11px] text-muted-foreground truncate">{u.email}</p>}
                     </div>
-                    {startingConv === u.id && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
+                    {startingConv === u.id ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />
+                    ) : !existingConv ? (
+                      <span className="shrink-0 rounded-lg bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">Nouveau</span>
+                    ) : null}
                   </button>
-                ))}
-              </div>
-            )}
-            {!searchLoading && searchUser.length >= 2 && userResults.length === 0 && (
-              <p className="pt-3 text-center text-[12px] text-muted-foreground">Aucun utilisateur trouvé</p>
-            )}
-          </div>
-        )}
+                );
+              })}
+            </div>
+          )}
+          {!searchLoading && searchUser.length >= 2 && userResults.length === 0 && (
+            <p className="pt-3 text-center text-[12px] text-muted-foreground">Aucun utilisateur trouvé</p>
+          )}
+        </div>
 
         {/* Liste des conversations */}
         <div className="flex-1 overflow-y-auto">
@@ -489,7 +488,7 @@ export default function MessagesPage() {
               <MessageCircle className="h-10 w-10 text-muted-foreground/20 mb-3" />
               <p className="text-[13px] font-medium text-muted-foreground">Aucune conversation</p>
               <p className="text-[12px] text-muted-foreground/60 mt-1">
-                Cliquez sur + pour démarrer une conversation
+                Recherchez un utilisateur pour démarrer
               </p>
             </div>
           ) : (
@@ -679,16 +678,6 @@ export default function MessagesPage() {
         </DialogContent>
       </Dialog>
 
-      {/* FAB Nouvelle conversation */}
-      {mobileView === "list" && (
-        <button
-          onClick={() => { setShowSearch(true); setSearchUser(""); setUserResults([]); }}
-          className="fixed bottom-20 right-4 z-40 flex h-11 w-11 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg shadow-primary/25 transition-all hover:shadow-xl hover:scale-105 active:scale-95 lg:bottom-6"
-          aria-label="Nouvelle conversation"
-        >
-          <Plus className="h-5 w-5" />
-        </button>
-      )}
     </div>
   );
 }
