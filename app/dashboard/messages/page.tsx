@@ -304,6 +304,16 @@ export default function MessagesPage() {
     }
   }, [messages, loadingMessages]);
 
+  /* ─── Auto-remplissage : charger plus si le contenu ne remplit pas l'écran ─── */
+  useEffect(() => {
+    if (!loadingMessages && !loadingMore && hasMore && scrollContainerRef.current) {
+      const el = scrollContainerRef.current;
+      if (el.scrollHeight <= el.clientHeight) {
+        loadMoreMessages();
+      }
+    }
+  }, [messages, loadingMessages, loadingMore, hasMore, loadMoreMessages]);
+
   /* ─── Handler scroll : charger plus en haut ─── */
   const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
     const el = e.currentTarget;
