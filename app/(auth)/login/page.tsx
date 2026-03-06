@@ -42,7 +42,8 @@ export default function LoginPage() {
       );
       setLoading(false);
     } else {
-      router.push("/dashboard");
+      router.refresh();
+      window.location.href = "/dashboard";
     }
   };
 
