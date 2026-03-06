@@ -486,9 +486,6 @@ export default function AgendaPage() {
           <h2 className="text-2xl lg:text-3xl font-bold tracking-tight">Agenda</h2>
           <p className="mt-1 text-[13px] lg:text-[15px] text-muted-foreground">Gérez vos rendez-vous et répondez aux invitations.</p>
         </div>
-        <button onClick={() => { resetRdvForm(); setShowRdvForm(true); }} className="hidden sm:flex items-center gap-2 rounded-2xl bg-primary px-4 py-2.5 text-[13px] font-semibold text-primary-foreground shadow-lg shadow-primary/25 transition-all hover:shadow-xl hover:-translate-y-0.5">
-          <Plus className="h-4 w-4" /> Nouveau RDV
-        </button>
       </div>
 
       {/* Stats */}
@@ -779,7 +776,7 @@ export default function AgendaPage() {
 
       {/* FAB Mobile */}
       {!showRdvForm && !selectedAppointment && (
-        <button onClick={() => { resetRdvForm(); setShowRdvForm(true); }} className="fixed bottom-20 right-4 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-xl shadow-primary/30 transition-all hover:shadow-2xl hover:scale-105 active:scale-95 sm:hidden" aria-label="Nouveau rendez-vous">
+        <button onClick={() => { resetRdvForm(); setShowRdvForm(true); }} className="fixed bottom-20 right-4 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-xl shadow-primary/30 transition-all hover:shadow-2xl hover:scale-105 active:scale-95 lg:bottom-6" aria-label="Nouveau rendez-vous">
           <Plus className="h-6 w-6" />
         </button>
       )}

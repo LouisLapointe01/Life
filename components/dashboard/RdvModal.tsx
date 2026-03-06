@@ -186,7 +186,7 @@ export function RdvModal() {
   return (
     <Dialog open={isOpen} onOpenChange={(o) => { if (!o) close(); }}>
       <DialogContent className="max-w-lg w-full max-h-[92dvh] overflow-y-auto p-0 gap-0 rounded-3xl">
-        <DialogHeader className="px-6 pt-6 pb-0">
+        <DialogHeader className="px-4 pt-4 pb-0 sm:px-6 sm:pt-6">
           <DialogTitle className="flex items-center gap-3 text-[18px]">
             <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5">
               <CalendarDays className="h-5 w-5 text-primary" />
@@ -195,7 +195,7 @@ export function RdvModal() {
           </DialogTitle>
         </DialogHeader>
 
-        <div className="px-6 pb-6 pt-5 space-y-5">
+        <div className="px-4 pb-4 pt-4 sm:px-6 sm:pb-6 sm:pt-5 space-y-5">
           {/* Step indicator */}
           {step !== "confirmation" && (
             <div className="flex items-center justify-center gap-1">
