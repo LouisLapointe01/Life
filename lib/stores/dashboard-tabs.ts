@@ -103,7 +103,6 @@ export const ALL_TABS: TabDefinition[] = [
         icon: Settings,
         color: "from-gray-500/20 to-gray-600/20",
         iconColor: "text-gray-500",
-        locked: true,
     },
 ];
 
@@ -149,15 +148,7 @@ export const useDashboardTabs = create<DashboardTabsState>()(
             addTab: (id) =>
                 set((state) => {
                     if (state.visibleTabs.includes(id)) return state;
-                    // Insérer avant "parametres" (qui est toujours dernier)
-                    const tabs = [...state.visibleTabs];
-                    const paramIdx = tabs.indexOf("parametres");
-                    if (paramIdx !== -1) {
-                        tabs.splice(paramIdx, 0, id);
-                    } else {
-                        tabs.push(id);
-                    }
-                    return { visibleTabs: tabs };
+                    return { visibleTabs: [...state.visibleTabs, id] };
                 }),
 
             removeTab: (id) =>
