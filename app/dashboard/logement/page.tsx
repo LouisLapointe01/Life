@@ -501,15 +501,9 @@ export default function LogementPage() {
 
     return (
         <div className="mx-auto max-w-7xl space-y-4 lg:space-y-6">
-            {/* ─── Page Title ─── */}
+            {/* ─── Actions ─── */}
             <div>
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div>
-                        <h2 className="text-2xl lg:text-3xl font-bold tracking-tight">Logement</h2>
-                        <p className="mt-1 text-[14px] lg:text-[15px] text-muted-foreground">
-                            {totalDevicesOn}/{totalDevices} appareils actifs · Tout fonctionne
-                        </p>
-                    </div>
+                <div className="flex flex-wrap items-center justify-end gap-3">
                     <button
                         onClick={() => {
                             setNewRoom(selectedRoom);

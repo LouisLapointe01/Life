@@ -321,13 +321,7 @@ export default function SantePage() {
     <div className="mx-auto max-w-6xl space-y-6">
       {/* ─── Header ─── */}
       <div>
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h2 className="text-2xl lg:text-3xl font-bold tracking-tight">Santé</h2>
-            <p className="mt-1 text-[14px] lg:text-[15px] text-muted-foreground">
-              Votre tableau de bord bien-être
-            </p>
-          </div>
+        <div className="flex flex-wrap items-center justify-end gap-3">
           <div className="flex items-center gap-2">
             <button
               onClick={() => setEditMode(!editMode)}

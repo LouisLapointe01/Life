@@ -108,14 +108,6 @@ export default function ParametresPage() {
 
   return (
     <div className="mx-auto w-full max-w-4xl space-y-4 sm:space-y-6">
-      {/* Header */}
-      <div>
-        <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">Paramètres</h2>
-        <p className="mt-1 text-[13px] sm:text-[15px] text-muted-foreground">
-          Configurez vos types de rendez-vous, disponibilités et contacts proches.
-        </p>
-      </div>
-
       {/* Tab Navigation */}
       <div
         className="-mx-1 overflow-x-auto rounded-2xl bg-foreground/[0.04] p-1 scrollbar-thin"

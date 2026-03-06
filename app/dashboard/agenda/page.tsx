@@ -480,14 +480,6 @@ export default function AgendaPage() {
 
   return (
     <div className="mx-auto max-w-7xl space-y-4 lg:space-y-6">
-      {/* Header */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h2 className="text-2xl lg:text-3xl font-bold tracking-tight">Agenda</h2>
-          <p className="mt-1 text-[13px] lg:text-[15px] text-muted-foreground">Gérez vos rendez-vous et répondez aux invitations.</p>
-        </div>
-      </div>
-
       {/* Stats */}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-4">
         {[
