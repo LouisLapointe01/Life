@@ -25,12 +25,12 @@ export function MobileBottomNav() {
               key={item.id}
               href={item.href}
               className={cn(
-                "flex flex-1 flex-col items-center justify-center gap-[3px] py-2.5 text-[10px] font-medium transition-all duration-200",
+                "flex flex-1 flex-col items-center justify-center gap-[2px] py-2 text-[9px] font-medium transition-all duration-200 min-w-0",
                 isActive ? "text-primary" : "text-muted-foreground"
               )}
             >
               <item.icon
-                className={cn("h-[22px] w-[22px] transition-all duration-200", isActive && "scale-110")}
+                className={cn("h-[20px] w-[20px] transition-all duration-200", isActive && "scale-110")}
                 strokeWidth={isActive ? 2.5 : 2}
               />
               <span className={cn(isActive && "font-semibold text-primary")}>{item.label}</span>

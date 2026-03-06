@@ -20,7 +20,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
         <Sidebar />
         <div className="flex flex-1 flex-col overflow-hidden">
           <Header />
-          <main className="flex-1 overflow-y-auto scrollbar-thin px-4 py-4 pb-24 lg:px-8 lg:py-6 lg:pb-6">
+          <main className="flex-1 overflow-y-auto scrollbar-thin px-4 py-4 pb-[120px] lg:px-8 lg:py-6 lg:pb-6">
             <PageTransition>{children}</PageTransition>
           </main>
         </div>

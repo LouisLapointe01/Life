@@ -110,8 +110,8 @@ export const ALL_TABS: TabDefinition[] = [
 /** Ordre par défaut de tous les IDs */
 const DEFAULT_ORDER: TabId[] = ALL_TABS.map((t) => t.id);
 
-/** IDs visibles sur la barre mobile par défaut (max 4) */
-const DEFAULT_MOBILE: TabId[] = ["accueil", "agenda", "annuaire", "parametres"];
+/** IDs visibles sur la barre mobile par défaut (max 8) */
+const DEFAULT_MOBILE: TabId[] = ["accueil", "agenda", "annuaire", "messages", "parametres"];
 
 /* ═══════════════════════════════════════════
    Store Zustand
@@ -120,7 +120,7 @@ const DEFAULT_MOBILE: TabId[] = ["accueil", "agenda", "annuaire", "parametres"];
 interface DashboardTabsState {
     /** IDs des onglets visibles dans l'ordre */
     visibleTabs: TabId[];
-    /** IDs affichés sur mobile (max 4) */
+    /** IDs affichés sur mobile (max 8) */
     mobileTabs: TabId[];
 
     // ─── Actions ───
@@ -178,11 +178,11 @@ export const useDashboardTabs = create<DashboardTabsState>()(
                     return { visibleTabs: tabs };
                 }),
 
-            setMobileTabs: (ids) => set({ mobileTabs: ids.slice(0, 4) }),
+            setMobileTabs: (ids) => set({ mobileTabs: ids.slice(0, 8) }),
 
             addMobileTab: (id) =>
                 set((state) => {
-                    if (state.mobileTabs.includes(id) || state.mobileTabs.length >= 4)
+                    if (state.mobileTabs.includes(id) || state.mobileTabs.length >= 8)
                         return state;
                     return { mobileTabs: [...state.mobileTabs, id] };
                 }),
@@ -199,6 +199,17 @@ export const useDashboardTabs = create<DashboardTabsState>()(
         }),
         {
             name: "life-dashboard-tabs",
+            version: 1,
+            migrate: (persisted, version) => {
+                if (version === 0) {
+                    const state = persisted as DashboardTabsState;
+                    // Ajouter "messages" si absent des onglets mobiles
+                    if (!state.mobileTabs.includes("messages")) {
+                        state.mobileTabs = [...state.mobileTabs, "messages"];
+                    }
+                }
+                return persisted as DashboardTabsState;
+            },
         }
     )
 );

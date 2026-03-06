@@ -313,7 +313,7 @@ export default function MessagesPage() {
   /* ─── Render ─── */
   return (
     <div
-      className="-mx-4 -mt-4 -mb-24 lg:-mx-8 lg:-mt-6 lg:-mb-6 flex overflow-hidden h-[calc(100dvh-64px-3.5rem)] lg:h-[calc(100dvh-64px)]"
+      className="-mx-4 -mt-4 -mb-[120px] lg:-mx-8 lg:-mt-6 lg:-mb-6 flex overflow-hidden h-[calc(100dvh-64px-3.5rem)] lg:h-[calc(100dvh-64px)]"
     >
       {/* ══════════════════════════════════
           Colonne gauche — liste des convs
@@ -470,7 +470,7 @@ export default function MessagesPage() {
         ) : (
           <>
             {/* Header chat */}
-            <div className="flex items-center gap-3 px-4 py-3 border-b border-foreground/[0.06] bg-background/50">
+            <div className="flex items-center gap-3 px-4 py-3 border-b border-foreground/[0.06] bg-background/80 backdrop-blur-xl shrink-0">
               {/* Bouton retour mobile */}
               <button
                 onClick={() => setMobileView("list")}
@@ -527,7 +527,7 @@ export default function MessagesPage() {
             </div>
 
             {/* Zone saisie */}
-            <div className="flex items-end gap-2 px-4 py-3 border-t border-foreground/[0.06] shrink-0">
+            <div className="flex items-end gap-2 px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] lg:pb-3 border-t border-foreground/[0.06] shrink-0 bg-background/80 backdrop-blur-xl">
               <textarea
                 ref={inputRef}
                 value={newMessage}
