@@ -139,6 +139,7 @@ export default function MessagesPage() {
   const shouldScrollToBottom = useRef(false);
   const userScrolledUp = useRef(false);
   const autoFillingRef = useRef(false);
+  const convOpenedAtRef = useRef<number>(0);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const searchDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -253,6 +254,7 @@ export default function MessagesPage() {
   /* ─── Ouvrir une conversation ─── */
   const openConversation = useCallback((conv: Conversation) => {
     userScrolledUp.current = false;
+    convOpenedAtRef.current = Date.now();
     setInitializing(true);
     setActiveConvId(conv.id);
     setActiveConv(conv);
@@ -281,6 +283,11 @@ export default function MessagesPage() {
           const newMsg = payload.new as { id: string; conversation_id: string; sender_id: string | null; content: string; created_at: string };
           // Ignorer si c'est notre propre message (déjà ajouté en optimistic)
           if (newMsg.sender_id === myUserId) return;
+          // Scroller vers le bas si l'utilisateur est déjà près du bas
+          const el = scrollContainerRef.current;
+          if (el && el.scrollHeight - el.scrollTop - el.clientHeight < 100) {
+            shouldScrollToBottom.current = true;
+          }
           setMessages((prev) => {
             if (prev.some((m) => m.id === newMsg.id)) return prev;
             return [...prev, { ...newMsg, sender: null }];
@@ -664,11 +671,21 @@ export default function MessagesPage() {
               </div>
             </div>
 
-            {/* Zone messages — scrollable, avec padding pour les éléments flottants */}
+            {/* Spinner overlay pendant le chargement initial — masque le contenu sans le retirer du DOM */}
+            {(loadingMessages || initializing) && (
+              <div className="absolute inset-0 z-10 flex items-center justify-center">
+                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+              </div>
+            )}
+
+            {/* Zone messages — invisible pendant init pour que l'auto-fill mesure correctement */}
             <div
               ref={scrollContainerRef}
               onScroll={handleScroll}
-              className="absolute inset-0 overflow-y-auto overscroll-contain no-scrollbar px-4 pt-14 pb-[72px] space-y-3"
+              className={cn(
+                "absolute inset-0 overflow-y-auto overscroll-contain no-scrollbar px-4 pt-14 pb-[72px] space-y-3",
+                (loadingMessages || initializing) && "invisible"
+              )}
             >
               {/* Indicateur chargement messages plus anciens (scroll manuel uniquement) */}
               {loadingMore && !initializing && (
@@ -679,19 +696,24 @@ export default function MessagesPage() {
               {!hasMore && messages.length > 0 && !initializing && (
                 <p className="text-center text-[11px] text-muted-foreground/40 py-2">Début de la conversation</p>
               )}
-              {loadingMessages || initializing ? (
-                <div className="flex justify-center pt-8">
-                  <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-                </div>
-              ) : messages.length === 0 ? (
+              {!loadingMessages && messages.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-full text-center">
                   <p className="text-[12px] text-muted-foreground">Aucun message. Dites bonjour !</p>
                 </div>
               ) : (
                 messages.map((msg) => {
                   const isMe = msg.sender_id === myUserId;
+                  // Animation uniquement pour les messages arrivés après l'ouverture
+                  const isNew = new Date(msg.created_at).getTime() > convOpenedAtRef.current;
                   return (
-                    <div key={msg.id} className={cn("flex gap-2", isMe ? "flex-row-reverse" : "flex-row")}>
+                    <div
+                      key={msg.id}
+                      className={cn(
+                        "flex gap-2",
+                        isMe ? "flex-row-reverse" : "flex-row",
+                        isNew && "animate-in slide-in-from-bottom-2 duration-200 ease-out"
+                      )}
+                    >
                       {!isMe && (
                         <Avatar
                           url={msg.sender?.avatar_url ?? activeConv.other_user.avatar_url}
