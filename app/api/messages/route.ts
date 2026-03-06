@@ -25,28 +25,27 @@ export async function GET(request: Request) {
 
     const supabase = createAdminClient();
 
-    // Vérifier que l'user est participant
-    const { data: participation } = await supabase
-      .from("conversation_participants")
-      .select("id")
-      .eq("conversation_id", conversation_id)
-      .eq("user_id", user.id)
-      .maybeSingle();
-
-    if (!participation) return NextResponse.json({ error: "Accès refusé" }, { status: 403 });
-
-    // Récupérer les messages (DESC pour le cursor, on reverse ensuite)
-    let query = supabase
+    // Vérifier participation ET récupérer les messages en parallèle
+    let msgQuery = supabase
       .from("messages")
       .select("id, conversation_id, sender_id, content, created_at")
       .eq("conversation_id", conversation_id)
       .order("created_at", { ascending: false })
       .limit(limit);
 
-    if (before) query = query.lt("created_at", before);
+    if (before) msgQuery = msgQuery.lt("created_at", before);
 
-    const { data: rawMessages, error } = await query;
+    const [{ data: participation }, { data: rawMessages, error }] = await Promise.all([
+      supabase
+        .from("conversation_participants")
+        .select("id")
+        .eq("conversation_id", conversation_id)
+        .eq("user_id", user.id)
+        .maybeSingle(),
+      msgQuery,
+    ]);
 
+    if (!participation) return NextResponse.json({ error: "Accès refusé" }, { status: 403 });
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
     const has_more = (rawMessages || []).length === limit;
@@ -69,12 +68,13 @@ export async function GET(request: Request) {
       sender: m.sender_id ? (profileMap.get(m.sender_id) ?? null) : null,
     }));
 
-    // Mettre à jour last_read_at et unread_count = 0
-    await supabase
+    // Fire-and-forget : mise à jour last_read_at sans bloquer la réponse
+    supabase
       .from("conversation_participants")
       .update({ last_read_at: new Date().toISOString(), unread_count: 0 })
       .eq("conversation_id", conversation_id)
-      .eq("user_id", user.id);
+      .eq("user_id", user.id)
+      .then(() => {});
 
     return NextResponse.json({ messages: enriched, has_more });
   } catch (err) {
