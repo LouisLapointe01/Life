@@ -188,11 +188,27 @@ export default function MessagesPage() {
           table: "messages",
           filter: `conversation_id=eq.${activeConvId}`,
         },
-        () => fetchMessages(activeConvId)
+        (payload) => {
+          const newMsg = payload.new as { id: string; conversation_id: string; sender_id: string | null; content: string; created_at: string };
+          // Ignorer si c'est notre propre message (déjà ajouté en optimistic)
+          if (newMsg.sender_id === myUserId) return;
+          setMessages((prev) => {
+            if (prev.some((m) => m.id === newMsg.id)) return prev;
+            return [...prev, { ...newMsg, sender: null }];
+          });
+          // Mettre à jour le dernier message dans la liste
+          setConversations((prev) =>
+            prev.map((c) =>
+              c.id === activeConvId
+                ? { ...c, last_message: { content: newMsg.content, created_at: newMsg.created_at, sender_id: newMsg.sender_id } }
+                : c
+            )
+          );
+        }
       )
       .subscribe();
     return () => { supabase.removeChannel(sub); };
-  }, [activeConvId, fetchMessages]);
+  }, [activeConvId, myUserId]);
 
   /* ─── Auto-scroll ─── */
   useEffect(() => {

@@ -428,7 +428,7 @@ export default function FichiersPage() {
             <div>
               {filteredFolders.length > 0 && <p className="mb-2 px-1 text-[12px] font-semibold uppercase tracking-widest text-muted-foreground">Fichiers ({filtered.length})</p>}
               {view === "grid" ? (
-                <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+                <div className="grid gap-3 grid-cols-2 sm:grid-cols-2 lg:grid-cols-3">
                   {filtered.map((file) => {
                     const Icon = fileIcons[file.type] || File;
                     const colorClass = fileColors[file.type] || fileColors.other;
@@ -449,10 +449,10 @@ export default function FichiersPage() {
                           <button onClick={() => handleDownload(file)} className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-foreground/[0.04] py-2 text-[12px] font-medium text-muted-foreground transition-all hover:bg-foreground/[0.08] hover:text-foreground"><Download className="h-3.5 w-3.5" /> Télécharger</button>
                         </div>
                         {/* Mobile always-visible actions */}
-                        <div className="mt-3 flex gap-2 sm:hidden">
-                          <button onClick={() => handleView(file)} className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-foreground/[0.04] py-2 text-[12px] font-medium text-muted-foreground"><Eye className="h-3.5 w-3.5" /> Voir</button>
-                          <button onClick={() => handleDownload(file)} className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-foreground/[0.04] py-2 text-[12px] font-medium text-muted-foreground"><Download className="h-3.5 w-3.5" /></button>
-                          <button onClick={() => setDeleteTarget(file)} className="flex items-center justify-center rounded-xl bg-red-500/10 px-3 py-2 text-red-500"><Trash2 className="h-3.5 w-3.5" /></button>
+                        <div className="mt-2 flex gap-1.5 sm:hidden">
+                          <button onClick={() => handleView(file)} className="flex flex-1 items-center justify-center rounded-lg bg-foreground/[0.04] py-1.5 text-muted-foreground"><Eye className="h-3.5 w-3.5" /></button>
+                          <button onClick={() => handleDownload(file)} className="flex flex-1 items-center justify-center rounded-lg bg-foreground/[0.04] py-1.5 text-muted-foreground"><Download className="h-3.5 w-3.5" /></button>
+                          <button onClick={() => setDeleteTarget(file)} className="flex items-center justify-center rounded-lg bg-red-500/10 px-2.5 py-1.5 text-red-500"><Trash2 className="h-3.5 w-3.5" /></button>
                         </div>
                       </div>
                     );
