@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { clientCache } from "@/lib/client-cache";
 import { useProfile } from "@/hooks/use-profile";
 import {
   format, isToday, isTomorrow, addDays, addWeeks, addMonths, subMonths, subWeeks,
@@ -167,11 +168,14 @@ export default function AgendaPage() {
   const isAdmin = profile?.role === "admin";
 
   const fetchAppointments = useCallback(async () => {
+    const cached = clientCache.get<Appointment[]>("appointments");
+    if (cached) { setAppointments(cached); setLoading(false); }
     try {
       const res = await fetch("/api/appointments");
       if (res.ok) {
         const data = await res.json();
         setAppointments(data as Appointment[]);
+        clientCache.set("appointments", data as Appointment[]);
       }
     } catch { /* ignore */ }
     setLoading(false);
@@ -197,7 +201,13 @@ export default function AgendaPage() {
   }, [fetchAppointments]);
 
   // Contacts
-  useEffect(() => { fetch("/api/contacts").then(r => r.ok ? r.json() : []).then(setContacts); }, []);
+  useEffect(() => {
+    const cached = clientCache.get<Contact[]>("contacts");
+    if (cached) setContacts(cached);
+    fetch("/api/contacts").then(r => r.ok ? r.json() : null).then(data => {
+      if (data) { setContacts(data); clientCache.set("contacts", data); }
+    });
+  }, []);
 
   // My types
   const fetchMyTypes = useCallback(async () => {
