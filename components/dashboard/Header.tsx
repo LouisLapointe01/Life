@@ -2,6 +2,7 @@
 
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { useEffect, useState, useCallback, useRef } from "react";
 import {
   DropdownMenu,
@@ -10,7 +11,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { LogOut, User, Bell, Check, CheckCheck, CalendarDays, ArrowRightLeft, XCircle, UserCheck, Info, UserPlus, ShieldX, Loader2, MessageCircle, Users, Calendar } from "lucide-react";
+import { LogOut, User, Bell, Check, CheckCheck, CalendarDays, ArrowRightLeft, XCircle, UserCheck, Info, UserPlus, ShieldX, Loader2, MessageCircle, Users, Calendar, Settings } from "lucide-react";
 import type { User as SupabaseUser } from "@supabase/supabase-js";
 import { cn } from "@/lib/utils";
 
@@ -345,6 +346,13 @@ export function Header() {
           <DropdownMenuItem className="rounded-xl px-3 py-2.5 text-[13px] cursor-pointer">
             <User className="mr-2 h-4 w-4" />
             Profil
+          </DropdownMenuItem>
+          <DropdownMenuSeparator className="my-1" />
+          <DropdownMenuItem asChild className="rounded-xl px-3 py-2.5 text-[13px] cursor-pointer">
+            <Link href="/dashboard/parametres">
+              <Settings className="mr-2 h-4 w-4" />
+              Paramètres
+            </Link>
           </DropdownMenuItem>
           <DropdownMenuSeparator className="my-1" />
           <DropdownMenuItem onClick={handleSignOut} className="rounded-xl px-3 py-2.5 text-[13px] text-red-500 cursor-pointer focus:text-red-500">
