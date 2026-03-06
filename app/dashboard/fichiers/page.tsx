@@ -141,6 +141,16 @@ export default function FichiersPage() {
   const [contextFile, setContextFile] = useState<FileItem | null>(null);
   const [contextFolder, setContextFolder] = useState<FolderItem | null>(null);
 
+  // Forcer la vue liste sur mobile
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 640);
+    check();
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
+  }, []);
+  const effectiveView = isMobile ? "list" : view;
+
   useEffect(() => {
     try {
       const stored = localStorage.getItem(STORAGE_KEY);
@@ -322,7 +332,7 @@ export default function FichiersPage() {
           <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Rechercher..." className="glass-input w-full py-2.5 pl-10 pr-4 text-[14px]" />
         </div>
         <div className="flex items-center gap-2">
-          <div className="flex rounded-xl bg-foreground/[0.04] p-0.5">
+          <div className="hidden sm:flex rounded-xl bg-foreground/[0.04] p-0.5">
             <button onClick={() => setView("grid")} className={cn("rounded-lg p-2 transition-all", view === "grid" ? "bg-card shadow-sm text-foreground" : "text-muted-foreground")}><Grid3X3 className="h-4 w-4" /></button>
             <button onClick={() => setView("list")} className={cn("rounded-lg p-2 transition-all", view === "list" ? "bg-card shadow-sm text-foreground" : "text-muted-foreground")}><List className="h-4 w-4" /></button>
           </div>
@@ -374,7 +384,7 @@ export default function FichiersPage() {
           {filteredFolders.length > 0 && (
             <div>
               <p className="mb-2 px-1 text-[12px] font-semibold uppercase tracking-widest text-muted-foreground">Dossiers ({filteredFolders.length})</p>
-              {view === "grid" ? (
+              {effectiveView === "grid" ? (
                 <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4">
                   {filteredFolders.map((folder) => (
                     <button key={folder.id} onClick={() => navigateToFolder(folder.id)} onContextMenu={(e) => { e.preventDefault(); setContextFolder(folder); }} className="glass-card group relative flex flex-col items-start gap-3 p-4 text-left transition-all hover:shadow-md hover:-translate-y-0.5">
@@ -405,8 +415,8 @@ export default function FichiersPage() {
                         <p className="text-[11px] sm:text-[12px] text-muted-foreground">{folderFileCount(folder.id)} élément{folderFileCount(folder.id) > 1 ? "s" : ""}</p>
                       </div>
                       <div className="flex items-center gap-1 shrink-0">
-                        <button onClick={(e) => { e.stopPropagation(); setEditingFolder(folder); setRenameFolderName(folder.name); setRenameFolderOpen(true); }} className="flex h-8 w-8 items-center justify-center rounded-xl text-muted-foreground transition-all hover:bg-foreground/[0.06] hover:text-foreground opacity-0 group-hover:opacity-100"><Pencil className="h-3.5 w-3.5" /></button>
-                        <button onClick={(e) => { e.stopPropagation(); setDeleteFolderTarget(folder); }} className="flex h-8 w-8 items-center justify-center rounded-xl text-muted-foreground transition-all hover:bg-red-500/10 hover:text-red-500 opacity-0 group-hover:opacity-100"><Trash2 className="h-3.5 w-3.5" /></button>
+                        <button onClick={(e) => { e.stopPropagation(); setEditingFolder(folder); setRenameFolderName(folder.name); setRenameFolderOpen(true); }} className="flex h-8 w-8 items-center justify-center rounded-xl text-muted-foreground transition-all hover:bg-foreground/[0.06] hover:text-foreground sm:opacity-0 sm:group-hover:opacity-100"><Pencil className="h-3.5 w-3.5" /></button>
+                        <button onClick={(e) => { e.stopPropagation(); setDeleteFolderTarget(folder); }} className="flex h-8 w-8 items-center justify-center rounded-xl text-muted-foreground transition-all hover:bg-red-500/10 hover:text-red-500 sm:opacity-0 sm:group-hover:opacity-100"><Trash2 className="h-3.5 w-3.5" /></button>
                         <ChevronRight className="h-4 w-4 text-muted-foreground/40" />
                       </div>
                     </button>
@@ -420,7 +430,7 @@ export default function FichiersPage() {
           {filtered.length > 0 && (
             <div>
               {filteredFolders.length > 0 && <p className="mb-2 px-1 text-[12px] font-semibold uppercase tracking-widest text-muted-foreground">Fichiers ({filtered.length})</p>}
-              {view === "grid" ? (
+              {effectiveView === "grid" ? (
                 <div className="grid gap-3 grid-cols-2 sm:grid-cols-2 lg:grid-cols-3">
                   {filtered.map((file) => {
                     const Icon = fileIcons[file.type] || File;
@@ -429,23 +439,16 @@ export default function FichiersPage() {
                       <div key={file.id} className="glass-card group relative overflow-hidden p-4 sm:p-5">
                         <div className="flex items-start justify-between">
                           <div className={cn("flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-2xl bg-gradient-to-br", colorClass)}><Icon className="h-4 w-4 sm:h-5 sm:w-5" /></div>
-                          <button onClick={() => setDeleteTarget(file)} className="flex h-8 w-8 items-center justify-center rounded-xl text-muted-foreground transition-all hover:bg-red-500/10 hover:text-red-500 opacity-0 group-hover:opacity-100 hidden sm:flex"><Trash2 className="h-4 w-4" /></button>
+                          <button onClick={() => setDeleteTarget(file)} className="flex h-8 w-8 items-center justify-center rounded-xl text-muted-foreground transition-all hover:bg-red-500/10 hover:text-red-500 opacity-0 group-hover:opacity-100"><Trash2 className="h-4 w-4" /></button>
                         </div>
                         <div className="mt-3 sm:mt-4">
                           <p className="text-[13px] sm:text-[14px] font-semibold truncate">{file.name}</p>
                           <div className="mt-1 flex items-center gap-2 text-[11px] sm:text-[12px] text-muted-foreground"><span>{file.size}</span><span>·</span><span>{file.date}</span></div>
                           <div className="mt-2"><span className="inline-block rounded-lg bg-foreground/[0.04] px-2 py-0.5 text-[10px] sm:text-[11px] font-medium text-muted-foreground">{file.category}</span></div>
                         </div>
-                        {/* Desktop hover actions */}
-                        <div className="mt-3 sm:mt-4 hidden sm:flex gap-2 opacity-0 group-hover:opacity-100 transition-all">
+                        <div className="mt-3 sm:mt-4 flex gap-2 sm:opacity-0 sm:group-hover:opacity-100 transition-all">
                           <button onClick={() => handleView(file)} className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-foreground/[0.04] py-2 text-[12px] font-medium text-muted-foreground transition-all hover:bg-foreground/[0.08] hover:text-foreground"><Eye className="h-3.5 w-3.5" /> Voir</button>
                           <button onClick={() => handleDownload(file)} className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-foreground/[0.04] py-2 text-[12px] font-medium text-muted-foreground transition-all hover:bg-foreground/[0.08] hover:text-foreground"><Download className="h-3.5 w-3.5" /> Télécharger</button>
-                        </div>
-                        {/* Mobile always-visible actions */}
-                        <div className="mt-2 flex gap-1.5 sm:hidden">
-                          <button onClick={() => handleView(file)} className="flex flex-1 items-center justify-center rounded-lg bg-foreground/[0.04] py-1.5 text-muted-foreground"><Eye className="h-3.5 w-3.5" /></button>
-                          <button onClick={() => handleDownload(file)} className="flex flex-1 items-center justify-center rounded-lg bg-foreground/[0.04] py-1.5 text-muted-foreground"><Download className="h-3.5 w-3.5" /></button>
-                          <button onClick={() => setDeleteTarget(file)} className="flex items-center justify-center rounded-lg bg-red-500/10 px-2.5 py-1.5 text-red-500"><Trash2 className="h-3.5 w-3.5" /></button>
                         </div>
                       </div>
                     );
@@ -470,7 +473,8 @@ export default function FichiersPage() {
                         </div>
                         <div className="flex sm:hidden gap-1">
                           <button onClick={() => handleView(file)} className="rounded-lg p-1.5 text-muted-foreground"><Eye className="h-4 w-4" /></button>
-                          <button onClick={() => setContextFile(contextFile?.id === file.id ? null : file)} className="rounded-lg p-1.5 text-muted-foreground"><MoreHorizontal className="h-4 w-4" /></button>
+                          <button onClick={() => handleDownload(file)} className="rounded-lg p-1.5 text-muted-foreground"><Download className="h-4 w-4" /></button>
+                          <button onClick={() => setDeleteTarget(file)} className="rounded-lg p-1.5 text-muted-foreground hover:text-red-500"><Trash2 className="h-4 w-4" /></button>
                         </div>
                       </div>
                     );
