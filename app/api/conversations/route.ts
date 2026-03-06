@@ -34,14 +34,31 @@ export async function GET() {
 
     const convIds = participations.map((p) => p.conversation_id);
 
-    // 2. Pour chaque conversation, récupérer l'autre participant + son profil
-    const { data: allParticipants, error: apErr } = await supabase
-      .from("conversation_participants")
-      .select("conversation_id, user_id")
-      .in("conversation_id", convIds)
-      .neq("user_id", user.id);
+    // 2+4 en parallèle : autres participants ET derniers messages en une seule passe
+    const [{ data: allParticipants, error: apErr }, { data: recentMessages }] = await Promise.all([
+      supabase
+        .from("conversation_participants")
+        .select("conversation_id, user_id")
+        .in("conversation_id", convIds)
+        .neq("user_id", user.id),
+      // Une seule requête pour tous les derniers messages (au lieu de N requêtes)
+      supabase
+        .from("messages")
+        .select("id, conversation_id, content, created_at, sender_id")
+        .in("conversation_id", convIds)
+        .order("created_at", { ascending: false })
+        .limit(Math.min(convIds.length * 5, 200)),
+    ]);
 
     if (apErr) return NextResponse.json({ error: apErr.message }, { status: 500 });
+
+    // Garder uniquement le message le plus récent par conversation (résultat déjà trié DESC)
+    const lastMessageMap = new Map<string, { id: string; content: string; created_at: string; sender_id: string | null }>();
+    for (const msg of recentMessages || []) {
+      if (!lastMessageMap.has(msg.conversation_id)) {
+        lastMessageMap.set(msg.conversation_id, msg);
+      }
+    }
 
     // 3. Récupérer les profils des autres participants
     const otherUserIds = [...new Set((allParticipants || []).map((p) => p.user_id))];
@@ -53,23 +70,6 @@ export async function GET() {
       : { data: [] };
 
     const profileMap = new Map((profiles || []).map((p) => [p.id, p]));
-
-    // 4. Récupérer le dernier message de chaque conversation
-    const lastMessageResults = await Promise.all(
-      convIds.map((cid) =>
-        supabase
-          .from("messages")
-          .select("id, content, created_at, sender_id")
-          .eq("conversation_id", cid)
-          .order("created_at", { ascending: false })
-          .limit(1)
-          .maybeSingle()
-      )
-    );
-
-    const lastMessageMap = new Map(
-      convIds.map((cid, i) => [cid, lastMessageResults[i].data])
-    );
 
     // 5. Construire la réponse
     const conversations = participations
