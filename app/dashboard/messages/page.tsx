@@ -130,7 +130,12 @@ export default function MessagesPage() {
   const [deleteConvTarget, setDeleteConvTarget] = useState<Conversation | null>(null);
   const [deletingConv, setDeletingConv] = useState(false);
 
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  // Pagination
+  const [hasMore, setHasMore] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const shouldScrollToBottom = useRef(false);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const searchDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -194,15 +199,16 @@ export default function MessagesPage() {
     return () => { supabase.removeChannel(sub); };
   }, [myUserId, activeConvId]);
 
-  /* ─── Fetch messages ─── */
+  /* ─── Fetch messages (derniers 10) ─── */
   const fetchMessages = useCallback(async (convId: string) => {
     setLoadingMessages(true);
+    shouldScrollToBottom.current = true;
     try {
-      const res = await fetch(`/api/messages?conversation_id=${convId}`);
+      const res = await fetch(`/api/messages?conversation_id=${convId}&limit=10`);
       if (res.ok) {
         const data = await res.json();
         setMessages(data.messages || []);
-        // Réinitialiser le badge unread localement
+        setHasMore(data.has_more ?? false);
         setConversations((prev) =>
           prev.map((c) => c.id === convId ? { ...c, unread_count: 0 } : c)
         );
@@ -211,11 +217,38 @@ export default function MessagesPage() {
     finally { setLoadingMessages(false); }
   }, []);
 
+  /* ─── Charger plus (scroll vers le haut) ─── */
+  const loadMoreMessages = useCallback(async () => {
+    if (!activeConvId || loadingMore || !hasMore || messages.length === 0) return;
+    setLoadingMore(true);
+    const before = messages[0].created_at;
+    const container = scrollContainerRef.current;
+    const oldScrollHeight = container?.scrollHeight ?? 0;
+    try {
+      const res = await fetch(`/api/messages?conversation_id=${activeConvId}&limit=10&before=${encodeURIComponent(before)}`);
+      if (res.ok) {
+        const data = await res.json();
+        if ((data.messages as Message[])?.length > 0) {
+          setMessages((prev) => [...data.messages, ...prev]);
+          setHasMore(data.has_more ?? false);
+          requestAnimationFrame(() => {
+            if (container) container.scrollTop = container.scrollHeight - oldScrollHeight;
+          });
+        } else {
+          setHasMore(false);
+        }
+      }
+    } catch { /* ignore */ }
+    finally { setLoadingMore(false); }
+  }, [activeConvId, loadingMore, hasMore, messages]);
+
   /* ─── Ouvrir une conversation ─── */
   const openConversation = useCallback((conv: Conversation) => {
     setActiveConvId(conv.id);
     setActiveConv(conv);
     setMessages([]);
+    setHasMore(false);
+    setLoadingMore(false);
     fetchMessages(conv.id);
     setMobileView("chat");
   }, [fetchMessages]);
@@ -256,10 +289,20 @@ export default function MessagesPage() {
     return () => { supabase.removeChannel(sub); };
   }, [activeConvId, myUserId]);
 
-  /* ─── Auto-scroll ─── */
+  /* ─── Scroll instantané vers le bas après chargement initial ou envoi ─── */
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+    if (shouldScrollToBottom.current && !loadingMessages && scrollContainerRef.current) {
+      scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight;
+      shouldScrollToBottom.current = false;
+    }
+  }, [messages, loadingMessages]);
+
+  /* ─── Handler scroll : charger plus en haut ─── */
+  const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
+    if (e.currentTarget.scrollTop < 80 && hasMore && !loadingMore) {
+      loadMoreMessages();
+    }
+  }, [hasMore, loadingMore, loadMoreMessages]);
 
   /* ─── Envoyer un message ─── */
   const sendMessage = async () => {
@@ -279,6 +322,7 @@ export default function MessagesPage() {
       created_at: now,
       sender: null,
     };
+    shouldScrollToBottom.current = true;
     setMessages((prev) => [...prev, optimistic]);
 
     // Mettre à jour la conversation localement
@@ -587,7 +631,20 @@ export default function MessagesPage() {
             </div>
 
             {/* Zone messages — scrollable, avec padding pour les éléments flottants */}
-            <div className="absolute inset-0 overflow-y-auto overscroll-contain no-scrollbar px-4 pt-14 pb-[72px] space-y-3">
+            <div
+              ref={scrollContainerRef}
+              onScroll={handleScroll}
+              className="absolute inset-0 overflow-y-auto overscroll-contain no-scrollbar px-4 pt-14 pb-[72px] space-y-3"
+            >
+              {/* Indicateur chargement messages plus anciens */}
+              {loadingMore && (
+                <div className="flex justify-center py-2">
+                  <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                </div>
+              )}
+              {!hasMore && messages.length > 0 && (
+                <p className="text-center text-[11px] text-muted-foreground/40 py-2">Début de la conversation</p>
+              )}
               {loadingMessages ? (
                 <div className="flex justify-center pt-8">
                   <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
@@ -627,7 +684,6 @@ export default function MessagesPage() {
                   );
                 })
               )}
-              <div ref={messagesEndRef} />
             </div>
 
             {/* Zone saisie — flottante en bas */}
