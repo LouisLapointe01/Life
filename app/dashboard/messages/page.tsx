@@ -563,23 +563,23 @@ export default function MessagesPage() {
             </p>
           </div>
         ) : (
-          <div className="relative flex flex-col flex-1 overflow-hidden">
-            {/* Header chat — flottant discret */}
-            <div className="absolute top-3 left-3 right-3 z-10 flex items-center gap-2 pointer-events-none">
+          <div className="flex flex-col flex-1 overflow-hidden">
+            {/* Header chat — toujours visible, hors scroll */}
+            <div className="shrink-0 flex items-center gap-2 px-3 py-3 z-10">
               <button
                 onClick={() => setMobileView("list")}
-                className="pointer-events-auto flex lg:hidden h-9 w-9 items-center justify-center rounded-full bg-foreground/[0.06] backdrop-blur-xl text-muted-foreground hover:bg-foreground/[0.1] hover:text-foreground transition-all shadow-sm"
+                className="flex lg:hidden h-9 w-9 items-center justify-center rounded-full bg-foreground/[0.06] backdrop-blur-xl text-muted-foreground hover:bg-foreground/[0.1] hover:text-foreground transition-all shadow-sm"
               >
                 <ArrowLeft className="h-4 w-4" />
               </button>
-              <div className="pointer-events-auto flex items-center gap-2 rounded-full bg-foreground/[0.06] backdrop-blur-xl pl-1 pr-3 py-1 shadow-sm">
+              <div className="flex items-center gap-2 rounded-full bg-foreground/[0.06] backdrop-blur-xl pl-1 pr-3 py-1 shadow-sm">
                 <Avatar url={activeConv.other_user.avatar_url} name={activeConv.other_user.full_name} size={28} />
                 <p className="text-[13px] font-semibold">{activeConv.other_user.full_name}</p>
               </div>
             </div>
 
-            {/* Zone messages */}
-            <div className="flex-1 overflow-y-auto px-4 pt-14 pb-20 space-y-3">
+            {/* Zone messages — seule partie scrollable */}
+            <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3 min-h-0">
               {loadingMessages ? (
                 <div className="flex justify-center pt-8">
                   <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
@@ -622,8 +622,8 @@ export default function MessagesPage() {
               <div ref={messagesEndRef} />
             </div>
 
-            {/* Zone saisie — flottante en bas */}
-            <div className="absolute bottom-0 left-0 right-0 z-10 flex items-end gap-2 px-3 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] lg:pb-3 pointer-events-none">
+            {/* Zone saisie — toujours visible, hors scroll */}
+            <div className="shrink-0 flex items-end gap-2 px-3 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] lg:pb-3 z-10">
               <textarea
                 ref={inputRef}
                 value={newMessage}
@@ -632,7 +632,7 @@ export default function MessagesPage() {
                 placeholder="Écrire un message…"
                 rows={1}
                 className={cn(
-                  "pointer-events-auto flex-1 resize-none rounded-2xl border border-foreground/[0.08] bg-background/80 backdrop-blur-xl",
+                  "flex-1 resize-none rounded-2xl border border-foreground/[0.08] bg-background/80 backdrop-blur-xl",
                   "px-4 py-2.5 text-[13px] outline-none focus:border-primary/40",
                   "max-h-32 overflow-y-auto shadow-sm"
                 )}
@@ -647,7 +647,7 @@ export default function MessagesPage() {
                 onClick={sendMessage}
                 disabled={!newMessage.trim()}
                 className={cn(
-                  "pointer-events-auto flex h-[42px] w-[42px] shrink-0 items-center justify-center rounded-full transition-all shadow-sm",
+                  "flex h-[42px] w-[42px] shrink-0 items-center justify-center rounded-full transition-all shadow-sm",
                   newMessage.trim()
                     ? "bg-primary text-primary-foreground hover:bg-primary/90"
                     : "bg-foreground/[0.06] backdrop-blur-xl text-muted-foreground"
