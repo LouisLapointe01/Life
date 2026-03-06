@@ -18,7 +18,8 @@ export async function GET(request: Request) {
 
     const { searchParams } = new URL(request.url);
     const conversation_id = searchParams.get("conversation_id");
-    const limit = Math.min(parseInt(searchParams.get("limit") || "50"), 100);
+    const before = searchParams.get("before"); // cursor ISO timestamp
+    const limit = Math.min(parseInt(searchParams.get("limit") || "10"), 100);
 
     if (!conversation_id) return NextResponse.json({ error: "conversation_id requis" }, { status: 400 });
 
@@ -34,15 +35,23 @@ export async function GET(request: Request) {
 
     if (!participation) return NextResponse.json({ error: "Accès refusé" }, { status: 403 });
 
-    // Récupérer les messages
-    const { data: messages, error } = await supabase
+    // Récupérer les messages (DESC pour le cursor, on reverse ensuite)
+    let query = supabase
       .from("messages")
       .select("id, conversation_id, sender_id, content, created_at")
       .eq("conversation_id", conversation_id)
-      .order("created_at", { ascending: true })
+      .order("created_at", { ascending: false })
       .limit(limit);
 
+    if (before) query = query.lt("created_at", before);
+
+    const { data: rawMessages, error } = await query;
+
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+    const has_more = (rawMessages || []).length === limit;
+    // Remettre en ordre chronologique
+    const messages = (rawMessages || []).reverse();
 
     // Enrichir avec les profils des expéditeurs
     const senderIds = [...new Set((messages || []).map((m) => m.sender_id).filter(Boolean))];
@@ -67,7 +76,7 @@ export async function GET(request: Request) {
       .eq("conversation_id", conversation_id)
       .eq("user_id", user.id);
 
-    return NextResponse.json({ messages: enriched });
+    return NextResponse.json({ messages: enriched, has_more });
   } catch (err) {
     console.error("[GET /api/messages]", err);
     return NextResponse.json({ error: "Erreur serveur" }, { status: 500 });
