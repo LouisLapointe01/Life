@@ -114,16 +114,6 @@ export function Sidebar() {
                     )}
                   </Link>
 
-                  {/* Bouton supprimer (visible au hover, non locked) */}
-                  {!collapsed && !item.locked && (
-                    <button
-                      onClick={() => removeTab(item.id)}
-                      className="absolute right-1 z-20 flex h-6 w-6 items-center justify-center rounded-lg text-muted-foreground/0 group-hover:text-muted-foreground hover:!text-red-500 hover:!bg-red-500/10 transition-all duration-200"
-                      title={`Retirer ${item.label}`}
-                    >
-                      <X className="h-3 w-3" />
-                    </button>
-                  )}
                 </div>
               </motion.div>
             );

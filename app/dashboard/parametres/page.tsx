@@ -261,61 +261,12 @@ function DashboardSectionsSettings() {
                 >
                   <ArrowDown className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
                 </button>
-                {!tab.locked ? (
-                  <button
-                    onClick={() => removeTab(tab.id)}
-                    className="flex h-6 w-6 sm:h-7 sm:w-7 items-center justify-center rounded-lg text-muted-foreground transition-all hover:bg-red-500/10 hover:text-red-500"
-                    title="Retirer"
-                  >
-                    <EyeOff className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
-                  </button>
-                ) : (
-                  <div className="w-6 sm:w-7" />
-                )}
+                <div className="w-6 sm:w-7" />
               </div>
             </div>
           ))}
         </div>
       </div>
-
-      {/* Sections masquées */}
-      {hiddenTabs.length > 0 && (
-        <div className="space-y-2">
-          <p className="text-[11px] sm:text-[12px] font-semibold uppercase tracking-widest text-muted-foreground px-1">
-            Masquées ({hiddenTabs.length})
-          </p>
-          <div className="space-y-1.5">
-            {hiddenTabs.map((tab) => (
-              <div
-                key={tab.id}
-                className="glass-card flex items-center gap-2 sm:gap-3 p-2.5 sm:p-3.5 opacity-60"
-              >
-                <div
-                  className={cn(
-                    "flex h-8 w-8 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-lg sm:rounded-xl bg-gradient-to-br",
-                    tab.color
-                  )}
-                >
-                  <tab.icon className={cn("h-3.5 w-3.5 sm:h-4.5 sm:w-4.5", tab.iconColor)} />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-[13px] sm:text-[14px] font-semibold truncate">
-                    {tab.label}
-                  </p>
-                  <p className="text-[10px] sm:text-[11px] text-muted-foreground">Masquée</p>
-                </div>
-                <button
-                  onClick={() => addTab(tab.id)}
-                  className="flex shrink-0 items-center gap-1 sm:gap-1.5 rounded-xl bg-primary/10 px-2.5 sm:px-3 py-1.5 sm:py-2 text-[11px] sm:text-[12px] font-medium text-primary transition-all hover:bg-primary/20"
-                >
-                  <Eye className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
-                  Afficher
-                </button>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
 
       {/* Barre mobile */}
       <div className="space-y-2">
