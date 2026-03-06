@@ -137,6 +137,7 @@ export default function MessagesPage() {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const shouldScrollToBottom = useRef(false);
   const userScrolledUp = useRef(false);
+  const autoFillingRef = useRef(false);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const searchDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -233,7 +234,12 @@ export default function MessagesPage() {
           setMessages((prev) => [...data.messages, ...prev]);
           setHasMore(data.has_more ?? false);
           requestAnimationFrame(() => {
-            if (container) container.scrollTop = container.scrollHeight - oldScrollHeight;
+            // En auto-fill, on laisse shouldScrollToBottom gérer le scroll vers le bas
+            // En scroll manuel, on préserve la position pour ne pas désorienter l'utilisateur
+            if (container && !autoFillingRef.current) {
+              container.scrollTop = container.scrollHeight - oldScrollHeight;
+            }
+            autoFillingRef.current = false;
           });
         } else {
           setHasMore(false);
@@ -309,6 +315,9 @@ export default function MessagesPage() {
     if (!loadingMessages && !loadingMore && hasMore && scrollContainerRef.current) {
       const el = scrollContainerRef.current;
       if (el.scrollHeight <= el.clientHeight) {
+        // Marquer qu'on est en auto-fill pour ne pas préserver la position scroll
+        autoFillingRef.current = true;
+        shouldScrollToBottom.current = true;
         loadMoreMessages();
       }
     }
