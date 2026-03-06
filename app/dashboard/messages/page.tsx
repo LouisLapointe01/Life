@@ -563,22 +563,23 @@ export default function MessagesPage() {
             </p>
           </div>
         ) : (
-          <>
-            {/* Header chat */}
-            <div className="flex items-center gap-3 px-4 py-3 border-b border-foreground/[0.06] bg-background/80 backdrop-blur-xl shrink-0">
-              {/* Bouton retour mobile */}
+          <div className="relative flex flex-col flex-1 overflow-hidden">
+            {/* Header chat — flottant discret */}
+            <div className="absolute top-3 left-3 right-3 z-10 flex items-center gap-2 pointer-events-none">
               <button
                 onClick={() => setMobileView("list")}
-                className="flex lg:hidden h-8 w-8 items-center justify-center rounded-xl text-muted-foreground hover:bg-foreground/[0.06] transition-colors"
+                className="pointer-events-auto flex lg:hidden h-9 w-9 items-center justify-center rounded-full bg-foreground/[0.06] backdrop-blur-xl text-muted-foreground hover:bg-foreground/[0.1] hover:text-foreground transition-all shadow-sm"
               >
                 <ArrowLeft className="h-4 w-4" />
               </button>
-              <Avatar url={activeConv.other_user.avatar_url} name={activeConv.other_user.full_name} size={36} />
-              <p className="text-[14px] font-semibold">{activeConv.other_user.full_name}</p>
+              <div className="pointer-events-auto flex items-center gap-2 rounded-full bg-foreground/[0.06] backdrop-blur-xl pl-1 pr-3 py-1 shadow-sm">
+                <Avatar url={activeConv.other_user.avatar_url} name={activeConv.other_user.full_name} size={28} />
+                <p className="text-[13px] font-semibold">{activeConv.other_user.full_name}</p>
+              </div>
             </div>
 
             {/* Zone messages */}
-            <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
+            <div className="flex-1 overflow-y-auto px-4 pt-14 pb-4 space-y-3">
               {loadingMessages ? (
                 <div className="flex justify-center pt-8">
                   <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
@@ -622,7 +623,7 @@ export default function MessagesPage() {
             </div>
 
             {/* Zone saisie */}
-            <div className="flex items-end gap-2 px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] lg:pb-3 border-t border-foreground/[0.06] shrink-0 bg-background/80 backdrop-blur-xl">
+            <div className="flex items-end gap-2 px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] lg:pb-3 shrink-0">
               <textarea
                 ref={inputRef}
                 value={newMessage}
@@ -655,7 +656,7 @@ export default function MessagesPage() {
                 <Send className="h-4 w-4" />
               </button>
             </div>
-          </>
+          </div>
         )}
       </div>
 
