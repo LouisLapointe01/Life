@@ -294,17 +294,6 @@ export default function AnnuairePage() {
 
   return (
     <div className="mx-auto max-w-7xl space-y-6">
-      {/* ─── Header ─── */}
-      <div className="flex items-center justify-end">
-        <button
-          onClick={handleOpenAdd}
-          className="flex items-center gap-2 rounded-2xl bg-primary px-5 py-2.5 text-[13px] font-medium text-primary-foreground shadow-lg shadow-primary/25 transition-all hover:shadow-xl hover:-translate-y-0.5"
-        >
-          <Plus className="h-4 w-4" />
-          Ajouter un contact
-        </button>
-      </div>
-
       {/* ─── Stats ─── */}
       <div
         className="grid grid-cols-2 gap-4 lg:grid-cols-4"
@@ -542,6 +531,15 @@ export default function AnnuairePage() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* FAB Ajouter un contact */}
+      <button
+        onClick={handleOpenAdd}
+        className="fixed bottom-20 right-4 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-xl shadow-primary/30 transition-all hover:shadow-2xl hover:scale-105 active:scale-95 lg:bottom-6"
+        aria-label="Ajouter un contact"
+      >
+        <Plus className="h-6 w-6" />
+      </button>
     </div>
   );
 }

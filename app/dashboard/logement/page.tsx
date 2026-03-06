@@ -501,23 +501,6 @@ export default function LogementPage() {
 
     return (
         <div className="mx-auto max-w-7xl space-y-4 lg:space-y-6">
-            {/* ─── Actions ─── */}
-            <div>
-                <div className="flex flex-wrap items-center justify-end gap-3">
-                    <button
-                        onClick={() => {
-                            setNewRoom(selectedRoom);
-                            setAddOpen(true);
-                        }}
-                        className="flex items-center gap-2 rounded-2xl bg-primary px-4 py-2.5 text-[13px] font-medium text-primary-foreground shadow-lg shadow-primary/25 transition-all duration-300 hover:shadow-xl hover:-translate-y-0.5"
-                    >
-                        <Plus className="h-4 w-4" />
-                        <span className="hidden sm:inline">Ajouter appareil</span>
-                        <span className="sm:hidden">Ajouter</span>
-                    </button>
-                </div>
-            </div>
-
             {/* ─── Energy Stats ─── */}
             <div
                 className="grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-4"
@@ -988,6 +971,18 @@ export default function LogementPage() {
                     </div>
                 </DialogContent>
             </Dialog>
+
+            {/* FAB Ajouter appareil */}
+            <button
+                onClick={() => {
+                    setNewRoom(selectedRoom);
+                    setAddOpen(true);
+                }}
+                className="fixed bottom-20 right-4 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-xl shadow-primary/30 transition-all hover:shadow-2xl hover:scale-105 active:scale-95 lg:bottom-6"
+                aria-label="Ajouter appareil"
+            >
+                <Plus className="h-6 w-6" />
+            </button>
         </div>
     );
 }
