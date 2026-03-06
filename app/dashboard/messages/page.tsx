@@ -396,6 +396,17 @@ export default function MessagesPage() {
     }
   };
 
+  /* ─── Désactiver le scroll du main en mode chat mobile ─── */
+  useEffect(() => {
+    if (mobileView === "chat") {
+      const main = document.querySelector("main");
+      if (main) {
+        main.style.overflow = "hidden";
+        return () => { main.style.overflow = ""; };
+      }
+    }
+  }, [mobileView]);
+
   /* ─── Render ─── */
   return (
     <div
@@ -502,9 +513,9 @@ export default function MessagesPage() {
                     : "hover:bg-foreground/[0.04]"
                 )}
               >
-                <button onClick={() => openConversation(conv)} className="flex flex-1 items-center gap-3 min-w-0">
+                <button onClick={() => openConversation(conv)} className="flex flex-1 items-center gap-3 min-w-0 overflow-hidden">
                   <Avatar url={conv.other_user.avatar_url} name={conv.other_user.full_name} size={40} />
-                  <div className="flex-1 min-w-0">
+                  <div className="flex-1 min-w-0 overflow-hidden">
                     <div className="flex items-center justify-between">
                       <p className={cn("text-[13px] truncate", conv.unread_count > 0 ? "font-semibold" : "font-medium")}>
                         {conv.other_user.full_name}
@@ -579,7 +590,7 @@ export default function MessagesPage() {
             </div>
 
             {/* Zone messages — scrollable, avec padding pour les éléments flottants */}
-            <div className="absolute inset-0 overflow-y-auto px-4 pt-14 pb-[72px] space-y-3">
+            <div className="absolute inset-0 overflow-y-auto overscroll-contain no-scrollbar px-4 pt-14 pb-[72px] space-y-3">
               {loadingMessages ? (
                 <div className="flex justify-center pt-8">
                   <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
@@ -603,7 +614,7 @@ export default function MessagesPage() {
                       <div className={cn("flex flex-col min-w-0", isMe ? "items-end max-w-[75%]" : "items-start max-w-[75%]")}>
                         <div
                           className={cn(
-                            "px-3.5 py-2 text-[13px] leading-relaxed whitespace-pre-wrap break-words overflow-hidden",
+                            "px-3.5 py-2 text-[13px] leading-relaxed whitespace-pre-wrap break-all overflow-hidden",
                             isMe
                               ? "bg-primary text-primary-foreground rounded-2xl rounded-br-sm"
                               : "bg-foreground/[0.06] rounded-2xl rounded-bl-sm"
