@@ -16,9 +16,9 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
       <div className="glass-orb glass-orb-green fixed w-[400px] h-[400px] bottom-[-100px] right-[-100px] opacity-25 hidden lg:block" style={{ animationDelay: "4s" }} />
       <div className="glass-orb glass-orb-purple fixed w-[300px] h-[300px] top-[50%] left-[50%] opacity-20 hidden lg:block" style={{ animationDelay: "7s" }} />
 
-      <div className="relative z-10 flex flex-1 h-full">
+      <div className="relative z-10 flex flex-1 h-full min-h-0">
         <Sidebar />
-        <div className="flex flex-1 flex-col overflow-hidden">
+        <div className="flex flex-1 flex-col overflow-hidden min-h-0">
           <Header />
           <main className="flex-1 overflow-y-auto scrollbar-thin px-4 py-4 pb-[120px] lg:px-8 lg:py-6 lg:pb-6">
             <PageTransition>{children}</PageTransition>
