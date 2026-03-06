@@ -149,33 +149,6 @@ export default function DashboardPage() {
 
     return (
         <div className="mx-auto max-w-6xl space-y-5 lg:space-y-8">
-            {/* ─── Header ─── */}
-            <div>
-                <div className="flex flex-wrap items-center justify-end gap-3">
-                    <div className="flex items-center gap-2">
-                        <button
-                            onClick={() => setEditMode(!editMode)}
-                            className={cn(
-                                "flex items-center gap-2 rounded-2xl px-4 py-2.5 text-[13px] font-medium transition-all duration-300",
-                                editMode
-                                    ? "bg-primary text-primary-foreground shadow-lg shadow-primary/25"
-                                    : "bg-foreground/[0.06] text-muted-foreground hover:bg-foreground/[0.1] hover:text-foreground"
-                            )}
-                        >
-                            {editMode ? <X className="h-4 w-4" /> : <Pencil className="h-4 w-4" />}
-                            <span className="hidden sm:inline">{editMode ? "Terminer" : "Modifier"}</span>
-                        </button>
-                        <button
-                            onClick={() => setSettingsOpen(true)}
-                            className="flex h-10 w-10 items-center justify-center rounded-2xl bg-foreground/[0.06] text-muted-foreground transition-all hover:bg-foreground/[0.1] hover:text-foreground"
-                            title="Gérer les modules"
-                        >
-                            <Settings2 className="h-4 w-4" />
-                        </button>
-                    </div>
-                </div>
-            </div>
-
             {/* ─── Quick Stats Bar ─── */}
             <div
                 className="glass-card grid grid-cols-2 gap-3 px-4 py-4 lg:flex lg:items-center lg:justify-between lg:px-6"
@@ -513,6 +486,29 @@ export default function DashboardPage() {
                     </div>
                 </DialogContent>
             </Dialog>
+
+            {/* FABs flottants */}
+            <div className="fixed bottom-20 right-4 z-40 flex flex-col gap-3 lg:bottom-6">
+                <button
+                    onClick={() => setSettingsOpen(true)}
+                    className="flex h-12 w-12 items-center justify-center rounded-full bg-foreground/10 backdrop-blur-xl text-muted-foreground shadow-lg transition-all hover:shadow-xl hover:scale-105 active:scale-95 border border-white/10"
+                    title="Gérer les modules"
+                >
+                    <Settings2 className="h-5 w-5" />
+                </button>
+                <button
+                    onClick={() => setEditMode(!editMode)}
+                    className={cn(
+                        "flex h-14 w-14 items-center justify-center rounded-full shadow-xl transition-all hover:shadow-2xl hover:scale-105 active:scale-95",
+                        editMode
+                            ? "bg-primary text-primary-foreground shadow-primary/30"
+                            : "bg-foreground/10 backdrop-blur-xl text-muted-foreground border border-white/10"
+                    )}
+                    title={editMode ? "Terminer" : "Modifier"}
+                >
+                    {editMode ? <X className="h-6 w-6" /> : <Pencil className="h-5 w-5" />}
+                </button>
+            </div>
         </div>
     );
 }
