@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { createClient } from "@/lib/supabase/client";
 import { clientCache } from "@/lib/client-cache";
 import { useProfile } from "@/hooks/use-profile";
@@ -109,20 +110,29 @@ export default function ParametresPage() {
   return (
     <div className="mx-auto w-full max-w-4xl pb-16 lg:pb-24">
       {/* Content */}
-      <div className="w-full">
-        {activeTab === "sections" && <DashboardSectionsSettings />}
-        {activeTab === "types" && (
-          profile?.id ? <AppointmentTypesSection userId={profile.id} /> : (
-            <div className="flex items-center justify-center py-16"><Loader2 className="h-7 w-7 animate-spin text-primary" /></div>
-          )
-        )}
-        {activeTab === "availability" && (
-          profile?.id ? <AvailabilitySection userId={profile.id} /> : (
-            <div className="flex items-center justify-center py-16"><Loader2 className="h-7 w-7 animate-spin text-primary" /></div>
-          )
-        )}
-        {activeTab === "contacts" && <ContactsSection />}
-      </div>
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={activeTab}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.2 }}
+          className="w-full"
+        >
+          {activeTab === "sections" && <DashboardSectionsSettings />}
+          {activeTab === "types" && (
+            profile?.id ? <AppointmentTypesSection userId={profile.id} /> : (
+              <div className="flex items-center justify-center py-16"><Loader2 className="h-7 w-7 animate-spin text-primary" /></div>
+            )
+          )}
+          {activeTab === "availability" && (
+            profile?.id ? <AvailabilitySection userId={profile.id} /> : (
+              <div className="flex items-center justify-center py-16"><Loader2 className="h-7 w-7 animate-spin text-primary" /></div>
+            )
+          )}
+          {activeTab === "contacts" && <ContactsSection />}
+        </motion.div>
+      </AnimatePresence>
 
       {/* FAB flottant contextuel */}
       {activeTab === "sections" && (
@@ -149,15 +159,20 @@ export default function ParametresPage() {
                 key={tab.key}
                 onClick={() => setActiveTab(tab.key)}
                 className={cn(
-                  "flex items-center justify-center gap-1.5 rounded-xl px-3 py-2 text-[12px] font-medium transition-all duration-300 whitespace-nowrap",
-                  isActive
-                    ? "bg-card text-foreground shadow-sm"
-                    : "text-muted-foreground hover:text-foreground hover:bg-foreground/[0.06]"
+                  "relative flex items-center justify-center gap-1.5 rounded-xl px-3 py-2 text-[12px] font-medium transition-colors duration-200 whitespace-nowrap",
+                  isActive ? "text-foreground" : "text-muted-foreground hover:text-foreground"
                 )}
               >
-                <tab.icon className="h-3.5 w-3.5 shrink-0" />
-                <span className="hidden sm:inline">{tab.label}</span>
-                <span className="sm:hidden">{tab.label.split(" ")[0]}</span>
+                {isActive && (
+                  <motion.div
+                    layoutId="params-tab-active"
+                    className="absolute inset-0 rounded-xl bg-card shadow-sm"
+                    transition={{ type: "spring", stiffness: 350, damping: 30 }}
+                  />
+                )}
+                <tab.icon className="relative z-10 h-3.5 w-3.5 shrink-0" />
+                <span className="relative z-10 hidden sm:inline">{tab.label}</span>
+                <span className="relative z-10 sm:hidden">{tab.label.split(" ")[0]}</span>
               </button>
             );
           })}
