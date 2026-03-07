@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 
-const VAPID_PUBLIC_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!;
+const VAPID_PUBLIC_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ?? "";
 
 function urlBase64ToUint8Array(base64String: string): ArrayBuffer {
   const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
@@ -14,58 +14,91 @@ function urlBase64ToUint8Array(base64String: string): ArrayBuffer {
   return buffer;
 }
 
+export async function subscribeToPush(): Promise<"granted" | "denied" | "unsupported" | "error"> {
+  if (typeof window === "undefined") return "unsupported";
+  if (!("serviceWorker" in navigator) || !("PushManager" in window)) return "unsupported";
+  if (!VAPID_PUBLIC_KEY) {
+    console.error("[Push] NEXT_PUBLIC_VAPID_PUBLIC_KEY manquante");
+    return "error";
+  }
+
+  try {
+    const registration = await navigator.serviceWorker.ready;
+
+    const permission = await Notification.requestPermission();
+    if (permission !== "granted") return "denied";
+
+    const existing = await registration.pushManager.getSubscription();
+    const subscription = existing ?? await registration.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
+    });
+
+    const json = subscription.toJSON();
+    const res = await fetch("/api/push/subscribe", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ endpoint: json.endpoint, keys: json.keys }),
+    });
+
+    if (!res.ok) {
+      console.error("[Push] Échec de l'enregistrement de la subscription", await res.text());
+      return "error";
+    }
+
+    console.log("[Push] Subscription enregistrée ✓");
+    return "granted";
+  } catch (err) {
+    console.error("[Push] Erreur lors de la subscription:", err);
+    return "error";
+  }
+}
+
+export async function unsubscribeFromPush(): Promise<void> {
+  if (!("serviceWorker" in navigator)) return;
+  const registration = await navigator.serviceWorker.ready;
+  const subscription = await registration.pushManager.getSubscription();
+  if (!subscription) return;
+  const endpoint = subscription.endpoint;
+  await subscription.unsubscribe();
+  await fetch("/api/push/subscribe", {
+    method: "DELETE",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ endpoint }),
+  });
+}
+
+export async function getPushStatus(): Promise<"granted" | "denied" | "default" | "unsupported"> {
+  if (typeof window === "undefined" || !("Notification" in window)) return "unsupported";
+  if (!("PushManager" in window)) return "unsupported";
+  return Notification.permission as "granted" | "denied" | "default";
+}
+
+// Auto-subscribe silencieux si déjà accordé
 export function PushNotificationManager() {
   useEffect(() => {
+    if (!VAPID_PUBLIC_KEY) return;
     if (typeof window === "undefined") return;
     if (!("serviceWorker" in navigator) || !("PushManager" in window)) return;
-    if (!VAPID_PUBLIC_KEY) return;
+    if (Notification.permission !== "granted") return; // ne demande pas automatiquement
 
-    const register = async () => {
+    const timer = setTimeout(async () => {
       try {
-        // Attendre que le SW soit prêt
         const registration = await navigator.serviceWorker.ready;
-
-        // Vérifier si on a déjà une subscription
         const existing = await registration.pushManager.getSubscription();
         if (existing) {
-          // Ré-enregistrer silencieusement (au cas où le serveur aurait perdu la sub)
-          await saveSubscription(existing);
-          return;
+          const json = existing.toJSON();
+          await fetch("/api/push/subscribe", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ endpoint: json.endpoint, keys: json.keys }),
+          });
         }
+      } catch { /* silencieux */ }
+    }, 2000);
 
-        // Demander la permission si pas encore accordée
-        if (Notification.permission === "denied") return;
-
-        if (Notification.permission === "default") {
-          await Notification.requestPermission();
-        }
-        if (Notification.permission !== "granted") return;
-
-        // S'abonner
-        const subscription = await registration.pushManager.subscribe({
-          userVisibleOnly: true,
-          applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
-        });
-
-        await saveSubscription(subscription);
-      } catch {
-        // Silencieux — l'utilisateur peut refuser
-      }
-    };
-
-    // Léger délai pour ne pas bloquer le rendu initial
-    const timer = setTimeout(register, 3000);
     return () => clearTimeout(timer);
   }, []);
 
   return null;
-}
-
-async function saveSubscription(subscription: PushSubscription) {
-  const json = subscription.toJSON();
-  await fetch("/api/push/subscribe", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ endpoint: json.endpoint, keys: json.keys }),
-  });
 }

@@ -38,7 +38,15 @@ import {
   GripVertical,
   ArrowUp,
   ArrowDown,
+  Bell,
+  BellOff,
+  BellRing,
 } from "lucide-react";
+import {
+  subscribeToPush,
+  unsubscribeFromPush,
+  getPushStatus,
+} from "@/components/dashboard/PushNotificationManager";
 import {
   ALL_TABS,
   useDashboardTabs,
@@ -90,13 +98,14 @@ const DAYS = [
   "Samedi",
 ];
 
-type Tab = "types" | "availability" | "contacts" | "sections";
+type Tab = "types" | "availability" | "contacts" | "sections" | "notifications";
 
 const tabs: { key: Tab; label: string; icon: typeof CalendarDays }[] = [
   { key: "sections", label: "Sections", icon: LayoutGrid },
-  { key: "types", label: "Types de RDV", icon: CalendarDays },
-  { key: "availability", label: "Disponibilités", icon: Clock },
-  { key: "contacts", label: "Contacts proches", icon: Users },
+  { key: "notifications", label: "Notifs", icon: Bell },
+  { key: "types", label: "Types RDV", icon: CalendarDays },
+  { key: "availability", label: "Dispos", icon: Clock },
+  { key: "contacts", label: "Proches", icon: Users },
 ];
 
 /* ═══════════════════════════════════════════════════════
@@ -120,6 +129,7 @@ export default function ParametresPage() {
           className="w-full"
         >
           {activeTab === "sections" && <DashboardSectionsSettings />}
+          {activeTab === "notifications" && <NotificationsSettings />}
           {activeTab === "types" && (
             profile?.id ? <AppointmentTypesSection userId={profile.id} /> : (
               <div className="flex items-center justify-center py-16"><Loader2 className="h-7 w-7 animate-spin text-primary" /></div>
@@ -941,6 +951,156 @@ function ContactsSection() {
               ))}
             </div>
           )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════
+   Notifications push
+   ═══════════════════════════════════════════════════════ */
+
+function NotificationsSettings() {
+  const [status, setStatus] = useState<"granted" | "denied" | "default" | "unsupported" | "loading">("loading");
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    getPushStatus().then(setStatus);
+  }, []);
+
+  const handleEnable = async () => {
+    setSaving(true);
+    const result = await subscribeToPush();
+    if (result === "granted") {
+      setStatus("granted");
+      toast.success("Notifications activées !");
+    } else if (result === "denied") {
+      setStatus("denied");
+      toast.error("Permission refusée. Modifie les paramètres de ton navigateur.");
+    } else if (result === "unsupported") {
+      toast.error("Ton navigateur ne supporte pas les notifications push.");
+    } else {
+      toast.error("Erreur lors de l'activation. Vérifie la console.");
+    }
+    setSaving(false);
+  };
+
+  const handleDisable = async () => {
+    setSaving(true);
+    await unsubscribeFromPush();
+    setStatus("default");
+    toast.success("Notifications désactivées.");
+    setSaving(false);
+  };
+
+  return (
+    <div className="space-y-4 sm:space-y-6">
+      <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+        <div className="flex h-9 w-9 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500/20 to-violet-600/20">
+          <Bell className="h-4 w-4 sm:h-5 sm:w-5 text-violet-500" />
+        </div>
+        <div className="min-w-0">
+          <h3 className="text-[14px] sm:text-[16px] font-semibold">Notifications push</h3>
+          <p className="text-[11px] sm:text-[12px] text-muted-foreground">
+            Reçois des notifications même quand l&apos;app est fermée.
+          </p>
+        </div>
+      </div>
+
+      <div className="glass-card p-4 sm:p-5 space-y-4">
+        {status === "loading" && (
+          <div className="flex items-center gap-3">
+            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+            <span className="text-[13px] text-muted-foreground">Vérification…</span>
+          </div>
+        )}
+
+        {status === "unsupported" && (
+          <div className="flex items-center gap-3">
+            <BellOff className="h-4 w-4 text-muted-foreground" />
+            <span className="text-[13px] text-muted-foreground">
+              Notifications non supportées par ce navigateur.
+            </span>
+          </div>
+        )}
+
+        {status === "denied" && (
+          <div className="space-y-3">
+            <div className="flex items-center gap-2.5 rounded-xl bg-red-500/10 px-4 py-3">
+              <BellOff className="h-4 w-4 shrink-0 text-red-500" />
+              <p className="text-[12px] sm:text-[13px] text-red-500 font-medium">
+                Permission bloquée dans le navigateur.
+              </p>
+            </div>
+            <p className="text-[12px] text-muted-foreground px-1">
+              Pour réactiver : icône 🔒 dans la barre d&apos;adresse → Notifications → Autoriser, puis recharge la page.
+            </p>
+          </div>
+        )}
+
+        {(status === "default" || status === "granted") && (
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              {status === "granted" ? (
+                <BellRing className="h-4 w-4 text-violet-500" />
+              ) : (
+                <Bell className="h-4 w-4 text-muted-foreground" />
+              )}
+              <div>
+                <p className="text-[13px] sm:text-[14px] font-semibold">
+                  {status === "granted" ? "Notifications activées" : "Notifications désactivées"}
+                </p>
+                <p className="text-[11px] sm:text-[12px] text-muted-foreground">
+                  {status === "granted"
+                    ? "Tu recevras une notif pour chaque nouveau message."
+                    : "Active pour être notifié des nouveaux messages."}
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={status === "granted" ? handleDisable : handleEnable}
+              disabled={saving}
+              className={cn(
+                "shrink-0 flex items-center gap-2 rounded-xl px-4 py-2 text-[12px] sm:text-[13px] font-semibold transition-all disabled:opacity-50",
+                status === "granted"
+                  ? "bg-foreground/[0.06] text-muted-foreground hover:bg-red-500/10 hover:text-red-500"
+                  : "bg-violet-500 text-white shadow-lg shadow-violet-500/25 hover:bg-violet-600"
+              )}
+            >
+              {saving ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : status === "granted" ? (
+                <BellOff className="h-3.5 w-3.5" />
+              ) : (
+                <Bell className="h-3.5 w-3.5" />
+              )}
+              {status === "granted" ? "Désactiver" : "Activer"}
+            </button>
+          </div>
+        )}
+      </div>
+
+      {status === "granted" && (
+        <div className="glass-card p-4 sm:p-5 space-y-2">
+          <p className="text-[11px] sm:text-[12px] font-semibold uppercase tracking-widest text-muted-foreground">
+            Ce qui déclenche une notification
+          </p>
+          <div className="space-y-2 pt-1">
+            {[
+              { icon: Bell, label: "Nouveau message reçu", desc: "Avec le contenu et la possibilité de répondre directement" },
+            ].map((item) => (
+              <div key={item.label} className="flex items-start gap-3">
+                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-violet-500/10">
+                  <item.icon className="h-3.5 w-3.5 text-violet-500" />
+                </div>
+                <div>
+                  <p className="text-[12px] sm:text-[13px] font-medium">{item.label}</p>
+                  <p className="text-[11px] text-muted-foreground">{item.desc}</p>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       )}
     </div>
