@@ -76,28 +76,65 @@ self.addEventListener("fetch", (event) => {
     );
 });
 
-// Push notifications
+/* ═══════════════════════════════════════════
+   Push Notifications
+   ═══════════════════════════════════════════ */
+
 self.addEventListener("push", (event) => {
     const data = event.data ? event.data.json() : {};
-    const title = data.title || "Life";
+    const { title, body, conversationId, url } = data;
+
+    const targetUrl = url || (conversationId ? `/dashboard/messages?conv=${conversationId}` : "/dashboard/messages");
+
     const options = {
-        body: data.body || "",
+        body: body || "",
         icon: "/icons/icon-192.png",
         badge: "/icons/icon-96.png",
-        data: { url: data.url || "/dashboard" },
+        tag: conversationId ? `conv-${conversationId}` : "life-notif",
+        renotify: true,
+        data: { url: targetUrl, conversationId: conversationId || null },
+        actions: conversationId
+            ? [
+                  { action: "reply", title: "Répondre", type: "text", placeholder: "Votre message…" },
+                  { action: "open", title: "Ouvrir" },
+              ]
+            : [{ action: "open", title: "Ouvrir" }],
     };
-    event.waitUntil(self.registration.showNotification(title, options));
+
+    event.waitUntil(self.registration.showNotification(title || "Life", options));
 });
 
 self.addEventListener("notificationclick", (event) => {
+    const { url, conversationId } = event.notification.data || {};
     event.notification.close();
-    const url = event.notification.data?.url || "/dashboard";
+
+    // Réponse inline (Android Chrome)
+    if (event.action === "reply" && event.reply && conversationId) {
+        event.waitUntil(
+            fetch("/api/messages", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                credentials: "include",
+                body: JSON.stringify({ conversation_id: conversationId, content: event.reply }),
+            }).catch(() => {})
+        );
+        return;
+    }
+
+    // Ouvrir / focus l'app
+    const targetUrl = url || "/dashboard/messages";
     event.waitUntil(
-        clients.matchAll({ type: "window", includeUncontrolled: true }).then((windowClients) => {
-            for (const client of windowClients) {
-                if (client.url.includes(url) && "focus" in client) return client.focus();
-            }
-            return clients.openWindow(url);
-        })
+        clients
+            .matchAll({ type: "window", includeUncontrolled: true })
+            .then((windowClients) => {
+                for (const client of windowClients) {
+                    if ("focus" in client) {
+                        client.focus();
+                        client.navigate(targetUrl);
+                        return;
+                    }
+                }
+                return clients.openWindow(targetUrl);
+            })
     );
 });

@@ -1,6 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
+import { sendPushToUser } from "@/lib/push-notifications";
 
 async function getAuthUser() {
   const authClient = await createClient();
@@ -146,16 +147,29 @@ export async function POST(request: Request) {
 
       const senderName = senderProfile?.full_name ?? "Quelqu'un";
 
+      const notifBody = content.trim().length > 100 ? content.trim().slice(0, 100) + "…" : content.trim();
+
       await supabase.from("notifications").insert(
         others.map((o) => ({
           user_id: o.user_id,
           type: "message",
           title: `Nouveau message de ${senderName}`,
-          body: content.trim().length > 60 ? content.trim().slice(0, 60) + "…" : content.trim(),
+          body: notifBody,
           from_user_id: user.id,
           from_name: senderName,
         }))
       );
+
+      // Envoyer push notifications (fire-and-forget)
+      Promise.allSettled(
+        others.map((o) =>
+          sendPushToUser(o.user_id, {
+            title: senderName,
+            body: notifBody,
+            conversationId: conversation_id,
+          })
+        )
+      ).catch(() => {});
     }
 
     // Récupérer le profil de l'expéditeur pour enrichir la réponse

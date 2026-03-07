@@ -4,6 +4,7 @@ import { Sidebar } from "@/components/dashboard/Sidebar";
 import { Header } from "@/components/dashboard/Header";
 import { MobileBottomNav } from "@/components/dashboard/MobileBottomNav";
 import { PageTransition } from "@/components/dashboard/PageTransition";
+import { PushNotificationManager } from "@/components/dashboard/PushNotificationManager";
 
 export function DashboardShell({ children }: { children: React.ReactNode }) {
   return (
@@ -25,6 +26,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
         </div>
         <Header />
         <MobileBottomNav />
+        <PushNotificationManager />
       </div>
     </div>
   );
