@@ -28,8 +28,11 @@ export async function subscribeToPush(): Promise<"granted" | "denied" | "unsuppo
     const permission = await Notification.requestPermission();
     if (permission !== "granted") return "denied";
 
+    // Toujours désabonner d'abord pour forcer une nouvelle souscription avec les clés actuelles
     const existing = await registration.pushManager.getSubscription();
-    const subscription = existing ?? await registration.pushManager.subscribe({
+    if (existing) await existing.unsubscribe();
+
+    const subscription = await registration.pushManager.subscribe({
       userVisibleOnly: true,
       applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
     });
@@ -85,15 +88,19 @@ export function PushNotificationManager() {
     const timer = setTimeout(async () => {
       try {
         const registration = await navigator.serviceWorker.ready;
+        // Toujours renouveler la souscription pour s'assurer qu'elle correspond aux clés VAPID actuelles
         const existing = await registration.pushManager.getSubscription();
-        if (existing) {
-          const json = existing.toJSON();
-          await fetch("/api/push/subscribe", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ endpoint: json.endpoint, keys: json.keys }),
-          });
-        }
+        if (existing) await existing.unsubscribe();
+        const subscription = await registration.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
+        });
+        const json = subscription.toJSON();
+        await fetch("/api/push/subscribe", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ endpoint: json.endpoint, keys: json.keys }),
+        });
       } catch { /* silencieux */ }
     }, 2000);
 
