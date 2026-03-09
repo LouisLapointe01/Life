@@ -224,26 +224,23 @@ export function Header() {
     ? createPortal(
         <>
           <div
-            className="fixed inset-0 z-[70] bg-black/40 backdrop-blur-sm lg:hidden"
+            className="fixed inset-0 z-[70]"
             onClick={() => setShowNotifs(false)}
           />
 
           <div
             ref={notifPanelRef}
-            className="fixed inset-x-0 bottom-0 z-[80] rounded-t-3xl border border-border bg-background/95 backdrop-blur-2xl shadow-xl shadow-black/10 overflow-hidden sm:inset-x-auto sm:bottom-auto sm:right-4 sm:top-[4.75rem] sm:w-[380px] sm:rounded-2xl"
+            className="fixed right-2 left-2 top-[4.5rem] z-[80] rounded-2xl border border-border bg-background/95 backdrop-blur-2xl shadow-2xl shadow-black/20 overflow-hidden sm:left-auto sm:right-4 sm:w-[400px]"
           >
-            <div className="flex justify-center pt-3 pb-1 sm:hidden">
-              <div className="h-1 w-10 rounded-full bg-foreground/20" />
-            </div>
-            <div className="flex items-center justify-between px-4 py-3 border-b border-foreground/[0.06]">
-              <h3 className="text-[14px] font-semibold">Notifications</h3>
+            <div className="flex items-center justify-between px-4 py-3.5 border-b border-foreground/[0.06]">
+              <h3 className="text-[15px] font-semibold">Notifications</h3>
               {unreadCount > 0 && (
-                <button onClick={markAllRead} className="text-[11px] font-medium text-primary hover:underline">
+                <button onClick={markAllRead} className="text-[12px] font-medium text-primary hover:underline">
                   Tout marquer comme lu
                 </button>
               )}
             </div>
-            <div className="max-h-[min(70dvh,36rem)] overflow-y-auto pb-[calc(env(safe-area-inset-bottom,0px)+4rem)] sm:max-h-[70vh] sm:pb-0">
+            <div className="max-h-[65dvh] overflow-y-auto">
               {notifications.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-8 text-center">
                   <Bell className="h-7 w-7 sm:h-8 sm:w-8 text-muted-foreground/30 mb-2" />
@@ -262,9 +259,9 @@ export function Header() {
 
                   return groups.map(({ section, items }) => (
                     <div key={section.id}>
-                      <div className="flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 bg-muted/50 border-b border-foreground/[0.04]">
-                        <section.icon className={cn("h-3 w-3 shrink-0", section.color)} />
-                        <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                      <div className="flex items-center gap-2 px-4 py-2 bg-muted/40 border-b border-foreground/[0.04]">
+                        <section.icon className={cn("h-3.5 w-3.5 shrink-0", section.color)} />
+                        <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
                           {section.label}
                         </span>
                       </div>
@@ -276,36 +273,36 @@ export function Header() {
                             key={n.id}
                             className={cn(
                               "border-b border-foreground/[0.04] last:border-0",
-                              !n.is_read && "bg-primary/[0.04]"
+                              !n.is_read && "bg-primary/[0.03]"
                             )}
                           >
                             <button
                               onClick={() => handleNotifClick(n)}
-                              className="flex w-full items-start gap-3 px-4 py-3 text-left transition-colors hover:bg-foreground/[0.03]"
+                              className="flex w-full items-start gap-3.5 px-4 py-3.5 text-left transition-colors hover:bg-foreground/[0.03]"
                             >
                               <div className={cn(
-                                "flex h-9 w-9 shrink-0 items-center justify-center rounded-xl mt-0.5",
+                                "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl mt-0.5",
                                 isContactAdded
                                   ? "bg-blue-500/15 text-blue-500"
                                   : !n.is_read ? "bg-primary/15 text-primary" : "bg-foreground/[0.06] text-muted-foreground"
                               )}>
-                                <Icon className="h-4 w-4" />
+                                <Icon className="h-4.5 w-4.5" />
                               </div>
                               <div className="flex-1 min-w-0">
                                 <p className={cn("text-[13px] leading-snug", !n.is_read ? "font-semibold" : "font-medium text-muted-foreground")}>
                                   {n.title}
                                 </p>
                                 {n.body && (
-                                  <p className="text-[12px] text-muted-foreground mt-0.5 line-clamp-2">{n.body}</p>
+                                  <p className="text-[12px] text-muted-foreground mt-1 line-clamp-2 leading-relaxed">{n.body}</p>
                                 )}
-                                <p className="text-[11px] text-muted-foreground mt-1">{timeAgo(n.created_at)}</p>
+                                <p className="text-[11px] text-muted-foreground/70 mt-1.5">{timeAgo(n.created_at)}</p>
                               </div>
                               {!n.is_read && (
-                                <span className="mt-2 h-2 w-2 shrink-0 rounded-full bg-primary" />
+                                <span className="mt-2 h-2.5 w-2.5 shrink-0 rounded-full bg-primary" />
                               )}
                             </button>
                             {isContactAdded && n.from_user_id && (
-                              <div className="px-4 pb-3">
+                              <div className="px-4 pb-3.5">
                                 <button
                                   onClick={() => handleBlock(n)}
                                   disabled={blockingId === n.id}
