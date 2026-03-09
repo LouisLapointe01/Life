@@ -53,3 +53,48 @@ export const rescheduleVoteSchema = z.object({
   vote: z.enum(["yes", "no"]),
   alternative_time: z.string().datetime().optional(),
 });
+
+/* ═══════════════════════════════════════════════════════
+   Drive — Dossiers
+   ═══════════════════════════════════════════════════════ */
+export const createFolderSchema = z.object({
+  name: z.string().min(1, "Le nom est requis").max(255),
+  parent_id: z.string().uuid().nullable().optional(),
+  color: z
+    .string()
+    .regex(/^#[0-9A-Fa-f]{6}$/, "Couleur hexadécimale invalide")
+    .optional(),
+});
+
+export const renameFolderSchema = z.object({
+  name: z.string().min(1, "Le nom est requis").max(255),
+});
+
+export const moveFolderSchema = z.object({
+  parent_id: z.string().uuid().nullable(),
+});
+
+export const updateFolderSchema = z.object({
+  name: z.string().min(1).max(255).optional(),
+  parent_id: z.string().uuid().nullable().optional(),
+  color: z
+    .string()
+    .regex(/^#[0-9A-Fa-f]{6}$/, "Couleur hexadécimale invalide")
+    .optional(),
+});
+
+/* ═══════════════════════════════════════════════════════
+   Drive — Fichiers
+   ═══════════════════════════════════════════════════════ */
+export const uploadFileMetaSchema = z.object({
+  folder_id: z.string().uuid().nullable().optional(),
+  category: z.string().min(1).max(100).optional(),
+});
+
+export const renameFileSchema = z.object({
+  name: z.string().min(1, "Le nom est requis").max(255),
+});
+
+export const moveFileSchema = z.object({
+  folder_id: z.string().uuid().nullable(),
+});
