@@ -457,7 +457,7 @@ export default function FichiersPage() {
 
       {/* Search + Actions */}
       <div className="glass-card p-2 sm:p-4 space-y-2 sm:space-y-0 sm:flex sm:items-center sm:justify-between sm:gap-2">
-        <div className="relative flex-1 min-w-0">
+        <div className="relative w-2/3 sm:flex-1 sm:w-auto min-w-0">
           <Search className="absolute left-2.5 sm:left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 sm:h-4 sm:w-4 text-muted-foreground" />
           <input value={drive.search} onChange={(e) => drive.setSearch(e.target.value)} placeholder="Rechercher..." className="glass-input w-full py-2 sm:py-2.5 pl-8 sm:pl-10 pr-3 sm:pr-4 text-[13px] sm:text-[14px]" />
         </div>
