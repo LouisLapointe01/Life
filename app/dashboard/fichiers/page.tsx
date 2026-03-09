@@ -456,21 +456,21 @@ export default function FichiersPage() {
       </Dialog>
 
       {/* Search + Actions */}
-      <div className="glass-card flex items-center gap-2 p-2 sm:p-4 sm:flex-row sm:justify-between">
+      <div className="glass-card p-2 sm:p-4 space-y-2 sm:space-y-0 sm:flex sm:items-center sm:justify-between sm:gap-2">
         <div className="relative flex-1 min-w-0">
           <Search className="absolute left-2.5 sm:left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 sm:h-4 sm:w-4 text-muted-foreground" />
           <input value={drive.search} onChange={(e) => drive.setSearch(e.target.value)} placeholder="Rechercher..." className="glass-input w-full py-2 sm:py-2.5 pl-8 sm:pl-10 pr-3 sm:pr-4 text-[13px] sm:text-[14px]" />
         </div>
-        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+        <div className="flex items-center gap-1.5 sm:gap-2">
           <div className="hidden sm:flex rounded-xl bg-foreground/[0.04] p-0.5">
             <button onClick={() => setView("grid")} className={cn("rounded-lg p-2 transition-all", view === "grid" ? "bg-card shadow-sm text-foreground" : "text-muted-foreground")}><Grid3X3 className="h-4 w-4" /></button>
             <button onClick={() => setView("list")} className={cn("rounded-lg p-2 transition-all", view === "list" ? "bg-card shadow-sm text-foreground" : "text-muted-foreground")}><List className="h-4 w-4" /></button>
           </div>
-          <button onClick={() => setFolderDialogOpen(true)} className="flex h-9 w-9 sm:h-auto sm:w-auto items-center justify-center gap-2 rounded-xl sm:rounded-2xl bg-foreground/[0.06] sm:px-4 sm:py-2.5 text-[13px] font-medium text-muted-foreground transition-all hover:bg-foreground/[0.1] hover:text-foreground">
-            <FolderPlus className="h-4 w-4" /><span className="hidden sm:inline">Dossier</span>
+          <button onClick={() => setFolderDialogOpen(true)} className="flex flex-1 sm:flex-none h-9 sm:h-auto items-center justify-center gap-2 rounded-xl sm:rounded-2xl bg-foreground/[0.06] sm:px-4 sm:py-2.5 text-[12px] sm:text-[13px] font-medium text-muted-foreground transition-all hover:bg-foreground/[0.1] hover:text-foreground">
+            <FolderPlus className="h-4 w-4" /><span className="sm:hidden">Dossier</span><span className="hidden sm:inline">Dossier</span>
           </button>
-          <button onClick={handleImportClick} className="flex h-9 w-9 sm:h-auto sm:w-auto items-center justify-center gap-2 rounded-xl sm:rounded-2xl bg-primary sm:px-4 sm:py-2.5 text-[13px] font-semibold text-primary-foreground shadow-lg shadow-primary/25 transition-all hover:shadow-xl hover:-translate-y-0.5">
-            <Upload className="h-4 w-4" /><span className="hidden sm:inline">Importer</span>
+          <button onClick={handleImportClick} className="flex flex-1 sm:flex-none h-9 sm:h-auto items-center justify-center gap-2 rounded-xl sm:rounded-2xl bg-primary sm:px-4 sm:py-2.5 text-[12px] sm:text-[13px] font-semibold text-primary-foreground shadow-lg shadow-primary/25 transition-all hover:shadow-xl hover:-translate-y-0.5">
+            <Upload className="h-4 w-4" /><span className="sm:hidden">Importer</span><span className="hidden sm:inline">Importer</span>
           </button>
         </div>
       </div>
