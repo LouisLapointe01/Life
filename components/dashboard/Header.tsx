@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useEffect, useState, useCallback, useRef } from "react";
+import { createPortal } from "react-dom";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -91,7 +92,9 @@ export function Header() {
   const [unreadCount, setUnreadCount] = useState(0);
   const [showNotifs, setShowNotifs] = useState(false);
   const notifRef = useRef<HTMLDivElement>(null);
+  const notifPanelRef = useRef<HTMLDivElement>(null);
   const [blockingId, setBlockingId] = useState<string | null>(null);
+  const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
     const supabase = createClient();
@@ -99,6 +102,10 @@ export function Header() {
       setUser(data.user);
       if (data.user) clientCache.setUser(data.user.id);
     });
+  }, []);
+
+  useEffect(() => {
+    setIsMounted(true);
   }, []);
 
   const fetchNotifications = useCallback(async () => {
@@ -135,7 +142,10 @@ export function Header() {
   // Click outside to close
   useEffect(() => {
     const handler = (e: MouseEvent) => {
-      if (notifRef.current && !notifRef.current.contains(e.target as Node)) {
+      const target = e.target as Node;
+      const clickedTrigger = notifRef.current?.contains(target);
+      const clickedPanel = notifPanelRef.current?.contains(target);
+      if (!clickedTrigger && !clickedPanel) {
         setShowNotifs(false);
       }
     };
@@ -210,34 +220,18 @@ export function Header() {
     return `Il y a ${d}j`;
   };
 
-  return (
-    <div className={cn("fixed top-4 right-4 flex items-center gap-1 rounded-2xl bg-white/15 dark:bg-white/[0.04] backdrop-blur-xl border border-white/10 dark:border-white/[0.06] px-1.5 py-1 shadow-sm", showNotifs ? "z-[60]" : "z-30")}>
-      {/* Notifications Bell */}
-      <div className="relative" ref={notifRef}>
-        <button
-          onClick={() => setShowNotifs(!showNotifs)}
-          className="relative flex h-8 w-8 items-center justify-center rounded-xl text-muted-foreground/70 transition-all duration-200 hover:bg-foreground/[0.06] hover:text-foreground"
-        >
-          <Bell className="h-4 w-4" />
-          {unreadCount > 0 && (
-            <span className="absolute -right-0.5 -top-0.5 flex h-4.5 min-w-4.5 items-center justify-center rounded-full bg-red-500 px-1 text-[9px] font-bold text-white ring-2 ring-background">
-              {unreadCount > 9 ? "9+" : unreadCount}
-            </span>
-          )}
-        </button>
-
-        {/* Overlay mobile */}
-        {showNotifs && (
+  const notificationPanel = showNotifs && isMounted
+    ? createPortal(
+        <>
           <div
-            className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm lg:hidden"
+            className="fixed inset-0 z-[70] bg-black/40 backdrop-blur-sm lg:hidden"
             onClick={() => setShowNotifs(false)}
           />
-        )}
 
-        {/* Notification Panel */}
-        {showNotifs && (
-          <div className="fixed bottom-0 left-0 right-0 rounded-t-3xl sm:bottom-auto sm:rounded-2xl sm:absolute sm:left-auto sm:top-full sm:mt-2 sm:right-0 sm:w-[380px] border border-border bg-background/95 backdrop-blur-2xl shadow-xl shadow-black/10 z-50 overflow-hidden">
-            {/* Handle mobile */}
+          <div
+            ref={notifPanelRef}
+            className="fixed inset-x-0 bottom-0 z-[80] rounded-t-3xl border border-border bg-background/95 backdrop-blur-2xl shadow-xl shadow-black/10 overflow-hidden sm:inset-x-auto sm:bottom-auto sm:right-4 sm:top-[4.75rem] sm:w-[380px] sm:rounded-2xl"
+          >
             <div className="flex justify-center pt-3 pb-1 sm:hidden">
               <div className="h-1 w-10 rounded-full bg-foreground/20" />
             </div>
@@ -249,7 +243,7 @@ export function Header() {
                 </button>
               )}
             </div>
-            <div className="max-h-[60dvh] sm:max-h-[70vh] overflow-y-auto pb-[env(safe-area-inset-bottom,0px)] pb-16 sm:pb-0">
+            <div className="max-h-[min(70dvh,36rem)] overflow-y-auto pb-[calc(env(safe-area-inset-bottom,0px)+4rem)] sm:max-h-[70vh] sm:pb-0">
               {notifications.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-8 text-center">
                   <Bell className="h-7 w-7 sm:h-8 sm:w-8 text-muted-foreground/30 mb-2" />
@@ -333,7 +327,27 @@ export function Header() {
               )}
             </div>
           </div>
-        )}
+        </>,
+        document.body
+      )
+    : null;
+
+  return (
+    <>
+    <div className={cn("fixed top-4 right-4 flex items-center gap-1 rounded-2xl bg-white/15 dark:bg-white/[0.04] backdrop-blur-xl border border-white/10 dark:border-white/[0.06] px-1.5 py-1 shadow-sm", showNotifs ? "z-[90]" : "z-30")}>
+      {/* Notifications Bell */}
+      <div className="relative" ref={notifRef}>
+        <button
+          onClick={() => setShowNotifs(!showNotifs)}
+          className="relative flex h-8 w-8 items-center justify-center rounded-xl text-muted-foreground/70 transition-all duration-200 hover:bg-foreground/[0.06] hover:text-foreground"
+        >
+          <Bell className="h-4 w-4" />
+          {unreadCount > 0 && (
+            <span className="absolute -right-0.5 -top-0.5 flex h-4.5 min-w-4.5 items-center justify-center rounded-full bg-red-500 px-1 text-[9px] font-bold text-white ring-2 ring-background">
+              {unreadCount > 9 ? "9+" : unreadCount}
+            </span>
+          )}
+        </button>
       </div>
 
       {/* Separator */}
@@ -377,5 +391,7 @@ export function Header() {
         </DropdownMenuContent>
       </DropdownMenu>
     </div>
+    {notificationPanel}
+    </>
   );
 }
