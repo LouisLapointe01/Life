@@ -226,9 +226,17 @@ export function Header() {
           )}
         </button>
 
+        {/* Overlay mobile */}
+        {showNotifs && (
+          <div
+            className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm lg:hidden"
+            onClick={() => setShowNotifs(false)}
+          />
+        )}
+
         {/* Notification Panel */}
         {showNotifs && (
-          <div className="absolute right-0 top-full mt-2 w-[calc(100vw-2rem)] sm:w-[380px] rounded-2xl border border-white/20 bg-background/80 backdrop-blur-2xl shadow-xl shadow-black/10 z-50 overflow-hidden">
+          <div className="fixed right-3 left-3 top-16 sm:absolute sm:left-auto sm:top-full sm:mt-2 sm:right-0 sm:w-[380px] rounded-2xl border border-border bg-background/95 backdrop-blur-2xl shadow-xl shadow-black/10 z-50 overflow-hidden">
             <div className="flex items-center justify-between px-4 py-3 border-b border-foreground/[0.06]">
               <h3 className="text-[14px] font-semibold">Notifications</h3>
               {unreadCount > 0 && (
@@ -237,7 +245,7 @@ export function Header() {
                 </button>
               )}
             </div>
-            <div className="max-h-[70vh] overflow-y-auto">
+            <div className="max-h-[calc(100dvh-8rem)] sm:max-h-[70vh] overflow-y-auto">
               {notifications.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-10 text-center">
                   <Bell className="h-8 w-8 text-muted-foreground/30 mb-2" />
@@ -256,7 +264,7 @@ export function Header() {
 
                   return groups.map(({ section, items }) => (
                     <div key={section.id}>
-                      <div className="flex items-center gap-2 px-4 py-2 bg-foreground/[0.02] border-b border-foreground/[0.04]">
+                      <div className="flex items-center gap-2 px-4 py-2 bg-muted/50 border-b border-foreground/[0.04]">
                         <section.icon className={cn("h-3 w-3 shrink-0", section.color)} />
                         <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                           {section.label}
@@ -292,7 +300,7 @@ export function Header() {
                                 {n.body && (
                                   <p className="text-[11px] text-muted-foreground mt-0.5 line-clamp-2">{n.body}</p>
                                 )}
-                                <p className="text-[10px] text-muted-foreground/60 mt-1">{timeAgo(n.created_at)}</p>
+                                <p className="text-[10px] text-muted-foreground mt-1">{timeAgo(n.created_at)}</p>
                               </div>
                               {!n.is_read && (
                                 <span className="mt-2 h-2 w-2 shrink-0 rounded-full bg-primary" />

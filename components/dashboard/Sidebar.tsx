@@ -19,6 +19,7 @@ import {
   useDashboardTabs,
   type TabDefinition,
 } from "@/lib/stores/dashboard-tabs";
+import { useUnreadMessages } from "@/lib/stores/unread-messages";
 import { motion, AnimatePresence } from "framer-motion";
 
 export function Sidebar() {
@@ -29,6 +30,7 @@ export function Sidebar() {
   const visibleTabs = useVisibleTabs();
   const hiddenTabs = useHiddenTabs();
   const { removeTab, addTab } = useDashboardTabs();
+  const totalUnread = useUnreadMessages((s) => s.totalUnread);
 
   return (
     <aside
@@ -111,6 +113,11 @@ export function Sidebar() {
 
                     {!collapsed && (
                       <span className="relative z-10 truncate">{item.label}</span>
+                    )}
+                    {item.id === "messages" && totalUnread > 0 && (
+                      <span className="relative z-10 ml-auto flex h-4.5 min-w-4.5 items-center justify-center rounded-full bg-red-500 px-1 text-[9px] font-bold text-white">
+                        {totalUnread > 9 ? "9+" : totalUnread}
+                      </span>
                     )}
                   </Link>
 
