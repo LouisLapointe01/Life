@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useLayoutEffect, useCallback, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 import { useUnreadMessages } from "@/lib/stores/unread-messages";
@@ -143,6 +143,7 @@ export default function MessagesPage() {
   const convOpenedAtRef = useRef<number>(0);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const searchDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const loadMoreScrollRestoreRef = useRef<number>(0);
 
   /* ─── Récupérer l'userId courant ─── */
   useEffect(() => {
@@ -164,9 +165,22 @@ export default function MessagesPage() {
 
   useEffect(() => {
     fetchConversations();
-    const interval = setInterval(fetchConversations, 30000);
-    return () => clearInterval(interval);
   }, [fetchConversations]);
+
+  /* ─── Realtime: nouvelle conversation créée avec moi ─── */
+  useEffect(() => {
+    if (!myUserId) return;
+    const supabase = createClient();
+    const sub = supabase
+      .channel("conv-new-rt")
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "conversation_participants", filter: `user_id=eq.${myUserId}` },
+        () => { fetchConversations(); }
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(sub); };
+  }, [myUserId, fetchConversations]);
 
   /* ─── Realtime: mise à jour liste conversations ─── */
   useEffect(() => {
@@ -236,14 +250,13 @@ export default function MessagesPage() {
         if ((data.messages as Message[])?.length > 0) {
           setMessages((prev) => [...data.messages, ...prev]);
           setHasMore(data.has_more ?? false);
-          requestAnimationFrame(() => {
-            // En auto-fill, on laisse shouldScrollToBottom gérer le scroll vers le bas
-            // En scroll manuel, on préserve la position pour ne pas désorienter l'utilisateur
-            if (container && !autoFillingRef.current) {
-              container.scrollTop = container.scrollHeight - oldScrollHeight;
-            }
+          // Signal useLayoutEffect to restore scroll position
+          if (!autoFillingRef.current) {
+            loadMoreScrollRestoreRef.current = oldScrollHeight;
+          } else {
+            loadMoreScrollRestoreRef.current = 0;
             autoFillingRef.current = false;
-          });
+          }
         } else {
           setHasMore(false);
         }
@@ -317,11 +330,9 @@ export default function MessagesPage() {
     return () => { supabase.removeChannel(sub); };
   }, [activeConvId, myUserId]);
 
-  /* ─── Scroll instantané vers le bas après chargement initial ou envoi ─── */
-  useEffect(() => {
+  /* ─── Scroll vers le bas — useLayoutEffect évite le flash visuel ─── */
+  useLayoutEffect(() => {
     if (shouldScrollToBottom.current && !loadingMessages) {
-      // Effacer le flag seulement quand le chargement est terminé pour éviter
-      // qu'il reste bloqué à true si le ref DOM était null au premier déclenchement
       shouldScrollToBottom.current = false;
       if (scrollContainerRef.current) {
         scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight;
@@ -329,6 +340,15 @@ export default function MessagesPage() {
       }
     }
   }, [messages, loadingMessages]);
+
+  /* ─── Restauration position scroll après chargement de messages plus anciens ─── */
+  useLayoutEffect(() => {
+    if (loadMoreScrollRestoreRef.current > 0 && scrollContainerRef.current) {
+      scrollContainerRef.current.scrollTop =
+        scrollContainerRef.current.scrollHeight - loadMoreScrollRestoreRef.current;
+      loadMoreScrollRestoreRef.current = 0;
+    }
+  }, [messages]);
 
   /* ─── Auto-remplissage : charger plus si le contenu ne remplit pas l'écran ─── */
   useEffect(() => {

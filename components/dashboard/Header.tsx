@@ -3,7 +3,7 @@
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useRef } from "react";
 import { createPortal } from "react-dom";
 import {
   DropdownMenu,
@@ -16,18 +16,8 @@ import { LogOut, User, Bell, Check, CheckCheck, CalendarDays, ArrowRightLeft, XC
 import type { User as SupabaseUser } from "@supabase/supabase-js";
 import { clientCache } from "@/lib/client-cache";
 import { cn } from "@/lib/utils";
-
-type Notification = {
-  id: string;
-  type: string;
-  title: string;
-  body: string | null;
-  is_read: boolean;
-  created_at: string;
-  appointment_id: string | null;
-  from_name: string | null;
-  from_user_id: string | null;
-};
+import { useNotifications } from "@/hooks/use-notifications";
+import type { Notification } from "@/hooks/use-notifications";
 
 const notifIcons: Record<string, typeof Bell> = {
   invitation: CalendarDays,
@@ -88,8 +78,7 @@ const NOTIF_SECTIONS: NotifSection[] = [
 export function Header() {
   const router = useRouter();
   const [user, setUser] = useState<SupabaseUser | null>(null);
-  const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [unreadCount, setUnreadCount] = useState(0);
+  const { notifications, unreadCount, markAsRead, markAllRead, refresh } = useNotifications();
   const [showNotifs, setShowNotifs] = useState(false);
   const notifRef = useRef<HTMLDivElement>(null);
   const notifPanelRef = useRef<HTMLDivElement>(null);
@@ -108,37 +97,6 @@ export function Header() {
     setIsMounted(true);
   }, []);
 
-  const fetchNotifications = useCallback(async () => {
-    try {
-      const res = await fetch("/api/notifications?limit=20");
-      if (res.ok) {
-        const data = await res.json();
-        setNotifications(data.notifications || []);
-        setUnreadCount(data.unread_count || 0);
-      }
-    } catch { /* ignore */ }
-  }, []);
-
-  // Fetch notifications on mount + poll every 15s
-  useEffect(() => {
-    fetchNotifications();
-    const interval = setInterval(fetchNotifications, 15000);
-    return () => clearInterval(interval);
-  }, [fetchNotifications]);
-
-  // Realtime: écouter les nouvelles notifications
-  useEffect(() => {
-    if (!user) return;
-    const supabase = createClient();
-    const channel = supabase
-      .channel("notifications-realtime")
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "notifications", filter: `user_id=eq.${user.id}` }, () => {
-        fetchNotifications();
-      })
-      .subscribe();
-    return () => { supabase.removeChannel(channel); };
-  }, [user, fetchNotifications]);
-
   // Click outside to close
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -152,24 +110,6 @@ export function Header() {
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
   }, []);
-
-  const markAsRead = async (id: string) => {
-    setNotifications((prev) => prev.map((n) => n.id === id ? { ...n, is_read: true } : n));
-    setUnreadCount((c) => Math.max(0, c - 1));
-    await fetch("/api/notifications", {
-      method: "PATCH", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id }),
-    });
-  };
-
-  const markAllRead = async () => {
-    setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
-    setUnreadCount(0);
-    await fetch("/api/notifications", {
-      method: "PATCH", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ read_all: true }),
-    });
-  };
 
   const handleNotifClick = (n: Notification) => {
     if (!n.is_read) markAsRead(n.id);
@@ -192,8 +132,7 @@ export function Header() {
         body: JSON.stringify({ from_user_id: n.from_user_id, notification_id: n.id }),
       });
       if (res.ok) {
-        setNotifications((prev) => prev.filter((x) => x.id !== n.id));
-        if (!n.is_read) setUnreadCount((c) => Math.max(0, c - 1));
+        refresh();
       }
     } catch { /* ignore */ }
     setBlockingId(null);
