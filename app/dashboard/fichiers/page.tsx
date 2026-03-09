@@ -22,6 +22,8 @@ import {
   FolderIcon,
   Home,
   ArrowRight,
+  ChevronDown,
+  Filter,
 } from "lucide-react";
 import {
   Dialog,
@@ -454,29 +456,44 @@ export default function FichiersPage() {
       </Dialog>
 
       {/* Search + Actions */}
-      <div className="glass-card flex flex-col gap-3 p-3 sm:p-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <input value={drive.search} onChange={(e) => drive.setSearch(e.target.value)} placeholder="Rechercher..." className="glass-input w-full py-2.5 pl-10 pr-4 text-[14px]" />
+      <div className="glass-card flex items-center gap-2 p-2 sm:p-4 sm:flex-row sm:justify-between">
+        <div className="relative flex-1 min-w-0">
+          <Search className="absolute left-2.5 sm:left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 sm:h-4 sm:w-4 text-muted-foreground" />
+          <input value={drive.search} onChange={(e) => drive.setSearch(e.target.value)} placeholder="Rechercher..." className="glass-input w-full py-2 sm:py-2.5 pl-8 sm:pl-10 pr-3 sm:pr-4 text-[13px] sm:text-[14px]" />
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
           <div className="hidden sm:flex rounded-xl bg-foreground/[0.04] p-0.5">
             <button onClick={() => setView("grid")} className={cn("rounded-lg p-2 transition-all", view === "grid" ? "bg-card shadow-sm text-foreground" : "text-muted-foreground")}><Grid3X3 className="h-4 w-4" /></button>
             <button onClick={() => setView("list")} className={cn("rounded-lg p-2 transition-all", view === "list" ? "bg-card shadow-sm text-foreground" : "text-muted-foreground")}><List className="h-4 w-4" /></button>
           </div>
-          <button onClick={() => setFolderDialogOpen(true)} className="flex items-center gap-2 rounded-2xl bg-foreground/[0.06] px-3 sm:px-4 py-2.5 text-[13px] font-medium text-muted-foreground transition-all hover:bg-foreground/[0.1] hover:text-foreground">
+          <button onClick={() => setFolderDialogOpen(true)} className="flex h-9 w-9 sm:h-auto sm:w-auto items-center justify-center gap-2 rounded-xl sm:rounded-2xl bg-foreground/[0.06] sm:px-4 sm:py-2.5 text-[13px] font-medium text-muted-foreground transition-all hover:bg-foreground/[0.1] hover:text-foreground">
             <FolderPlus className="h-4 w-4" /><span className="hidden sm:inline">Dossier</span>
           </button>
-          <button onClick={handleImportClick} className="flex items-center gap-2 rounded-2xl bg-primary px-3 sm:px-4 py-2.5 text-[13px] font-semibold text-primary-foreground shadow-lg shadow-primary/25 transition-all hover:shadow-xl hover:-translate-y-0.5">
+          <button onClick={handleImportClick} className="flex h-9 w-9 sm:h-auto sm:w-auto items-center justify-center gap-2 rounded-xl sm:rounded-2xl bg-primary sm:px-4 sm:py-2.5 text-[13px] font-semibold text-primary-foreground shadow-lg shadow-primary/25 transition-all hover:shadow-xl hover:-translate-y-0.5">
             <Upload className="h-4 w-4" /><span className="hidden sm:inline">Importer</span>
           </button>
         </div>
       </div>
 
-      {/* Categories */}
-      <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
+      {/* Categories — dropdown on mobile, pills on desktop */}
+      <div className="sm:hidden">
+        <div className="relative">
+          <select
+            value={drive.category}
+            onChange={(e) => drive.setCategory(e.target.value)}
+            className="glass-input w-full appearance-none py-2 pl-9 pr-9 text-[13px] font-medium"
+          >
+            {CATEGORIES.map((cat) => (
+              <option key={cat} value={cat}>{cat}</option>
+            ))}
+          </select>
+          <Filter className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
+          <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
+        </div>
+      </div>
+      <div className="hidden sm:flex gap-2 overflow-x-auto pb-1 no-scrollbar">
         {CATEGORIES.map((cat) => (
-          <button key={cat} onClick={() => drive.setCategory(cat)} className={cn("shrink-0 rounded-2xl px-3 sm:px-4 py-2 text-[12px] sm:text-[13px] font-medium transition-all duration-200", drive.category === cat ? "bg-primary/15 text-primary shadow-sm" : "bg-foreground/[0.04] text-muted-foreground hover:text-foreground hover:bg-foreground/[0.08]")}>{cat}</button>
+          <button key={cat} onClick={() => drive.setCategory(cat)} className={cn("shrink-0 rounded-2xl px-4 py-2 text-[13px] font-medium transition-all duration-200", drive.category === cat ? "bg-primary/15 text-primary shadow-sm" : "bg-foreground/[0.04] text-muted-foreground hover:text-foreground hover:bg-foreground/[0.08]")}>{cat}</button>
         ))}
       </div>
 
@@ -499,13 +516,25 @@ export default function FichiersPage() {
       {/* Skeleton loader */}
       {drive.loading && drive.files.length === 0 && drive.folders.length === 0 ? (
         <div className="space-y-4">
-          <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4">
+          {/* Skeleton liste sur mobile, grille sur desktop */}
+          <div className="hidden sm:grid gap-3 grid-cols-3 lg:grid-cols-4">
             {[...Array(4)].map((_, i) => (
               <div key={i} className="glass-card p-4 animate-pulse">
                 <div className="h-10 w-10 rounded-xl bg-foreground/[0.06]" />
                 <div className="mt-3 space-y-2">
                   <div className="h-4 w-3/4 rounded bg-foreground/[0.06]" />
                   <div className="h-3 w-1/2 rounded bg-foreground/[0.04]" />
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="sm:hidden glass-card divide-y divide-foreground/[0.06] overflow-hidden">
+            {[...Array(4)].map((_, i) => (
+              <div key={i} className="flex items-center gap-3 px-3 py-2.5 animate-pulse">
+                <div className="h-8 w-8 shrink-0 rounded-lg bg-foreground/[0.06]" />
+                <div className="flex-1 space-y-1.5">
+                  <div className="h-3.5 w-3/4 rounded bg-foreground/[0.06]" />
+                  <div className="h-2.5 w-1/2 rounded bg-foreground/[0.04]" />
                 </div>
               </div>
             ))}
@@ -548,17 +577,18 @@ export default function FichiersPage() {
               ) : (
                 <div className="glass-card divide-y divide-foreground/[0.06] overflow-hidden">
                   {drive.folders.map((folder) => (
-                    <button key={folder.id} onClick={() => drive.navigateToFolder(folder.id)} className="group flex w-full items-center gap-3 sm:gap-4 px-4 sm:px-5 py-3 sm:py-4 transition-colors hover:bg-foreground/[0.02] text-left">
-                      <div className="flex h-9 w-9 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-xl" style={{ background: `linear-gradient(135deg, ${folder.color}30, ${folder.color}10)` }}>
+                    <button key={folder.id} onClick={() => drive.navigateToFolder(folder.id)} onContextMenu={(e) => { e.preventDefault(); setContextFolder(folder); }} className="group flex w-full items-center gap-2.5 sm:gap-4 px-3 sm:px-5 py-2.5 sm:py-4 transition-colors hover:bg-foreground/[0.02] text-left">
+                      <div className="flex h-8 w-8 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-lg sm:rounded-xl" style={{ background: `linear-gradient(135deg, ${folder.color}30, ${folder.color}10)` }}>
                         <FolderIcon className="h-4 w-4 sm:h-5 sm:w-5" style={{ color: folder.color }} />
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-[13px] sm:text-[14px] font-semibold truncate">{folder.name}</p>
                       </div>
                       <div className="flex items-center gap-1 shrink-0">
-                        <button onClick={(e) => { e.stopPropagation(); setEditingFolder(folder); setRenameFolderName(folder.name); setRenameFolderOpen(true); }} className="flex h-8 w-8 items-center justify-center rounded-xl text-muted-foreground transition-all hover:bg-foreground/[0.06] hover:text-foreground sm:opacity-0 sm:group-hover:opacity-100"><Pencil className="h-3.5 w-3.5" /></button>
-                        <button onClick={(e) => { e.stopPropagation(); setMoveFolderTarget(folder); }} className="flex h-8 w-8 items-center justify-center rounded-xl text-muted-foreground transition-all hover:bg-foreground/[0.06] hover:text-foreground sm:opacity-0 sm:group-hover:opacity-100"><ArrowRight className="h-3.5 w-3.5" /></button>
-                        <button onClick={(e) => { e.stopPropagation(); setDeleteFolderTarget(folder); }} className="flex h-8 w-8 items-center justify-center rounded-xl text-muted-foreground transition-all hover:bg-red-500/10 hover:text-red-500 sm:opacity-0 sm:group-hover:opacity-100"><Trash2 className="h-3.5 w-3.5" /></button>
+                        <button onClick={(e) => { e.stopPropagation(); setContextFolder(folder); }} className="flex h-7 w-7 sm:hidden items-center justify-center rounded-lg text-muted-foreground"><MoreHorizontal className="h-4 w-4" /></button>
+                        <button onClick={(e) => { e.stopPropagation(); setEditingFolder(folder); setRenameFolderName(folder.name); setRenameFolderOpen(true); }} className="hidden sm:flex h-8 w-8 items-center justify-center rounded-xl text-muted-foreground transition-all hover:bg-foreground/[0.06] hover:text-foreground opacity-0 group-hover:opacity-100"><Pencil className="h-3.5 w-3.5" /></button>
+                        <button onClick={(e) => { e.stopPropagation(); setMoveFolderTarget(folder); }} className="hidden sm:flex h-8 w-8 items-center justify-center rounded-xl text-muted-foreground transition-all hover:bg-foreground/[0.06] hover:text-foreground opacity-0 group-hover:opacity-100"><ArrowRight className="h-3.5 w-3.5" /></button>
+                        <button onClick={(e) => { e.stopPropagation(); setDeleteFolderTarget(folder); }} className="hidden sm:flex h-8 w-8 items-center justify-center rounded-xl text-muted-foreground transition-all hover:bg-red-500/10 hover:text-red-500 opacity-0 group-hover:opacity-100"><Trash2 className="h-3.5 w-3.5" /></button>
                         <ChevronRight className="h-4 w-4 text-muted-foreground/40" />
                       </div>
                     </button>
@@ -602,11 +632,11 @@ export default function FichiersPage() {
                     const Icon = fileIcons[file.file_type] || File;
                     const colorClass = fileColors[file.file_type] || fileColors.other;
                     return (
-                      <div key={file.id} className="group flex items-center gap-3 sm:gap-4 px-4 sm:px-5 py-3 sm:py-4 transition-colors hover:bg-foreground/[0.02]">
-                        <div className={cn("flex h-9 w-9 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br", colorClass)}><Icon className="h-3.5 w-3.5 sm:h-4 sm:w-4" /></div>
+                      <div key={file.id} onClick={() => isMobile ? setContextFile(file) : undefined} className="group flex items-center gap-2.5 sm:gap-4 px-3 sm:px-5 py-2.5 sm:py-4 transition-colors hover:bg-foreground/[0.02]">
+                        <div className={cn("flex h-8 w-8 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-lg sm:rounded-xl bg-gradient-to-br", colorClass)}><Icon className="h-3.5 w-3.5 sm:h-4 sm:w-4" /></div>
                         <div className="flex-1 min-w-0">
-                          <p className="text-[13px] sm:text-[14px] font-semibold truncate">{file.name}</p>
-                          <p className="text-[11px] sm:text-[12px] text-muted-foreground">{file.category} · {formatSize(file.size_bytes)} · {formatDate(file.created_at)}</p>
+                          <p className="text-[12px] sm:text-[14px] font-semibold truncate">{file.name}</p>
+                          <p className="text-[10px] sm:text-[12px] text-muted-foreground">{file.category} · {formatSize(file.size_bytes)}</p>
                         </div>
                         <div className="hidden sm:flex gap-1 opacity-0 group-hover:opacity-100 transition-all">
                           <button onClick={() => handleView(file)} className="rounded-xl p-2 text-muted-foreground hover:bg-foreground/[0.06] hover:text-foreground transition-all"><Eye className="h-4 w-4" /></button>
@@ -614,9 +644,8 @@ export default function FichiersPage() {
                           <button onClick={() => setMoveFileTarget(file)} className="rounded-xl p-2 text-muted-foreground hover:bg-foreground/[0.06] hover:text-foreground transition-all"><ArrowRight className="h-4 w-4" /></button>
                           <button onClick={() => setDeleteTarget(file)} className="rounded-xl p-2 text-muted-foreground hover:bg-red-500/10 hover:text-red-500 transition-all"><Trash2 className="h-4 w-4" /></button>
                         </div>
-                        <div className="flex sm:hidden gap-1">
-                          <button onClick={() => handleView(file)} className="rounded-lg p-1.5 text-muted-foreground"><Eye className="h-4 w-4" /></button>
-                          <button onClick={() => setContextFile(file)} className="rounded-lg p-1.5 text-muted-foreground"><MoreHorizontal className="h-4 w-4" /></button>
+                        <div className="flex sm:hidden shrink-0">
+                          <button onClick={(e) => { e.stopPropagation(); setContextFile(file); }} className="rounded-lg p-1 text-muted-foreground"><MoreHorizontal className="h-4 w-4" /></button>
                         </div>
                       </div>
                     );
