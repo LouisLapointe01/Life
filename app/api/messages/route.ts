@@ -160,8 +160,8 @@ export async function POST(request: Request) {
         }))
       );
 
-      // Envoyer push notifications (fire-and-forget)
-      Promise.allSettled(
+      // Envoyer push notifications
+      await Promise.allSettled(
         others.map((o) =>
           sendPushToUser(o.user_id, {
             title: senderName,
@@ -169,7 +169,7 @@ export async function POST(request: Request) {
             conversationId: conversation_id,
           })
         )
-      ).catch(() => {});
+      );
     }
 
     // Récupérer le profil de l'expéditeur pour enrichir la réponse
