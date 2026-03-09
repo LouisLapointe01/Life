@@ -236,16 +236,20 @@ export function Header() {
 
         {/* Notification Panel */}
         {showNotifs && (
-          <div className="fixed right-3 left-3 top-14 sm:absolute sm:left-auto sm:top-full sm:mt-2 sm:right-0 sm:w-[380px] rounded-2xl border border-border bg-background/95 backdrop-blur-2xl shadow-xl shadow-black/10 z-50 overflow-hidden">
-            <div className="flex items-center justify-between px-3 sm:px-4 py-2.5 sm:py-3 border-b border-foreground/[0.06]">
-              <h3 className="text-[13px] sm:text-[14px] font-semibold">Notifications</h3>
+          <div className="fixed bottom-0 left-0 right-0 rounded-t-3xl sm:bottom-auto sm:rounded-2xl sm:absolute sm:left-auto sm:top-full sm:mt-2 sm:right-0 sm:w-[380px] border border-border bg-background/95 backdrop-blur-2xl shadow-xl shadow-black/10 z-50 overflow-hidden">
+            {/* Handle mobile */}
+            <div className="flex justify-center pt-3 pb-1 sm:hidden">
+              <div className="h-1 w-10 rounded-full bg-foreground/20" />
+            </div>
+            <div className="flex items-center justify-between px-4 py-3 border-b border-foreground/[0.06]">
+              <h3 className="text-[14px] font-semibold">Notifications</h3>
               {unreadCount > 0 && (
                 <button onClick={markAllRead} className="text-[11px] font-medium text-primary hover:underline">
                   Tout marquer comme lu
                 </button>
               )}
             </div>
-            <div className="max-h-[55dvh] sm:max-h-[70vh] overflow-y-auto">
+            <div className="max-h-[60dvh] sm:max-h-[70vh] overflow-y-auto">
               {notifications.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-8 text-center">
                   <Bell className="h-7 w-7 sm:h-8 sm:w-8 text-muted-foreground/30 mb-2" />
@@ -283,31 +287,31 @@ export function Header() {
                           >
                             <button
                               onClick={() => handleNotifClick(n)}
-                              className="flex w-full items-start gap-2.5 sm:gap-3 px-3 sm:px-4 py-2 sm:py-3 text-left transition-colors hover:bg-foreground/[0.03]"
+                              className="flex w-full items-start gap-3 px-4 py-3 text-left transition-colors hover:bg-foreground/[0.03]"
                             >
                               <div className={cn(
-                                "flex h-7 w-7 sm:h-8 sm:w-8 shrink-0 items-center justify-center rounded-lg sm:rounded-xl mt-0.5",
+                                "flex h-9 w-9 shrink-0 items-center justify-center rounded-xl mt-0.5",
                                 isContactAdded
                                   ? "bg-blue-500/15 text-blue-500"
                                   : !n.is_read ? "bg-primary/15 text-primary" : "bg-foreground/[0.06] text-muted-foreground"
                               )}>
-                                <Icon className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+                                <Icon className="h-4 w-4" />
                               </div>
                               <div className="flex-1 min-w-0">
-                                <p className={cn("text-[12px] leading-snug", !n.is_read ? "font-semibold" : "font-medium text-muted-foreground")}>
+                                <p className={cn("text-[13px] leading-snug", !n.is_read ? "font-semibold" : "font-medium text-muted-foreground")}>
                                   {n.title}
                                 </p>
                                 {n.body && (
-                                  <p className="text-[11px] text-muted-foreground mt-0.5 line-clamp-1 sm:line-clamp-2">{n.body}</p>
+                                  <p className="text-[12px] text-muted-foreground mt-0.5 line-clamp-2">{n.body}</p>
                                 )}
-                                <p className="text-[10px] text-muted-foreground mt-0.5 sm:mt-1">{timeAgo(n.created_at)}</p>
+                                <p className="text-[11px] text-muted-foreground mt-1">{timeAgo(n.created_at)}</p>
                               </div>
                               {!n.is_read && (
-                                <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-primary" />
+                                <span className="mt-2 h-2 w-2 shrink-0 rounded-full bg-primary" />
                               )}
                             </button>
                             {isContactAdded && n.from_user_id && (
-                              <div className="px-3 sm:px-4 pb-2 sm:pb-3">
+                              <div className="px-4 pb-3">
                                 <button
                                   onClick={() => handleBlock(n)}
                                   disabled={blockingId === n.id}
