@@ -211,7 +211,7 @@ export function Header() {
   };
 
   return (
-    <div className="fixed top-4 right-4 z-30 flex items-center gap-1 rounded-2xl bg-white/15 dark:bg-white/[0.04] backdrop-blur-xl border border-white/10 dark:border-white/[0.06] px-1.5 py-1 shadow-sm">
+    <div className={cn("fixed top-4 right-4 flex items-center gap-1 rounded-2xl bg-white/15 dark:bg-white/[0.04] backdrop-blur-xl border border-white/10 dark:border-white/[0.06] px-1.5 py-1 shadow-sm", showNotifs ? "z-[60]" : "z-30")}>
       {/* Notifications Bell */}
       <div className="relative" ref={notifRef}>
         <button
@@ -249,7 +249,7 @@ export function Header() {
                 </button>
               )}
             </div>
-            <div className="max-h-[60dvh] sm:max-h-[70vh] overflow-y-auto">
+            <div className="max-h-[60dvh] sm:max-h-[70vh] overflow-y-auto pb-[env(safe-area-inset-bottom,0px)] pb-16 sm:pb-0">
               {notifications.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-8 text-center">
                   <Bell className="h-7 w-7 sm:h-8 sm:w-8 text-muted-foreground/30 mb-2" />
