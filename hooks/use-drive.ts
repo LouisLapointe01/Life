@@ -5,8 +5,11 @@ import { clientCache } from "@/lib/client-cache";
 import type { UserFile, UserFolder } from "@/lib/types/files";
 
 type DriveState = {
-  files: UserFile[];
-  folders: UserFolder[];
+  /** Tous les fichiers du dossier courant (non filtrés) */
+  rawFiles: UserFile[];
+  /** Tous les sous-dossiers du dossier courant (non filtrés) */
+  rawFolders: UserFolder[];
+  /** Tous les dossiers de l'utilisateur (pour breadcrumb, MoveDialog) */
   allFolders: UserFolder[];
   loading: boolean;
   currentFolderId: string | null;
@@ -14,8 +17,8 @@ type DriveState = {
 
 export function useDrive() {
   const [state, setState] = useState<DriveState>({
-    files: [],
-    folders: [],
+    rawFiles: [],
+    rawFolders: [],
     allFolders: [],
     loading: true,
     currentFolderId: null,
@@ -24,26 +27,25 @@ export function useDrive() {
   const [category, setCategory] = useState("Tous");
   const abortRef = useRef<AbortController | null>(null);
 
+  // ─── Fetch : charge TOUT le dossier, sans filtre ───
   const fetchContent = useCallback(
-    async (folderId: string | null, opts?: { search?: string; category?: string }) => {
+    async (folderId: string | null) => {
       abortRef.current?.abort();
       const controller = new AbortController();
       abortRef.current = controller;
 
       const params = new URLSearchParams();
       if (folderId) params.set("folder_id", folderId);
-      if (opts?.search) params.set("search", opts.search);
-      if (opts?.category && opts.category !== "Tous")
-        params.set("category", opts.category);
+      // Pas de category ni search → on récupère tout
 
-      const cacheKey = `drive:${folderId ?? "root"}:${opts?.search ?? ""}:${opts?.category ?? ""}`;
+      const cacheKey = `drive:folder:${folderId ?? "root"}`;
       const cached = clientCache.get<{ files: UserFile[]; folders: UserFolder[] }>(cacheKey);
 
       if (cached) {
         setState((s) => ({
           ...s,
-          files: cached.files,
-          folders: cached.folders,
+          rawFiles: cached.files,
+          rawFolders: cached.folders,
           loading: false,
           currentFolderId: folderId,
         }));
@@ -60,8 +62,8 @@ export function useDrive() {
         clientCache.set(cacheKey, data);
         setState((s) => ({
           ...s,
-          files: data.files,
-          folders: data.folders,
+          rawFiles: data.files,
+          rawFolders: data.folders,
           loading: false,
         }));
       } catch (err) {
@@ -95,6 +97,28 @@ export function useDrive() {
     fetchAllFolders();
   }, [fetchContent, fetchAllFolders]);
 
+  // ─── Filtrage 100% client (instantané) ───
+  const searchLower = search.toLowerCase();
+
+  const files = useMemo(() => {
+    let result = state.rawFiles;
+    if (category !== "Tous") {
+      result = result.filter((f) => f.category === category);
+    }
+    if (searchLower) {
+      result = result.filter((f) => f.name.toLowerCase().includes(searchLower));
+    }
+    return result;
+  }, [state.rawFiles, category, searchLower]);
+
+  const folders = useMemo(() => {
+    if (!searchLower) return state.rawFolders;
+    return state.rawFolders.filter((f) =>
+      f.name.toLowerCase().includes(searchLower)
+    );
+  }, [state.rawFolders, searchLower]);
+
+  // ─── Navigation ───
   const navigateToFolder = useCallback(
     (folderId: string | null) => {
       setSearch("");
@@ -105,19 +129,9 @@ export function useDrive() {
   );
 
   const refresh = useCallback(() => {
-    fetchContent(state.currentFolderId, { search, category });
+    fetchContent(state.currentFolderId);
     fetchAllFolders();
-  }, [fetchContent, fetchAllFolders, state.currentFolderId, search, category]);
-
-  // Re-fetch quand search/category changent (avec debounce léger)
-  const searchTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
-  useEffect(() => {
-    clearTimeout(searchTimerRef.current);
-    searchTimerRef.current = setTimeout(() => {
-      fetchContent(state.currentFolderId, { search, category });
-    }, 200);
-    return () => clearTimeout(searchTimerRef.current);
-  }, [search, category, state.currentFolderId, fetchContent]);
+  }, [fetchContent, fetchAllFolders, state.currentFolderId]);
 
   // Breadcrumb
   const breadcrumb = useMemo(() => {
@@ -131,16 +145,6 @@ export function useDrive() {
     }
     return path;
   }, [state.currentFolderId, state.allFolders]);
-
-  // Compte récursif des fichiers dans un dossier (basé sur allFolders)
-  const folderFileCount = useCallback(
-    (folderId: string, allFiles?: UserFile[]): number => {
-      // On ne peut pas compter précisément sans avoir tous les fichiers
-      // Retourne 0 par défaut — la page affichera le compte local
-      return 0;
-    },
-    []
-  );
 
   // === CRUD Operations ===
 
@@ -173,7 +177,7 @@ export function useDrive() {
       }
       setState((s) => ({
         ...s,
-        files: s.files.filter((f) => f.id !== fileId),
+        rawFiles: s.rawFiles.filter((f) => f.id !== fileId),
       }));
     },
     []
@@ -192,7 +196,7 @@ export function useDrive() {
     const updated = (await res.json()) as UserFile;
     setState((s) => ({
       ...s,
-      files: s.files.map((f) => (f.id === fileId ? updated : f)),
+      rawFiles: s.rawFiles.map((f) => (f.id === fileId ? updated : f)),
     }));
     return updated;
   }, []);
@@ -208,10 +212,9 @@ export function useDrive() {
         const err = await res.json();
         throw new Error(err.error || "Erreur déplacement");
       }
-      // Retirer le fichier de la vue courante (il a changé de dossier)
       setState((s) => ({
         ...s,
-        files: s.files.filter((f) => f.id !== fileId),
+        rawFiles: s.rawFiles.filter((f) => f.id !== fileId),
       }));
     },
     []
@@ -237,7 +240,7 @@ export function useDrive() {
       const created = (await res.json()) as UserFolder;
       setState((s) => ({
         ...s,
-        folders: [...s.folders, created],
+        rawFolders: [...s.rawFolders, created],
         allFolders: [...s.allFolders, created],
       }));
       return created;
@@ -254,7 +257,6 @@ export function useDrive() {
         const err = await res.json();
         throw new Error(err.error || "Erreur suppression dossier");
       }
-      // Retirer le dossier et ses enfants de l'état
       const allIds = new Set<string>();
       const collect = (id: string) => {
         allIds.add(id);
@@ -266,9 +268,9 @@ export function useDrive() {
 
       setState((s) => ({
         ...s,
-        folders: s.folders.filter((f) => !allIds.has(f.id)),
+        rawFolders: s.rawFolders.filter((f) => !allIds.has(f.id)),
         allFolders: s.allFolders.filter((f) => !allIds.has(f.id)),
-        files: s.files.filter((f) => !f.folder_id || !allIds.has(f.folder_id)),
+        rawFiles: s.rawFiles.filter((f) => !f.folder_id || !allIds.has(f.folder_id)),
       }));
     },
     [state.allFolders]
@@ -288,7 +290,7 @@ export function useDrive() {
       const updated = (await res.json()) as UserFolder;
       setState((s) => ({
         ...s,
-        folders: s.folders.map((f) => (f.id === folderId ? updated : f)),
+        rawFolders: s.rawFolders.map((f) => (f.id === folderId ? updated : f)),
         allFolders: s.allFolders.map((f) => (f.id === folderId ? updated : f)),
       }));
       return updated;
@@ -307,20 +309,18 @@ export function useDrive() {
         const err = await res.json();
         throw new Error(err.error || "Erreur déplacement dossier");
       }
-      // Retirer le dossier de la vue courante
       setState((s) => ({
         ...s,
-        folders: s.folders.filter((f) => f.id !== folderId),
+        rawFolders: s.rawFolders.filter((f) => f.id !== folderId),
       }));
-      // Refresh allFolders
       fetchAllFolders();
     },
     [fetchAllFolders]
   );
 
   return {
-    files: state.files,
-    folders: state.folders,
+    files,
+    folders,
     allFolders: state.allFolders,
     loading: state.loading,
     currentFolderId: state.currentFolderId,
@@ -329,7 +329,6 @@ export function useDrive() {
     category,
     setCategory,
     breadcrumb,
-    folderFileCount,
     navigateToFolder,
     refresh,
     uploadFile,
