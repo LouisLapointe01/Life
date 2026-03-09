@@ -506,7 +506,7 @@ export default function MessagesPage() {
         )}
       >
         {/* Recherche utilisateur — toujours visible */}
-        <div className="px-3 sm:px-4 py-2.5 sm:py-3 border-b border-foreground/[0.06]">
+        <div className="px-3 sm:px-4 pt-5 sm:pt-3 pb-2.5 sm:pb-3 border-b border-foreground/[0.06]">
           <div className="relative w-3/4 sm:w-full">
             <Search className="absolute left-2.5 sm:left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
             <input
