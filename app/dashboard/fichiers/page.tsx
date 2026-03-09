@@ -546,8 +546,8 @@ export default function FichiersPage() {
           <FolderOpen className="h-10 w-10 sm:h-12 sm:w-12 text-muted-foreground/40" />
           <p className="text-[13px] sm:text-[14px] text-muted-foreground">{drive.allFolders.length === 0 && drive.files.length === 0 ? "Aucun fichier. Importez votre premier document." : "Ce dossier est vide."}</p>
           <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
-            <button onClick={() => setFolderDialogOpen(true)} className="flex items-center justify-center gap-2 rounded-2xl bg-foreground/[0.06] px-4 py-2.5 text-[13px] font-medium text-muted-foreground transition-all hover:bg-foreground/[0.1] hover:text-foreground"><FolderPlus className="h-4 w-4" />Créer un dossier</button>
-            <button onClick={handleImportClick} className="flex items-center justify-center gap-2 rounded-2xl bg-primary px-5 py-2.5 text-[13px] font-semibold text-primary-foreground shadow-lg shadow-primary/25"><Plus className="h-4 w-4" />Importer</button>
+            <button onClick={() => setFolderDialogOpen(true)} className="flex w-full sm:w-auto items-center justify-center gap-2 rounded-2xl bg-foreground/[0.06] px-4 py-2.5 text-[13px] font-medium text-muted-foreground transition-all hover:bg-foreground/[0.1] hover:text-foreground"><FolderPlus className="h-4 w-4" />Créer un dossier</button>
+            <button onClick={handleImportClick} className="flex w-full sm:w-auto items-center justify-center gap-2 rounded-2xl bg-primary px-5 py-2.5 text-[13px] font-semibold text-primary-foreground shadow-lg shadow-primary/25"><Plus className="h-4 w-4" />Importer</button>
           </div>
         </div>
       ) : (
