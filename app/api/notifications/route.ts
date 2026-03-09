@@ -73,6 +73,18 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ success: true });
     }
 
+    if (body.mark_messages_read_from) {
+      const { error } = await supabase
+        .from("notifications")
+        .update({ is_read: true })
+        .eq("user_id", user.id)
+        .eq("type", "message")
+        .eq("from_user_id", body.mark_messages_read_from)
+        .eq("is_read", false);
+      if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+      return NextResponse.json({ success: true });
+    }
+
     if (body.id) {
       const { error } = await supabase
         .from("notifications")
@@ -83,7 +95,7 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ success: true });
     }
 
-    return NextResponse.json({ error: "id ou read_all requis" }, { status: 400 });
+    return NextResponse.json({ error: "id, read_all ou mark_messages_read_from requis" }, { status: 400 });
   } catch (err) {
     console.error("[PATCH /api/notifications]", err);
     return NextResponse.json({ error: "Erreur serveur" }, { status: 500 });

@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
+import { useUnreadMessages } from "@/lib/stores/unread-messages";
 import {
   MessageCircle,
   Search,
@@ -263,6 +264,16 @@ export default function MessagesPage() {
     setLoadingMore(false);
     fetchMessages(conv.id);
     setMobileView("chat");
+
+    // Marquer les notifications message comme lues (fire-and-forget)
+    if (conv.unread_count > 0) {
+      fetch("/api/notifications", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mark_messages_read_from: conv.other_user.id }),
+      }).catch(() => {});
+      useUnreadMessages.getState().markConversationRead(conv.unread_count);
+    }
   }, [fetchMessages]);
 
   /* ─── Realtime messages ─── */

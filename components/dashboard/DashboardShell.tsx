@@ -1,10 +1,65 @@
 "use client";
 
+import { useEffect, useCallback, useRef } from "react";
 import { Sidebar } from "@/components/dashboard/Sidebar";
 import { Header } from "@/components/dashboard/Header";
 import { MobileBottomNav } from "@/components/dashboard/MobileBottomNav";
 import { PageTransition } from "@/components/dashboard/PageTransition";
 import { PushNotificationManager } from "@/components/dashboard/PushNotificationManager";
+import { useUnreadMessages } from "@/lib/stores/unread-messages";
+import { createClient } from "@/lib/supabase/client";
+
+function UnreadBadgeSync() {
+  const setTotalUnread = useUnreadMessages((s) => s.setTotalUnread);
+  const increment = useUnreadMessages((s) => s.increment);
+  const userIdRef = useRef<string | null>(null);
+
+  const fetchUnread = useCallback(async () => {
+    try {
+      const res = await fetch("/api/conversations");
+      if (res.ok) {
+        const data = await res.json();
+        const total = (data.conversations || []).reduce(
+          (sum: number, c: { unread_count: number }) => sum + c.unread_count,
+          0
+        );
+        setTotalUnread(total);
+      }
+    } catch { /* ignore */ }
+  }, [setTotalUnread]);
+
+  useEffect(() => {
+    const supabase = createClient();
+    supabase.auth.getUser().then(({ data }) => {
+      userIdRef.current = data.user?.id ?? null;
+    });
+
+    fetchUnread();
+    const interval = setInterval(fetchUnread, 30000);
+    return () => clearInterval(interval);
+  }, [fetchUnread]);
+
+  // Realtime : incrémenter sur nouveau message d'un autre utilisateur
+  useEffect(() => {
+    const supabase = createClient();
+    const channel = supabase
+      .channel("unread-badge-rt")
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "messages" },
+        (payload) => {
+          const msg = payload.new as { sender_id: string | null };
+          if (msg.sender_id && msg.sender_id !== userIdRef.current) {
+            increment();
+          }
+        }
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [increment]);
+
+  return null;
+}
 
 export function DashboardShell({ children }: { children: React.ReactNode }) {
   return (
@@ -27,6 +82,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
         <Header />
         <MobileBottomNav />
         <PushNotificationManager />
+        <UnreadBadgeSync />
       </div>
     </div>
   );

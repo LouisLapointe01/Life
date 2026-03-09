@@ -81,6 +81,7 @@ self.addEventListener("fetch", (event) => {
    ═══════════════════════════════════════════ */
 
 self.addEventListener("push", (event) => {
+    console.log("[SW Push] Événement push reçu", event.data ? event.data.text() : "(vide)");
     const data = event.data ? event.data.json() : {};
     const { title, body, conversationId, url } = data;
 

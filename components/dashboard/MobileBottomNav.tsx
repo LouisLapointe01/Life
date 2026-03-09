@@ -4,10 +4,12 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { useMobileVisibleTabs } from "@/lib/stores/dashboard-tabs";
+import { useUnreadMessages } from "@/lib/stores/unread-messages";
 
 export function MobileBottomNav() {
   const pathname = usePathname();
   const mobileTabs = useMobileVisibleTabs();
+  const totalUnread = useUnreadMessages((s) => s.totalUnread);
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 lg:hidden">
@@ -29,10 +31,17 @@ export function MobileBottomNav() {
                 isActive ? "text-primary" : "text-muted-foreground"
               )}
             >
-              <item.icon
-                className={cn("h-[20px] w-[20px] transition-all duration-200", isActive && "scale-110")}
-                strokeWidth={isActive ? 2.5 : 2}
-              />
+              <div className="relative">
+                <item.icon
+                  className={cn("h-[20px] w-[20px] transition-all duration-200", isActive && "scale-110")}
+                  strokeWidth={isActive ? 2.5 : 2}
+                />
+                {item.id === "messages" && totalUnread > 0 && (
+                  <span className="absolute -right-2.5 -top-1.5 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-red-500 px-0.5 text-[8px] font-bold text-white ring-2 ring-background">
+                    {totalUnread > 9 ? "9+" : totalUnread}
+                  </span>
+                )}
+              </div>
               <span className={cn(isActive && "font-semibold text-primary")}>{item.label}</span>
             </Link>
           );

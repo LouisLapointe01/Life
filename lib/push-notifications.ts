@@ -8,8 +8,12 @@ function initVapid() {
   const email = process.env.VAPID_EMAIL;
   const publicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
   const privateKey = process.env.VAPID_PRIVATE_KEY;
-  if (!email || !publicKey || !privateKey) return;
-  webpush.setVapidDetails(email, publicKey, privateKey);
+  if (!email || !publicKey || !privateKey) {
+    console.warn("[Push] VAPID non configuré — email:", !!email, "publicKey:", !!publicKey, "privateKey:", !!privateKey);
+    return;
+  }
+  const mailto = email.startsWith("mailto:") ? email : `mailto:${email}`;
+  webpush.setVapidDetails(mailto, publicKey, privateKey);
   vapidInitialized = true;
 }
 
@@ -34,19 +38,25 @@ export async function sendPushToUser(userId: string, payload: PushPayload) {
 
   const payloadStr = JSON.stringify(payload);
 
-  await Promise.allSettled(
+  const results = await Promise.allSettled(
     subs.map(async (sub) => {
       try {
         await webpush.sendNotification(
           { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
           payloadStr
         );
+        console.log("[Push] Envoyé avec succès à", sub.endpoint.slice(0, 60));
       } catch (err: unknown) {
+        const statusCode = err && typeof err === "object" && "statusCode" in err ? (err as { statusCode: number }).statusCode : null;
+        console.error("[Push] Échec envoi à", sub.endpoint.slice(0, 60), "— status:", statusCode, "— err:", err);
         // Subscription expirée → supprimer
-        if (err && typeof err === "object" && "statusCode" in err && (err as { statusCode: number }).statusCode === 410) {
+        if (statusCode === 410) {
           await supabase.from("push_subscriptions").delete().eq("endpoint", sub.endpoint);
+          console.log("[Push] Subscription expirée supprimée:", sub.endpoint.slice(0, 60));
         }
       }
     })
   );
+  const succeeded = results.filter((r) => r.status === "fulfilled").length;
+  console.log(`[Push] Résultat pour user ${userId}: ${succeeded}/${subs.length} envoyés`);
 }
