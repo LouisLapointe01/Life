@@ -50,9 +50,10 @@ export function useNotifications() {
       .channel(`notifs-rt-${userId}`)
       .on(
         "postgres_changes",
-        { event: "INSERT", schema: "public", table: "notifications", filter: `user_id=eq.${userId}` },
+        { event: "INSERT", schema: "public", table: "notifications" },
         (payload) => {
-          const notif = payload.new as Notification;
+          const notif = payload.new as Notification & { user_id?: string };
+          if (notif.user_id && notif.user_id !== userId) return;
           setNotifications((prev) => {
             if (prev.some((n) => n.id === notif.id)) return prev;
             return [notif, ...prev];
@@ -62,7 +63,7 @@ export function useNotifications() {
       )
       .on(
         "postgres_changes",
-        { event: "UPDATE", schema: "public", table: "notifications", filter: `user_id=eq.${userId}` },
+        { event: "UPDATE", schema: "public", table: "notifications" },
         (payload) => {
           const updated = payload.new as Notification;
           setNotifications((prev) => {
@@ -74,7 +75,7 @@ export function useNotifications() {
       )
       .on(
         "postgres_changes",
-        { event: "DELETE", schema: "public", table: "notifications", filter: `user_id=eq.${userId}` },
+        { event: "DELETE", schema: "public", table: "notifications" },
         (payload) => {
           const deleted = payload.old as { id: string };
           setNotifications((prev) => {
