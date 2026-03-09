@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { LogOut, User, Bell, Check, CheckCheck, CalendarDays, ArrowRightLeft, XCircle, UserCheck, Info, UserPlus, ShieldX, Loader2, MessageCircle, Users, Calendar, Settings } from "lucide-react";
 import type { User as SupabaseUser } from "@supabase/supabase-js";
+import { clientCache } from "@/lib/client-cache";
 import { cn } from "@/lib/utils";
 
 type Notification = {
@@ -96,6 +97,7 @@ export function Header() {
     const supabase = createClient();
     supabase.auth.getUser().then(({ data }) => {
       setUser(data.user);
+      if (data.user) clientCache.setUser(data.user.id);
     });
   }, []);
 
@@ -188,6 +190,7 @@ export function Header() {
   };
 
   const handleSignOut = async () => {
+    clientCache.clear();
     const supabase = createClient();
     await supabase.auth.signOut();
     window.location.href = "/login";

@@ -48,10 +48,11 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  // Redirect authenticated users away from login/register (but not landing page)
+  // Redirect authenticated users away from landing/login/register to dashboard
   if (
     user &&
-    (request.nextUrl.pathname.startsWith("/login") ||
+    (request.nextUrl.pathname === "/" ||
+      request.nextUrl.pathname.startsWith("/login") ||
       request.nextUrl.pathname.startsWith("/register"))
   ) {
     const url = request.nextUrl.clone();
