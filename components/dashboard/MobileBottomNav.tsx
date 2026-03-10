@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
@@ -11,6 +12,16 @@ export function MobileBottomNav() {
   const pathname = usePathname();
   const mobileTabs = useMobileVisibleTabs();
   const totalUnread = useUnreadMessages((s) => s.totalUnread);
+  const [viewportWidth, setViewportWidth] = useState(390);
+
+  useEffect(() => {
+    const updateWidth = () => setViewportWidth(window.innerWidth);
+    updateWidth();
+    window.addEventListener("resize", updateWidth);
+    return () => window.removeEventListener("resize", updateWidth);
+  }, []);
+
+  const hideLabels = mobileTabs.length >= 6 || viewportWidth < 390;
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 lg:hidden">
@@ -27,8 +38,10 @@ export function MobileBottomNav() {
             <Link
               key={item.id}
               href={item.href}
+              aria-label={item.label}
               className={cn(
-                "relative flex flex-1 flex-col items-center justify-center gap-[3px] overflow-hidden rounded-2xl py-2.5 text-[9px] font-medium transition-all duration-300 min-w-0",
+                "relative flex min-w-0 flex-1 items-center justify-center overflow-hidden rounded-2xl font-medium transition-all duration-300",
+                hideLabels ? "py-3" : "py-2.5 text-[9px]",
                 isActive ? "text-primary" : "text-muted-foreground"
               )}
             >
@@ -41,7 +54,7 @@ export function MobileBottomNav() {
               )}
 
               <motion.div
-                className="relative z-10 flex flex-col items-center gap-[3px]"
+                className={cn("relative z-10 flex items-center", hideLabels ? "flex-row justify-center" : "flex-col gap-[3px]")}
                 animate={{ y: isActive ? -1 : 0, scale: isActive ? 1.02 : 1 }}
                 transition={{ duration: 0.22, ease: [0.25, 0.46, 0.45, 0.94] }}
               >
@@ -56,7 +69,9 @@ export function MobileBottomNav() {
                   </span>
                 )}
               </div>
-              <span className={cn("transition-colors duration-300", isActive && "font-semibold text-primary")}>{item.label}</span>
+              {!hideLabels && (
+                <span className={cn("transition-colors duration-300", isActive && "font-semibold text-primary")}>{item.label}</span>
+              )}
               </motion.div>
             </Link>
           );

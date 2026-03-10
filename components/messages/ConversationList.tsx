@@ -101,10 +101,6 @@ export function ConversationList({
               {favoritesCount > 0 ? ` • ${favoritesCount} favori${favoritesCount > 1 ? "s" : ""}` : ""}
             </p>
           </div>
-          <div className="flex items-center gap-2 rounded-full border border-white/45 bg-white/55 px-2.5 py-1.5 shadow-[0_8px_24px_rgba(15,23,42,0.06)] dark:border-white/10 dark:bg-white/[0.05]">
-            <div className="h-2 w-2 rounded-full bg-primary/80" />
-            <span className="text-[10px] font-medium text-muted-foreground">Actif</span>
-          </div>
         </div>
 
         <div className="relative mt-3.5">

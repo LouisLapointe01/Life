@@ -10,9 +10,9 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Life Dashboard",
-  description: "Votre tableau de bord personnel — santé, agenda, logement et plus.",
-  manifest: "/manifest.json",
+  title: "Life",
+  description: "Votre espace personnel pour suivre messages, agenda, santé et documents.",
+  manifest: "/manifest.webmanifest",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
@@ -20,24 +20,17 @@ export const metadata: Metadata = {
   },
   icons: {
     icon: [
-      { url: "/favicon.ico", sizes: "32x32", type: "image/x-icon" },
-      { url: "/icons/icon-16.png", sizes: "16x16", type: "image/png" },
-      { url: "/icons/icon-32.png", sizes: "32x32", type: "image/png" },
-      { url: "/icons/icon-96.png", sizes: "96x96", type: "image/png" },
-      { url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
-      { url: "/icons/icon-512.png", sizes: "512x512", type: "image/png" },
+      { url: "/pwa-icon?size=32", sizes: "32x32", type: "image/png" },
+      { url: "/pwa-icon?size=192", sizes: "192x192", type: "image/png" },
+      { url: "/pwa-icon?size=512", sizes: "512x512", type: "image/png" },
     ],
     apple: [
-      { url: "/icons/apple-icon-180.png", sizes: "180x180", type: "image/png" },
-      { url: "/icons/apple-icon-152.png", sizes: "152x152", type: "image/png" },
-      { url: "/icons/apple-icon-167.png", sizes: "167x167", type: "image/png" },
-      { url: "/icons/apple-icon-120.png", sizes: "120x120", type: "image/png" },
-      { url: "/icons/apple-icon-76.png", sizes: "76x76", type: "image/png" },
+      { url: "/pwa-icon?size=180", sizes: "180x180", type: "image/png" },
     ],
   },
   other: {
     "mobile-web-app-capable": "yes",
-    "msapplication-TileImage": "/icons/icon-144.png",
+    "msapplication-TileImage": "/pwa-icon?size=192",
     "msapplication-TileColor": "#3BA5A0",
   },
 };
@@ -61,17 +54,10 @@ export default function RootLayout({
   return (
     <html lang="fr">
       <head>
-        <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-        <link rel="icon" type="image/png" sizes="32x32" href="/icons/icon-32.png" />
-        <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png" />
-        <link rel="icon" type="image/x-icon" href="/favicon.ico" />
-        <link rel="apple-touch-icon" href="/icons/apple-icon-180.png" />
-        <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-icon-180.png" />
-        <link rel="apple-touch-icon" sizes="167x167" href="/icons/apple-icon-167.png" />
-        <link rel="apple-touch-icon" sizes="152x152" href="/icons/apple-icon-152.png" />
-        <link rel="apple-touch-icon" sizes="120x120" href="/icons/apple-icon-120.png" />
-        <link rel="apple-touch-icon" sizes="76x76" href="/icons/apple-icon-76.png" />
-        <meta name="msapplication-TileImage" content="/icons/icon-144.png" />
+        <link rel="icon" type="image/png" sizes="32x32" href="/pwa-icon?size=32" />
+        <link rel="icon" type="image/png" sizes="192x192" href="/pwa-icon?size=192" />
+        <link rel="apple-touch-icon" sizes="180x180" href="/pwa-icon?size=180" />
+        <meta name="msapplication-TileImage" content="/pwa-icon?size=192" />
       </head>
       <body className={`${inter.variable} font-sans antialiased`}>
         {children}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useSyncExternalStore } from "react";
 import {
     Calendar,
     Heart,
@@ -76,9 +76,13 @@ function getIcon(key: string): React.ElementType {
    Main Page
    ═══════════════════════════════════════════════════════ */
 export default function DashboardPage() {
-    const [mounted, setMounted] = useState(false);
     const [editMode, setEditMode] = useState(false);
     const [settingsOpen, setSettingsOpen] = useState(false);
+    const mounted = useSyncExternalStore(
+        () => () => {},
+        () => true,
+        () => false
+    );
 
     /* ─── Edit widget dialog ─── */
     const [editingWidget, setEditingWidget] = useState<string | null>(null);
@@ -105,10 +109,6 @@ export default function DashboardPage() {
         moveStat,
         resetAll,
     } = useDashboardModules();
-
-    useEffect(() => {
-        setMounted(true);
-    }, []);
 
     const now = new Date();
     const greeting =
@@ -149,7 +149,7 @@ export default function DashboardPage() {
 
     return (
         <div className="mx-auto max-w-6xl space-y-5 lg:space-y-8">
-            <section className="grid gap-4 lg:grid-cols-[minmax(0,1.35fr)_minmax(320px,0.75fr)]">
+            <section>
                 <div className="premium-panel relative overflow-hidden rounded-[2rem] px-5 py-5 lg:px-7 lg:py-7">
                     <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(0,122,255,0.12),transparent_28%),radial-gradient(circle_at_bottom_left,rgba(52,199,89,0.10),transparent_24%)]" />
                     <div className="relative flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
@@ -176,30 +176,6 @@ export default function DashboardPage() {
                                 <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">Mode</p>
                                 <p className="mt-2 text-[16px] font-semibold text-foreground">{editMode ? "Edition" : "Live"}</p>
                             </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div className="premium-panel-soft rounded-[2rem] px-4 py-4 lg:px-5 lg:py-5">
-                    <div className="flex items-center justify-between gap-3">
-                        <div>
-                            <p className="text-[12px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">Aperçu</p>
-                            <p className="mt-2 text-[20px] font-semibold tracking-[-0.04em] text-foreground">Vue rapide</p>
-                        </div>
-                        <div className="rounded-full bg-primary/10 px-3 py-1 text-[11px] font-medium text-primary">Premium lite</div>
-                    </div>
-                    <div className="mt-4 space-y-3">
-                        <div className="flex items-center justify-between rounded-[1.3rem] bg-white/55 px-4 py-3 dark:bg-white/[0.05]">
-                            <span className="text-[13px] text-muted-foreground">Widgets visibles</span>
-                            <span className="text-[14px] font-semibold text-foreground">{visibleWidgets.length}</span>
-                        </div>
-                        <div className="flex items-center justify-between rounded-[1.3rem] bg-white/55 px-4 py-3 dark:bg-white/[0.05]">
-                            <span className="text-[13px] text-muted-foreground">Sections masquées</span>
-                            <span className="text-[14px] font-semibold text-foreground">{hiddenWidgets.length + hiddenStats.length}</span>
-                        </div>
-                        <div className="flex items-center justify-between rounded-[1.3rem] bg-white/55 px-4 py-3 dark:bg-white/[0.05]">
-                            <span className="text-[13px] text-muted-foreground">Rendu actuel</span>
-                            <span className="text-[14px] font-semibold text-foreground">Fluide</span>
                         </div>
                     </div>
                 </div>

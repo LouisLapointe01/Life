@@ -14,47 +14,28 @@ export function LeafLogo({
       xmlns="http://www.w3.org/2000/svg"
       className={className}
     >
+      <rect width="192" height="192" rx="44" fill="url(#lifeTile)" />
+      <circle cx="44" cy="44" r="26" fill="white" opacity="0.16" />
+      <circle cx="154" cy="34" r="30" fill="white" opacity="0.16" />
+      <circle cx="26" cy="166" r="28" fill="white" opacity="0.12" />
+
+      <path
+        d="M96 34C124 38 146 60 146 89C146 122 123 147 96 154C69 147 46 122 46 89C46 60 68 38 96 34Z"
+        fill="rgba(255,255,255,0.97)"
+      />
+      <path d="M96 45V143" stroke="#2B9390" strokeWidth="8" strokeLinecap="round" opacity="0.45" />
+      <path d="M95 77C76 84 63 94 54 108" stroke="#2B9390" strokeWidth="6" strokeLinecap="round" opacity="0.34" />
+      <path d="M97 77C116 84 129 94 138 108" stroke="#2B9390" strokeWidth="6" strokeLinecap="round" opacity="0.34" />
+      <path d="M95 103C79 111 67 123 61 133" stroke="#2B9390" strokeWidth="6" strokeLinecap="round" opacity="0.28" />
+      <path d="M97 103C113 111 125 123 131 133" stroke="#2B9390" strokeWidth="6" strokeLinecap="round" opacity="0.28" />
+
       <defs>
-        <linearGradient id="leafBg" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#3AAFA9" />
-          <stop offset="50%" stopColor="#2B9390" />
-          <stop offset="100%" stopColor="#1F7A8C" />
-        </linearGradient>
-        <linearGradient id="leafShape" x1="30%" y1="0%" x2="70%" y2="100%">
-          <stop offset="0%" stopColor="#ffffff" />
-          <stop offset="100%" stopColor="#e0f2f1" />
+        <linearGradient id="lifeTile" x1="28" y1="22" x2="166" y2="176" gradientUnits="userSpaceOnUse">
+          <stop offset="0" stopColor="#44B6A9" />
+          <stop offset="0.5" stopColor="#2F958F" />
+          <stop offset="1" stopColor="#226F8B" />
         </linearGradient>
       </defs>
-      {/* Background */}
-      <rect width="192" height="192" rx="42" fill="url(#leafBg)" />
-      {/* Leaf */}
-      <g transform="translate(96, 96)">
-        {/* Leaf body */}
-        <path
-          d="M0,-52 C28,-48 52,-24 52,8 C52,38 28,56 0,60 C-28,56 -52,38 -52,8 C-52,-24 -28,-48 0,-52Z"
-          fill="url(#leafShape)"
-          opacity="0.95"
-        />
-        {/* Central vein */}
-        <line
-          x1="0"
-          y1="-46"
-          x2="0"
-          y2="54"
-          stroke="#2B9390"
-          strokeWidth="2.5"
-          strokeLinecap="round"
-          opacity="0.5"
-        />
-        {/* Left veins */}
-        <path d="M0,-20 C-16,-14 -30,-4 -38,6" stroke="#2B9390" strokeWidth="1.8" fill="none" strokeLinecap="round" opacity="0.4" />
-        <path d="M0,4 C-18,10 -32,22 -38,32" stroke="#2B9390" strokeWidth="1.8" fill="none" strokeLinecap="round" opacity="0.4" />
-        <path d="M0,26 C-14,32 -24,40 -28,48" stroke="#2B9390" strokeWidth="1.8" fill="none" strokeLinecap="round" opacity="0.35" />
-        {/* Right veins */}
-        <path d="M0,-20 C16,-14 30,-4 38,6" stroke="#2B9390" strokeWidth="1.8" fill="none" strokeLinecap="round" opacity="0.4" />
-        <path d="M0,4 C18,10 32,22 38,32" stroke="#2B9390" strokeWidth="1.8" fill="none" strokeLinecap="round" opacity="0.4" />
-        <path d="M0,26 C14,32 24,40 28,48" stroke="#2B9390" strokeWidth="1.8" fill="none" strokeLinecap="round" opacity="0.35" />
-      </g>
     </svg>
   );
 }

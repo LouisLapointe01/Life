@@ -5,6 +5,7 @@ import { Avatar } from "./Avatar";
 import { MessageBubble } from "./MessageBubble";
 import { ChatInput } from "./ChatInput";
 import type { Conversation, Message } from "./types";
+import { useIsUserOnline } from "@/lib/stores/presence";
 
 interface ChatViewProps {
   activeConv: Conversation | null;
@@ -64,6 +65,7 @@ export function ChatView({
   const autoFillingRef = useRef(false);
   const [showMobileMask, setShowMobileMask] = useState(false);
   const [mobileMaskVisible, setMobileMaskVisible] = useState(false);
+  const isOtherUserOnline = useIsUserOnline(activeConv?.other_user.id ?? null);
 
   // Scroll vers le bas quand on ouvre une conv ou qu'on envoie un message
   useEffect(() => {
@@ -150,14 +152,23 @@ export function ChatView({
   useEffect(() => {
     const isLoading = loadingMessages || initializing;
     if (isLoading) {
-      setShowMobileMask(true);
-      requestAnimationFrame(() => setMobileMaskVisible(true));
-      return;
+      const frame = window.requestAnimationFrame(() => {
+        setShowMobileMask(true);
+        window.requestAnimationFrame(() => setMobileMaskVisible(true));
+      });
+
+      return () => window.cancelAnimationFrame(frame);
     }
 
-    setMobileMaskVisible(false);
+    const frame = window.requestAnimationFrame(() => {
+      setMobileMaskVisible(false);
+    });
     const timeout = window.setTimeout(() => setShowMobileMask(false), 180);
-    return () => window.clearTimeout(timeout);
+
+    return () => {
+      window.cancelAnimationFrame(frame);
+      window.clearTimeout(timeout);
+    };
   }, [loadingMessages, initializing]);
 
   if (!activeConv) {
@@ -184,7 +195,13 @@ export function ChatView({
           <ArrowLeft className="h-4 w-4" />
         </button>
         <div className="flex min-w-0 flex-1 items-center gap-3 rounded-[1.25rem] border border-white/45 bg-white/58 px-2 py-2 shadow-sm dark:border-white/10 dark:bg-white/[0.05]">
-          <Avatar url={activeConv.other_user.avatar_url} name={activeConv.other_user.full_name} size={34} />
+          <Avatar
+            url={activeConv.other_user.avatar_url}
+            name={activeConv.other_user.full_name}
+            size={34}
+            isOnline={isOtherUserOnline}
+            showPresence
+          />
           <div className="min-w-0 flex-1">
             <p className="truncate text-[14px] font-semibold text-foreground">{activeConv.other_user.full_name}</p>
             <p className="truncate text-[11px] text-muted-foreground">Conversation privée</p>
