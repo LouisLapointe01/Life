@@ -1,8 +1,10 @@
 import { useRef, useState, useCallback, useEffect } from "react";
 import { cn } from "@/lib/utils";
-import { Send, Smile, Image, Paperclip, X, Loader2 } from "lucide-react";
+import { Send, Smile, Paperclip, X, Loader2 } from "lucide-react";
 import data from "@emoji-mart/data";
 import Picker from "@emoji-mart/react";
+
+type MediaPanelMode = "emoji" | "gif" | null;
 
 interface ChatInputProps {
   value: string;
@@ -16,14 +18,22 @@ interface ChatInputProps {
 export function ChatInput({ value, onChange, onSend, onSendGif, onFileSelect, disabled }: ChatInputProps) {
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [showEmoji, setShowEmoji] = useState(false);
-  const [showGif, setShowGif] = useState(false);
+  const [mediaPanelMode, setMediaPanelMode] = useState<MediaPanelMode>(null);
   const [gifQuery, setGifQuery] = useState("");
   const [gifs, setGifs] = useState<{ id: string; url: string; preview: string }[]>([]);
   const [gifLoading, setGifLoading] = useState(false);
   const gifDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const emojiRef = useRef<HTMLDivElement>(null);
-  const gifRef = useRef<HTMLDivElement>(null);
+  const mediaPanelRef = useRef<HTMLDivElement>(null);
+  const [keyboardOffset, setKeyboardOffset] = useState(0);
+
+  const resizeTextarea = useCallback(() => {
+    const input = inputRef.current;
+    if (!input) return;
+
+    input.style.height = "42px";
+    if (value.trim().length === 0) return;
+    input.style.height = `${Math.min(input.scrollHeight, 128)}px`;
+  }, [value]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -34,7 +44,7 @@ export function ChatInput({ value, onChange, onSend, onSendGif, onFileSelect, di
 
   const handleEmojiSelect = useCallback((emoji: { native: string }) => {
     onChange(value + emoji.native);
-    setShowEmoji(false);
+    setMediaPanelMode(null);
     inputRef.current?.focus();
   }, [value, onChange]);
 
@@ -77,8 +87,8 @@ export function ChatInput({ value, onChange, onSend, onSendGif, onFileSelect, di
   }, []);
 
   useEffect(() => {
-    if (showGif) loadTrending();
-  }, [showGif, loadTrending]);
+    if (mediaPanelMode === "gif") loadTrending();
+  }, [mediaPanelMode, loadTrending]);
 
   useEffect(() => {
     if (gifDebounce.current) clearTimeout(gifDebounce.current);
@@ -89,65 +99,143 @@ export function ChatInput({ value, onChange, onSend, onSendGif, onFileSelect, di
   // Fermer les popups au clic extérieur
   useEffect(() => {
     const handler = (e: MouseEvent) => {
-      if (showEmoji && emojiRef.current && !emojiRef.current.contains(e.target as Node)) setShowEmoji(false);
-      if (showGif && gifRef.current && !gifRef.current.contains(e.target as Node)) setShowGif(false);
+      if (mediaPanelMode && mediaPanelRef.current && !mediaPanelRef.current.contains(e.target as Node)) {
+        setMediaPanelMode(null);
+      }
     };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
-  }, [showEmoji, showGif]);
+  }, [mediaPanelMode]);
+
+  useEffect(() => {
+    resizeTextarea();
+  }, [resizeTextarea]);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || !window.visualViewport) return;
+
+    const updateKeyboardOffset = () => {
+      const viewport = window.visualViewport;
+      if (!viewport) return;
+
+      const offset = Math.max(0, window.innerHeight - viewport.height - viewport.offsetTop);
+      setKeyboardOffset(offset > 0 ? offset : 0);
+    };
+
+    updateKeyboardOffset();
+    window.visualViewport.addEventListener("resize", updateKeyboardOffset);
+    window.visualViewport.addEventListener("scroll", updateKeyboardOffset);
+
+    return () => {
+      window.visualViewport?.removeEventListener("resize", updateKeyboardOffset);
+      window.visualViewport?.removeEventListener("scroll", updateKeyboardOffset);
+    };
+  }, []);
 
   const hasGiphyKey = typeof window !== "undefined" && !!process.env.NEXT_PUBLIC_GIPHY_API_KEY;
 
   return (
-    <div className="absolute bottom-0 left-0 right-0 z-20 px-3 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] lg:pb-3">
-      {/* Emoji picker popup */}
-      {showEmoji && (
-        <div ref={emojiRef} className="absolute bottom-full left-3 mb-2 z-30">
-          <Picker data={data} onEmojiSelect={handleEmojiSelect} theme="dark" locale="fr" previewPosition="none" skinTonePosition="none" />
+    <div
+      className="absolute bottom-0 left-0 right-0 z-20 px-3 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] transition-[bottom,padding] duration-200 ease-out lg:pb-3"
+      style={{ bottom: keyboardOffset }}
+    >
+      {mediaPanelMode === "emoji" && (
+        <div ref={mediaPanelRef} className="absolute bottom-full left-3 mb-2 z-30 flex flex-col gap-2">
+          <div className="inline-flex items-center gap-2 self-start rounded-full border border-foreground/[0.08] bg-background/90 px-3 py-2 shadow-lg backdrop-blur-xl">
+            <span className="rounded-full bg-primary px-3 py-1 text-[12px] font-medium text-primary-foreground">Emojis</span>
+            <button
+              onClick={() => setMediaPanelMode(null)}
+              className="flex h-7 w-7 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-foreground/[0.05] hover:text-foreground"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+          <div className="self-start overflow-hidden rounded-2xl shadow-2xl">
+            <Picker
+              data={data}
+              onEmojiSelect={handleEmojiSelect}
+              theme="dark"
+              locale="fr"
+              previewPosition="none"
+              skinTonePosition="none"
+            />
+          </div>
         </div>
       )}
 
-      {/* GIF search popup */}
-      {showGif && hasGiphyKey && (
-        <div ref={gifRef} className="absolute bottom-full left-3 right-3 mb-2 z-30 bg-background/95 backdrop-blur-xl border border-foreground/[0.08] rounded-2xl shadow-xl max-h-80 overflow-hidden flex flex-col">
-          <div className="flex items-center gap-2 p-3 border-b border-foreground/[0.06]">
-            <input
-              value={gifQuery}
-              onChange={(e) => setGifQuery(e.target.value)}
-              placeholder="Rechercher un GIF…"
-              className="flex-1 bg-transparent text-[13px] outline-none"
-              autoFocus
-            />
-            <button onClick={() => { setShowGif(false); setGifQuery(""); setGifs([]); }}>
-              <X className="h-4 w-4 text-muted-foreground" />
+      {mediaPanelMode === "gif" && (
+        <div
+          ref={mediaPanelRef}
+          className="absolute bottom-full left-3 right-3 mb-2 z-30 overflow-hidden rounded-2xl border border-foreground/[0.08] bg-background/95 shadow-xl backdrop-blur-xl"
+        >
+          <div className="flex items-center gap-2 border-b border-foreground/[0.06] p-2.5">
+            <span className="rounded-xl bg-primary px-3 py-1.5 text-[12px] font-medium text-primary-foreground">GIF</span>
+            <button
+              onClick={() => setMediaPanelMode("emoji")}
+              className="rounded-xl bg-foreground/[0.04] px-3 py-1.5 text-[12px] font-medium text-muted-foreground transition-colors hover:text-foreground"
+            >
+              Emojis
+            </button>
+            <button
+              onClick={() => {
+                setMediaPanelMode(null);
+                setGifQuery("");
+                setGifs([]);
+              }}
+              className="ml-auto flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-foreground/[0.05] hover:text-foreground"
+            >
+              <X className="h-4 w-4" />
             </button>
           </div>
-          <div className="flex-1 overflow-y-auto p-2">
-            {gifLoading ? (
-              <div className="flex justify-center py-4"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
-            ) : gifs.length === 0 ? (
-              <p className="text-center text-[12px] text-muted-foreground py-4">
-                {gifQuery.length >= 2 ? "Aucun GIF trouvé" : "Tapez pour rechercher"}
-              </p>
-            ) : (
-              <div className="grid grid-cols-3 gap-1.5">
-                {gifs.map((g) => (
-                  <button
-                    key={g.id}
-                    onClick={() => {
-                      onSendGif?.(g.url);
-                      setShowGif(false);
-                      setGifQuery("");
-                      setGifs([]);
-                    }}
-                    className="rounded-lg overflow-hidden hover:ring-2 hover:ring-primary transition-all"
-                  >
-                    <img src={g.preview} alt="GIF" className="w-full h-20 object-cover" loading="lazy" />
-                  </button>
-                ))}
+
+          {hasGiphyKey ? (
+            <div className="flex max-h-80 flex-col">
+              <div className="flex items-center gap-2 border-b border-foreground/[0.06] p-3">
+                <input
+                  value={gifQuery}
+                  onChange={(e) => setGifQuery(e.target.value)}
+                  placeholder="Rechercher un GIF…"
+                  className="flex-1 bg-transparent text-[13px] outline-none"
+                  autoFocus
+                />
               </div>
-            )}
-          </div>
+              <div className="flex-1 overflow-y-auto p-2">
+                {gifLoading ? (
+                  <div className="flex justify-center py-4">
+                    <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                  </div>
+                ) : gifs.length === 0 ? (
+                  <p className="py-4 text-center text-[12px] text-muted-foreground">
+                    {gifQuery.length >= 2 ? "Aucun GIF trouvé" : "Tapez pour rechercher"}
+                  </p>
+                ) : (
+                  <div className="grid grid-cols-3 gap-1.5">
+                    {gifs.map((g) => (
+                      <button
+                        key={g.id}
+                        onClick={() => {
+                          onSendGif?.(g.url);
+                          setMediaPanelMode(null);
+                          setGifQuery("");
+                          setGifs([]);
+                        }}
+                        className="overflow-hidden rounded-lg transition-all hover:ring-2 hover:ring-primary"
+                      >
+                        <img src={g.preview} alt="GIF" className="h-20 w-full object-cover" loading="lazy" />
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          ) : (
+            <div className="p-4 text-center">
+              <p className="text-[13px] font-medium text-foreground">Recherche GIF indisponible</p>
+              <p className="mt-1 text-[12px] text-muted-foreground">
+                Ajoute la variable NEXT_PUBLIC_GIPHY_API_KEY dans .env.local pour activer les GIFs.
+              </p>
+            </div>
+          )}
         </div>
       )}
 
@@ -156,20 +244,31 @@ export function ChatInput({ value, onChange, onSend, onSendGif, onFileSelect, di
         {/* Boutons accessoires */}
         <div className="flex items-center gap-0.5 shrink-0 mb-[5px]">
           <button
-            onClick={() => { setShowEmoji(!showEmoji); setShowGif(false); }}
+            onClick={() => setMediaPanelMode((current) => current === "emoji" ? null : "emoji")}
             className={cn(
               "flex h-8 w-8 items-center justify-center rounded-full transition-colors",
-              showEmoji ? "bg-primary/20 text-primary" : "text-muted-foreground hover:text-foreground hover:bg-foreground/[0.06]"
+              mediaPanelMode === "emoji" ? "bg-primary/20 text-primary" : "text-muted-foreground hover:text-foreground hover:bg-foreground/[0.06]"
             )}
           >
             <Smile className="h-4 w-4" />
           </button>
           {hasGiphyKey && (
             <button
-              onClick={() => { setShowGif(!showGif); setShowEmoji(false); }}
+              onClick={() => setMediaPanelMode((current) => current === "gif" ? null : "gif")}
               className={cn(
                 "flex h-8 w-8 items-center justify-center rounded-full transition-colors text-[11px] font-bold",
-                showGif ? "bg-primary/20 text-primary" : "text-muted-foreground hover:text-foreground hover:bg-foreground/[0.06]"
+                mediaPanelMode === "gif" ? "bg-primary/20 text-primary" : "text-muted-foreground hover:text-foreground hover:bg-foreground/[0.06]"
+              )}
+            >
+              GIF
+            </button>
+          )}
+          {!hasGiphyKey && (
+            <button
+              onClick={() => setMediaPanelMode((current) => current === "gif" ? null : "gif")}
+              className={cn(
+                "flex h-8 items-center justify-center rounded-full px-2.5 transition-colors text-[11px] font-bold",
+                mediaPanelMode === "gif" ? "bg-primary/20 text-primary" : "text-muted-foreground hover:text-foreground hover:bg-foreground/[0.06]"
               )}
             >
               GIF

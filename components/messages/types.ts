@@ -18,6 +18,7 @@ export type Message = {
   file_name?: string | null;
   file_type?: string | null;
   file_size?: number | null;
+  delivery_status?: "sending" | "sent" | "delivered" | "failed";
 };
 
 export type UserResult = {

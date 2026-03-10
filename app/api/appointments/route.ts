@@ -5,6 +5,32 @@ import { sendBookingConfirmationToGuest } from "@/lib/mailjet";
 import { sendSMS } from "@/lib/twilio";
 import { NextResponse } from "next/server";
 
+const APPOINTMENT_SELECT = `
+  id,
+  type_id,
+  user_id,
+  requester_id,
+  guest_name,
+  guest_email,
+  guest_phone,
+  start_at,
+  end_at,
+  message,
+  status,
+  is_close_contact,
+  notify_on_event,
+  recipient_type_id,
+  created_at,
+  updated_at,
+  creator:profiles!appointments_requester_id_fkey(id, full_name, avatar_url),
+  appointment_types!type_id(id, name, color, duration_min),
+  appointment_participants(
+    id, user_id, name, email, phone, type_id, status, is_organizer, is_close_contact, responded_at,
+    participant_type:appointment_types(id, name, color, duration_min)
+  )
+`;
+const APPOINTMENT_INSERT_RETURNING = "id, type_id, user_id, requester_id, guest_name, guest_email, guest_phone, start_at, end_at, message, status, is_close_contact, notify_on_event, recipient_type_id, created_at, updated_at";
+
 /* ═══════════════════════════════════════════════════════
    Helpers
    ═══════════════════════════════════════════════════════ */
@@ -43,20 +69,10 @@ export async function GET() {
     const profile = await getProfile(supabase, user.id);
     const isAdmin = profile?.role === "admin";
 
-    const select = `
-      *,
-      creator:profiles!appointments_requester_id_fkey(id, full_name, avatar_url),
-      appointment_types!type_id(id, name, color, duration_min),
-      appointment_participants(
-        id, user_id, name, email, phone, type_id, status, is_organizer, is_close_contact, responded_at,
-        participant_type:appointment_types(id, name, color, duration_min)
-      )
-    `;
-
     let data, error;
 
     if (isAdmin) {
-      const res = await supabase.from("appointments").select(select).order("start_at", { ascending: true });
+      const res = await supabase.from("appointments").select(APPOINTMENT_SELECT).order("start_at", { ascending: true });
       data = res.data; error = res.error;
     } else {
       // Trouver les appointments où je suis participant
@@ -67,7 +83,7 @@ export async function GET() {
         ? `requester_id.eq.${user.id},id.in.(${ids.join(",")})`
         : `requester_id.eq.${user.id}`;
 
-      const res = await supabase.from("appointments").select(select).or(orFilter).order("start_at", { ascending: true });
+      const res = await supabase.from("appointments").select(APPOINTMENT_SELECT).or(orFilter).order("start_at", { ascending: true });
       data = res.data; error = res.error;
     }
 
@@ -101,12 +117,19 @@ export async function POST(request: Request) {
     const user = await getAuthUser();
     if (!user) return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
 
-    const creatorProfile = await getProfile(supabase, user.id);
+    const [creatorProfile, { data: aptType, error: typeErr }, { data: closeCts }] = await Promise.all([
+      getProfile(supabase, user.id),
+      supabase
+        .from("appointment_types")
+        .select("duration_min, name")
+        .eq("id", type_id)
+        .eq("is_active", true)
+        .single(),
+      supabase.from("contacts").select("email").eq("user_id", user.id).eq("is_close", true),
+    ]);
+
     const creatorName = creatorProfile?.full_name || user.email || "Inconnu";
 
-    // Type de RDV
-    const { data: aptType, error: typeErr } = await supabase
-      .from("appointment_types").select("duration_min, name").eq("id", type_id).eq("is_active", true).single();
     if (typeErr || !aptType) {
       return NextResponse.json({ error: "Type de RDV invalide ou inactif" }, { status: 400 });
     }
@@ -114,8 +137,6 @@ export async function POST(request: Request) {
     const startDate = new Date(start_at);
     const endDate = new Date(startDate.getTime() + aptType.duration_min * 60 * 1000);
 
-    // Contacts proches du créateur
-    const { data: closeCts } = await supabase.from("contacts").select("email").eq("user_id", user.id).eq("is_close", true);
     const closeEmails = new Set((closeCts || []).map((c) => c.email?.toLowerCase()).filter(Boolean));
 
     const first = participants[0];
@@ -137,7 +158,8 @@ export async function POST(request: Request) {
         is_close_contact: first.email ? closeEmails.has(first.email.toLowerCase()) : false,
         notify_on_event: notify_on_event ?? true,
       })
-      .select().single();
+      .select(APPOINTMENT_INSERT_RETURNING)
+      .single();
 
     if (insErr) {
       console.error("[POST] Insert:", insErr);
@@ -180,39 +202,48 @@ export async function POST(request: Request) {
     const dateFr = startDate.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" });
     const timeFr = startDate.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
 
-    for (const p of participants) {
-      const isClose = p.email ? closeEmails.has(p.email.toLowerCase()) : false;
-
-      if (p.user_id && p.user_id !== user.id) {
-        // ── Participant avec compte → notification in-app ──
-        await notify(supabase, {
-          userId: p.user_id,
+    const notificationRows = participants
+      .filter((p) => p.user_id && p.user_id !== user.id)
+      .map((p) => {
+        const isClose = p.email ? closeEmails.has(p.email.toLowerCase()) : false;
+        return {
+          user_id: p.user_id as string,
           type: isClose ? "info" : "invitation",
-          appointmentId: apt.id,
-          fromUserId: user.id, fromName: creatorName,
+          appointment_id: apt.id,
+          from_user_id: user.id,
+          from_name: creatorName,
           title: isClose ? `${creatorName} a créé un RDV` : `${creatorName} vous invite à un RDV`,
           body: `${aptType.name} — ${dateFr} à ${timeFr}`,
-        });
-      }
+        };
+      });
 
-      if (!p.user_id) {
-        // ── Participant sans compte → email et/ou SMS ──
+    const outboundTasks = participants
+      .filter((p) => !p.user_id)
+      .flatMap((p) => {
+        const tasks: Promise<unknown>[] = [];
         if (p.email) {
-          await sendBookingConfirmationToGuest({
-            guestName: p.name,
-            guestEmail: p.email,
-            typeName: aptType.name,
-            startAt: startDate.toISOString(),
-            endAt: endDate.toISOString(),
-            durationMin: aptType.duration_min,
-          }).catch((e) => console.error("[POST] Email participant:", e));
+          tasks.push(
+            sendBookingConfirmationToGuest({
+              guestName: p.name,
+              guestEmail: p.email,
+              typeName: aptType.name,
+              startAt: startDate.toISOString(),
+              endAt: endDate.toISOString(),
+              durationMin: aptType.duration_min,
+            }).catch((e) => console.error("[POST] Email participant:", e))
+          );
         }
         if (p.phone) {
           const smsBody = `Bonjour ${p.name}, ${creatorName} vous invite à un RDV "${aptType.name}" le ${dateFr} à ${timeFr}. — Life`;
-          await sendSMS(p.phone, smsBody).catch((e) => console.error("[POST] SMS participant:", e));
+          tasks.push(sendSMS(p.phone, smsBody).catch((e) => console.error("[POST] SMS participant:", e)));
         }
-      }
-    }
+        return tasks;
+      });
+
+    await Promise.all([
+      notificationRows.length > 0 ? supabase.from("notifications").insert(notificationRows) : Promise.resolve(),
+      outboundTasks.length > 0 ? Promise.allSettled(outboundTasks) : Promise.resolve(),
+    ]);
 
     return NextResponse.json(apt, { status: 201 });
   } catch (err) {

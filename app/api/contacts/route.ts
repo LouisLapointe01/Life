@@ -2,6 +2,8 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 
+const CONTACT_SELECT = "id, user_id, first_name, last_name, email, phone, notes, tags, is_close, created_at, updated_at";
+
 export async function GET() {
   try {
     const authClient = await createClient();
@@ -16,7 +18,7 @@ export async function GET() {
     const supabase = createAdminClient();
     const { data, error } = await supabase
       .from("contacts")
-      .select("*")
+      .select(CONTACT_SELECT)
       .eq("user_id", user.id)
       .order("first_name");
 
@@ -47,7 +49,7 @@ export async function POST(request: Request) {
     const { data, error } = await supabase
       .from("contacts")
       .insert({ ...body, user_id: user.id })
-      .select()
+      .select(CONTACT_SELECT)
       .single();
 
     if (error) {
@@ -56,21 +58,22 @@ export async function POST(request: Request) {
 
     // Notifier l'utilisateur ajouté s'il a un compte
     if (data && body.email) {
-      const { data: targetProfile } = await supabase
-        .from("profiles")
-        .select("id")
-        .ilike("email", body.email)
-        .neq("id", user.id)
-        .limit(1)
-        .maybeSingle();
-
-      if (targetProfile) {
-        const { data: adderProfile } = await supabase
+      const [{ data: targetProfile }, { data: adderProfile }] = await Promise.all([
+        supabase
+          .from("profiles")
+          .select("id")
+          .ilike("email", body.email)
+          .neq("id", user.id)
+          .limit(1)
+          .maybeSingle(),
+        supabase
           .from("profiles")
           .select("full_name")
           .eq("id", user.id)
-          .maybeSingle();
+          .maybeSingle(),
+      ]);
 
+      if (targetProfile) {
         const adderName = adderProfile?.full_name || "Quelqu'un";
         const isClose = !!body.is_close;
         await supabase.from("notifications").insert({
@@ -116,7 +119,7 @@ export async function PUT(request: Request) {
       .update(payload)
       .eq("id", id)
       .eq("user_id", user.id)
-      .select()
+      .select(CONTACT_SELECT)
       .single();
 
     if (error) {

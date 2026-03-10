@@ -2,6 +2,8 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { NextRequest, NextResponse } from "next/server";
 
+const FILE_SELECT = "id, user_id, folder_id, name, file_type, mime_type, size_bytes, category, storage_path, created_at";
+
 type Params = { params: Promise<{ id: string }> };
 
 export async function GET(_request: NextRequest, { params }: Params) {
@@ -77,7 +79,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
       .update(updates)
       .eq("id", id)
       .eq("user_id", user.id)
-      .select()
+      .select(FILE_SELECT)
       .single();
 
     if (error)

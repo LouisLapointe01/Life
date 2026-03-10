@@ -225,7 +225,6 @@
   }
 
   @keyframes float {
-
     0%,
     100% {
       transform: translateY(0);
@@ -258,6 +257,59 @@
     animation-delay: 50ms;
   }
 
+  .mobile-loading-veil {
+    background: linear-gradient(180deg, rgba(242, 242, 247, 0.42) 0%, rgba(242, 242, 247, 0.24) 35%, rgba(242, 242, 247, 0.08) 100%), radial-gradient(circle at top, rgba(0, 122, 255, 0.06), transparent 42%);
+    backdrop-filter: blur(8px) saturate(115%);
+    -webkit-backdrop-filter: blur(8px) saturate(115%);
+  }
+
+  .dark .mobile-loading-veil {
+    background: linear-gradient(180deg, rgba(0, 0, 0, 0.34) 0%, rgba(0, 0, 0, 0.18) 35%, rgba(0, 0, 0, 0.06) 100%), radial-gradient(circle at top, rgba(10, 132, 255, 0.1), transparent 42%);
+  }
+
+  .mobile-loading-indicator {
+    background: rgba(255, 255, 255, 0.48);
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    backdrop-filter: blur(14px) saturate(120%);
+    -webkit-backdrop-filter: blur(14px) saturate(120%);
+    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
+  }
+
+  .dark .mobile-loading-indicator {
+    background: rgba(28, 28, 30, 0.56);
+    border-color: rgba(255, 255, 255, 0.06);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.22);
+  }
+
+  .mobile-loading-dot {
+    width: 0.34rem;
+    height: 0.34rem;
+    border-radius: 9999px;
+    background: color-mix(in srgb, var(--foreground) 36%, transparent);
+    animation: mobilePulse 0.9s ease-in-out infinite;
+  }
+
+  .mobile-loading-dot:nth-child(2) {
+    animation-delay: 0.12s;
+  }
+
+  .mobile-loading-dot:nth-child(3) {
+    animation-delay: 0.24s;
+  }
+
+  @keyframes mobilePulse {
+    0%,
+    100% {
+      opacity: 0.35;
+      transform: translateY(0) scale(0.92);
+    }
+
+    50% {
+      opacity: 1;
+      transform: translateY(-1px) scale(1);
+    }
+  }
+
   @keyframes fadeIn {
     from {
       opacity: 0;
@@ -268,7 +320,6 @@
     }
   }
 
-  /* Scrollbar Apple-style */
   .scrollbar-thin::-webkit-scrollbar {
     width: 6px;
   }
@@ -286,18 +337,16 @@
     background: rgba(255, 255, 255, 0.15);
   }
 
-  /* Hide all scrollbars globally — scroll via mouse/touch only */
   .no-scrollbar,
   .no-scrollbar * {
-    scrollbar-width: none; /* Firefox */
-    -ms-overflow-style: none; /* IE/Edge */
-  }
-  .no-scrollbar::-webkit-scrollbar,
-  .no-scrollbar *::-webkit-scrollbar {
-    display: none; /* Webkit */
+    scrollbar-width: none;
+    -ms-overflow-style: none;
   }
 
-  /* ── Enhanced Glassmorphism Utilities ── */
+  .no-scrollbar::-webkit-scrollbar,
+  .no-scrollbar *::-webkit-scrollbar {
+    display: none;
+  }
 
   .glass-gradient-bg {
     background: linear-gradient(135deg, #43CEA2 0%, #185A9D 100%);
@@ -370,7 +419,6 @@
     background: rgba(255, 255, 255, 0.14);
   }
 
-  /* Gradient orbs for background decoration */
   .glass-orb {
     position: absolute;
     border-radius: 50%;
@@ -403,7 +451,6 @@
     background: radial-gradient(circle, rgba(50, 173, 230, 0.3), transparent 70%);
   }
 
-  /* Badge glass */
   .glass-badge {
     background: rgba(255, 255, 255, 0.15);
     backdrop-filter: blur(8px);
@@ -415,12 +462,10 @@
     font-weight: 500;
   }
 
-  /* Safe area bottom padding for PWA / notch devices */
   .safe-bottom {
     padding-bottom: env(safe-area-inset-bottom, 0px);
   }
 
-  /* Glass table */
   .glass-table {
     background: var(--glass-bg);
     backdrop-filter: blur(var(--glass-blur));
@@ -430,7 +475,6 @@
     overflow: hidden;
   }
 
-  /* Shimmer loading effect */
   .shimmer {
     background: linear-gradient(90deg,
         transparent 0%,
@@ -450,7 +494,6 @@
     }
   }
 
-  /* Frosted circle for avatars & icons */
   .frosted-circle {
     background: rgba(255, 255, 255, 0.2);
     backdrop-filter: blur(12px);

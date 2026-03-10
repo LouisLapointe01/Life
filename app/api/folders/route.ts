@@ -3,6 +3,8 @@ import { createClient } from "@/lib/supabase/server";
 import { createFolderSchema } from "@/lib/validations";
 import { NextRequest, NextResponse } from "next/server";
 
+const FOLDER_SELECT = "id, user_id, parent_id, name, color, created_at";
+
 export async function GET() {
   try {
     const authClient = await createClient();
@@ -15,7 +17,7 @@ export async function GET() {
     const supabase = createAdminClient();
     const { data, error } = await supabase
       .from("user_folders")
-      .select("*")
+      .select(FOLDER_SELECT)
       .eq("user_id", user.id)
       .order("name");
 
@@ -49,7 +51,7 @@ export async function POST(request: NextRequest) {
         parent_id: parsed.parent_id ?? null,
         color: parsed.color ?? "#3B82F6",
       })
-      .select()
+      .select(FOLDER_SELECT)
       .single();
 
     if (error)
@@ -77,21 +79,28 @@ export async function DELETE(request: NextRequest) {
 
     const supabase = createAdminClient();
 
-    // Collecter récursivement tous les IDs de sous-dossiers
+    const { data: allFolders, error: foldersError } = await supabase
+      .from("user_folders")
+      .select("id, parent_id")
+      .eq("user_id", user.id);
+
+    if (foldersError)
+      return NextResponse.json({ error: foldersError.message }, { status: 500 });
+
     const allFolderIds: string[] = [id];
-    const collectChildren = async (parentIds: string[]) => {
-      const { data } = await supabase
-        .from("user_folders")
-        .select("id")
-        .eq("user_id", user.id)
-        .in("parent_id", parentIds);
-      if (data && data.length > 0) {
-        const childIds = data.map((f) => f.id);
+    const queue: string[] = [id];
+
+    while (queue.length > 0) {
+      const currentId = queue.shift()!;
+      const childIds = (allFolders || [])
+        .filter((folder) => folder.parent_id === currentId)
+        .map((folder) => folder.id);
+
+      if (childIds.length > 0) {
         allFolderIds.push(...childIds);
-        await collectChildren(childIds);
+        queue.push(...childIds);
       }
-    };
-    await collectChildren([id]);
+    }
 
     // Récupérer tous les fichiers dans ces dossiers pour supprimer du storage
     const { data: filesToDelete } = await supabase

@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useEffect, useCallback } from "react";
+import { useLayoutEffect, useRef, useEffect, useCallback, useState } from "react";
 import { cn } from "@/lib/utils";
 import { ArrowLeft, Loader2, MessageCircle } from "lucide-react";
 import { Avatar } from "./Avatar";
@@ -24,6 +24,8 @@ interface ChatViewProps {
   onLoadMore: () => void;
   onBack: () => void;
   convOpenedAt: number;
+  shouldScrollToBottomRef: React.MutableRefObject<boolean>;
+  scrollBehaviorRef: React.MutableRefObject<ScrollBehavior>;
 }
 
 export function ChatView({
@@ -44,33 +46,38 @@ export function ChatView({
   onLoadMore,
   onBack,
   convOpenedAt,
+  shouldScrollToBottomRef,
+  scrollBehaviorRef,
 }: ChatViewProps) {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const shouldScrollToBottom = useRef(false);
   const userScrolledUp = useRef(false);
   const loadMoreScrollRestoreRef = useRef<number>(0);
   const autoFillingRef = useRef(false);
+  const [showMobileMask, setShowMobileMask] = useState(false);
+  const [mobileMaskVisible, setMobileMaskVisible] = useState(false);
 
   // Scroll vers le bas quand on ouvre une conv ou qu'on envoie un message
   useEffect(() => {
     if (!loadingMessages) {
-      shouldScrollToBottom.current = true;
+      shouldScrollToBottomRef.current = true;
     }
-  }, [activeConv?.id, loadingMessages]);
+  }, [activeConv?.id, loadingMessages, shouldScrollToBottomRef]);
 
   // Scroll vers le bas — useLayoutEffect + forceReflow pour éviter le flash
   useLayoutEffect(() => {
-    if (shouldScrollToBottom.current && !loadingMessages) {
-      shouldScrollToBottom.current = false;
+    if (shouldScrollToBottomRef.current && !loadingMessages) {
+      shouldScrollToBottomRef.current = false;
       const el = scrollContainerRef.current;
       if (el) {
-        el.scrollTop = el.scrollHeight;
+        const behavior = scrollBehaviorRef.current;
+        el.scrollTo({ top: el.scrollHeight, behavior });
+        scrollBehaviorRef.current = "auto";
         // forceReflow : garantit que le navigateur a appliqué le scrollTop avant de rendre visible
         void el.offsetHeight;
         userScrolledUp.current = false;
       }
     }
-  }, [messages, loadingMessages]);
+  }, [messages, loadingMessages, scrollBehaviorRef, shouldScrollToBottomRef]);
 
   // Restauration position scroll après chargement de messages plus anciens
   useLayoutEffect(() => {
@@ -87,21 +94,21 @@ export function ChatView({
       const el = scrollContainerRef.current;
       if (hasMore && el.scrollHeight <= el.clientHeight) {
         autoFillingRef.current = true;
-        shouldScrollToBottom.current = true;
+        shouldScrollToBottomRef.current = true;
         onLoadMore();
       } else {
         onInitialized?.();
       }
     }
-  }, [messages, loadingMessages, loadingMore, hasMore, onLoadMore, onInitialized]);
+  }, [messages, loadingMessages, loadingMore, hasMore, onLoadMore, onInitialized, shouldScrollToBottomRef]);
 
   // Exposer shouldScrollToBottom pour les messages realtime
   const triggerScrollToBottom = useCallback(() => {
     const el = scrollContainerRef.current;
     if (el && el.scrollHeight - el.scrollTop - el.clientHeight < 100) {
-      shouldScrollToBottom.current = true;
+      shouldScrollToBottomRef.current = true;
     }
-  }, []);
+  }, [shouldScrollToBottomRef]);
 
   // Mettre à jour le ref pour le loadMore
   const handleLoadMore = useCallback(() => {
@@ -130,6 +137,19 @@ export function ChatView({
     // @ts-expect-error: attaching method to DOM element for parent access
     if (scrollContainerRef.current) scrollContainerRef.current.__triggerScroll = triggerScrollToBottom;
   }, [triggerScrollToBottom]);
+
+  useEffect(() => {
+    const isLoading = loadingMessages || initializing;
+    if (isLoading) {
+      setShowMobileMask(true);
+      requestAnimationFrame(() => setMobileMaskVisible(true));
+      return;
+    }
+
+    setMobileMaskVisible(false);
+    const timeout = window.setTimeout(() => setShowMobileMask(false), 180);
+    return () => window.clearTimeout(timeout);
+  }, [loadingMessages, initializing]);
 
   if (!activeConv) {
     return (
@@ -163,8 +183,33 @@ export function ChatView({
 
       {/* Spinner overlay pendant init */}
       {(loadingMessages || initializing) && (
-        <div className="absolute inset-0 z-10 flex items-center justify-center">
+        <div className="absolute inset-0 z-10 hidden items-center justify-center lg:flex">
           <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+        </div>
+      )}
+
+      {showMobileMask && (
+        <div
+          className={cn(
+            "absolute inset-0 z-10 px-4 pt-16 pb-[84px] lg:hidden transition-opacity duration-180 ease-out pointer-events-none",
+            mobileMaskVisible ? "opacity-100" : "opacity-0"
+          )}
+        >
+          <div className="mobile-loading-veil absolute inset-0" />
+          <div className="relative flex h-full items-center justify-center">
+            <div className="mobile-loading-indicator rounded-full px-4 py-2.5">
+              <div className="flex items-center gap-2">
+                <div className="mobile-loading-dots flex items-center gap-1.5">
+                  <span className="mobile-loading-dot" />
+                  <span className="mobile-loading-dot" />
+                  <span className="mobile-loading-dot" />
+                </div>
+                <span className="text-[12px] font-medium text-muted-foreground/80">
+                  Ouverture de la conversation
+                </span>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 
@@ -174,7 +219,8 @@ export function ChatView({
         onScroll={handleScroll}
         className={cn(
           "absolute inset-0 overflow-y-auto overscroll-contain no-scrollbar px-4 pt-14 pb-[72px] space-y-3",
-          (loadingMessages || initializing) && "invisible"
+          (loadingMessages || initializing) && "invisible lg:visible",
+          showMobileMask && "lg:opacity-100"
         )}
       >
         {/* Pull-to-refresh overlay sticky */}

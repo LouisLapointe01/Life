@@ -45,6 +45,8 @@ function MessagesPageInner() {
     messages, loadingMessages, initializing, setInitializing,
     hasMore, loadingMore, fetchMessages, loadMoreMessages,
     sendMessage: sendMsg, resetMessages,
+    shouldScrollToBottom,
+    scrollBehaviorRef,
   } = useMessages(activeConvId, myUserId);
 
   // Récupérer l'userId courant
@@ -270,6 +272,8 @@ function MessagesPageInner() {
           onLoadMore={loadMoreMessages}
           onBack={() => setMobileView("list")}
           convOpenedAt={convOpenedAtRef.current}
+          shouldScrollToBottomRef={shouldScrollToBottom}
+          scrollBehaviorRef={scrollBehaviorRef}
         />
       </div>
 

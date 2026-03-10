@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils";
-import { Download, FileIcon } from "lucide-react";
+import { AlertCircle, Check, CheckCheck, Download, FileIcon, Loader2 } from "lucide-react";
 import { Avatar } from "./Avatar";
 import { timeAgo } from "./helpers";
 import type { Message } from "./types";
@@ -26,9 +26,45 @@ function formatFileSize(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} Mo`;
 }
 
+function getDeliveryMeta(status?: "sending" | "sent" | "delivered" | "failed") {
+  switch (status) {
+    case "sending":
+      return {
+        label: "Envoi…",
+        icon: Loader2,
+        className: "text-muted-foreground/80",
+        iconClassName: "animate-spin",
+      };
+    case "sent":
+      return {
+        label: "Envoye",
+        icon: Check,
+        className: "text-primary/80",
+        iconClassName: "",
+      };
+    case "delivered":
+      return {
+        label: "Distribue",
+        icon: CheckCheck,
+        className: "text-primary/90",
+        iconClassName: "",
+      };
+    case "failed":
+      return {
+        label: "Echec",
+        icon: AlertCircle,
+        className: "text-red-500",
+        iconClassName: "",
+      };
+    default:
+      return null;
+  }
+}
+
 export function MessageBubble({ msg, isMe, isNew, otherUser, onSaveFile }: MessageBubbleProps) {
   const isGif = isGiphyUrl(msg.content) || isImageUrl(msg.content);
   const hasFile = msg.file_url && msg.file_name;
+  const deliveryMeta = isMe ? getDeliveryMeta(msg.delivery_status) : null;
 
   return (
     <div
@@ -107,6 +143,17 @@ export function MessageBubble({ msg, isMe, isNew, otherUser, onSaveFile }: Messa
           <span className="text-[10px] text-muted-foreground">
             {timeAgo(msg.created_at)}
           </span>
+          {deliveryMeta && (
+            <span
+              className={cn(
+                "inline-flex items-center gap-1 text-[10px] transition-[opacity,transform,color] duration-300 ease-out",
+                deliveryMeta.className
+              )}
+            >
+              <deliveryMeta.icon className={cn("h-3 w-3", deliveryMeta.iconClassName)} />
+              {deliveryMeta.label}
+            </span>
+          )}
           {hasFile && !isMe && onSaveFile && (
             <button
               onClick={() => onSaveFile(msg)}
