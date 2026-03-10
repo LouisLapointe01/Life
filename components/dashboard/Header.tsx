@@ -3,7 +3,7 @@
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 import {
   DropdownMenu,
@@ -83,7 +83,12 @@ export function Header() {
   const notifRef = useRef<HTMLDivElement>(null);
   const notifPanelRef = useRef<HTMLDivElement>(null);
   const [blockingId, setBlockingId] = useState<string | null>(null);
-  const [isMounted, setIsMounted] = useState(false);
+  const isMounted = useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false
+  );
+  const [currentTime, setCurrentTime] = useState(() => Date.now());
 
   useEffect(() => {
     const supabase = createClient();
@@ -94,7 +99,11 @@ export function Header() {
   }, []);
 
   useEffect(() => {
-    setIsMounted(true);
+    const timer = window.setInterval(() => {
+      setCurrentTime(Date.now());
+    }, 60000);
+
+    return () => window.clearInterval(timer);
   }, []);
 
   // Click outside to close
@@ -149,7 +158,7 @@ export function Header() {
   const fullName = user?.user_metadata?.full_name ?? user?.email ?? "";
 
   const timeAgo = (dateStr: string) => {
-    const diff = Date.now() - new Date(dateStr).getTime();
+    const diff = currentTime - new Date(dateStr).getTime();
     const min = Math.floor(diff / 60000);
     if (min < 1) return "À l'instant";
     if (min < 60) return `Il y a ${min} min`;
@@ -308,9 +317,11 @@ export function Header() {
             <p className="text-[11px] text-muted-foreground truncate">{user?.email}</p>
           </div>
           <DropdownMenuSeparator className="my-1" />
-          <DropdownMenuItem className="rounded-xl px-3 py-2.5 text-[13px] cursor-pointer">
-            <User className="mr-2 h-4 w-4" />
-            Profil
+          <DropdownMenuItem asChild className="rounded-xl px-3 py-2.5 text-[13px] cursor-pointer">
+            <Link href="/dashboard/profil">
+              <User className="mr-2 h-4 w-4" />
+              Profil
+            </Link>
           </DropdownMenuItem>
           <DropdownMenuSeparator className="my-1" />
           <DropdownMenuItem asChild className="rounded-xl px-3 py-2.5 text-[13px] cursor-pointer">

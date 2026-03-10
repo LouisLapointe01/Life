@@ -33,7 +33,6 @@ import {
   Eye,
   EyeOff,
   Smartphone,
-  RotateCcw,
   Lock,
   GripVertical,
   ArrowUp,
@@ -180,21 +179,6 @@ export default function ParametresPage() {
         </motion.div>
       </AnimatePresence>
 
-      {/* FAB flottant contextuel */}
-      {activeTab === "sections" && (
-        <button
-          onClick={() => {
-            const { resetToDefault } = useDashboardTabs.getState();
-            resetToDefault();
-          }}
-          className="fixed bottom-28 right-4 z-40 flex h-11 w-11 items-center justify-center rounded-full bg-foreground/10 backdrop-blur-xl text-muted-foreground shadow-md transition-all hover:shadow-lg hover:scale-105 active:scale-95 border border-white/10 lg:bottom-14"
-          aria-label="Réinitialiser"
-          title="Réinitialiser"
-        >
-          <RotateCcw className="h-5 w-5" />
-        </button>
-      )}
-
       {/* Tab Navigation — pill flottant (mobile + pc) */}
       <div className="fixed bottom-[4.5rem] left-0 right-0 z-40 pointer-events-none flex justify-center items-end px-2 lg:bottom-4 lg:left-[260px] lg:right-0 lg:px-0">
         <div className="pointer-events-auto flex max-w-full items-center gap-0.5 rounded-[1.35rem] border border-white/10 bg-white/65 px-1 py-1 shadow-[0_22px_50px_-32px_rgba(15,23,42,0.6)] backdrop-blur-2xl dark:bg-white/[0.05] dark:border-white/[0.08]">
@@ -247,7 +231,6 @@ function DashboardSectionsSettings() {
     moveTab,
     addMobileTab,
     removeMobileTab,
-    resetToDefault,
     visibleTabs: visibleIds,
     mobileTabs: mobileIds,
   } = useDashboardTabs();

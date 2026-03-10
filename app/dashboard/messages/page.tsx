@@ -33,6 +33,7 @@ function MessagesPageInner() {
   const [deleteConvTarget, setDeleteConvTarget] = useState<Conversation | null>(null);
   const [deletingConv, setDeletingConv] = useState(false);
   const [startingConv, setStartingConv] = useState<string | null>(null);
+  const [viewportHeight, setViewportHeight] = useState<number | null>(null);
   const convOpenedAtRef = useRef<number>(0);
 
   // Hooks
@@ -76,6 +77,14 @@ function MessagesPageInner() {
       useUnreadMessages.getState().markConversationRead(conv.unread_count);
     }
   }, [fetchMessages, resetMessages, setInitializing, setActiveConvIdRef, updateConversation]);
+
+  const closeConversation = useCallback(() => {
+    setActiveConvId(null);
+    setActiveConv(null);
+    setActiveConvIdRef(null);
+    resetMessages();
+    setMobileView("list");
+  }, [resetMessages, setActiveConvIdRef]);
 
   // Auto-ouverture via ?conv=
   const convParam = searchParams.get("conv");
@@ -239,8 +248,29 @@ function MessagesPageInner() {
     return () => { main.style.overflow = ""; };
   }, []);
 
+  useEffect(() => {
+    const viewport = window.visualViewport;
+    const updateViewportHeight = () => {
+      setViewportHeight(Math.round(viewport?.height ?? window.innerHeight));
+    };
+
+    updateViewportHeight();
+    window.addEventListener("resize", updateViewportHeight);
+    viewport?.addEventListener("resize", updateViewportHeight);
+    viewport?.addEventListener("scroll", updateViewportHeight);
+
+    return () => {
+      window.removeEventListener("resize", updateViewportHeight);
+      viewport?.removeEventListener("resize", updateViewportHeight);
+      viewport?.removeEventListener("scroll", updateViewportHeight);
+    };
+  }, []);
+
   return (
-    <div className="-mx-4 -mt-4 -mb-[120px] flex h-[calc(100dvh-3.5rem)] overflow-hidden bg-[radial-gradient(circle_at_top,_rgba(0,122,255,0.10),_transparent_28%),linear-gradient(180deg,rgba(255,255,255,0.24),transparent_18%),linear-gradient(135deg,#edf6ff_0%,#e8f2fb_38%,#eef0ff_100%)] lg:-mx-8 lg:-mt-6 lg:-mb-6 lg:h-dvh dark:bg-[radial-gradient(circle_at_top,_rgba(10,132,255,0.18),_transparent_24%),linear-gradient(180deg,rgba(255,255,255,0.03),transparent_18%),linear-gradient(135deg,#06111b_0%,#091521_38%,#101425_100%)]">
+    <div
+      className="flex h-full min-h-0 overflow-hidden bg-[radial-gradient(circle_at_top,_rgba(0,122,255,0.10),_transparent_28%),linear-gradient(180deg,rgba(255,255,255,0.24),transparent_18%),linear-gradient(135deg,#edf6ff_0%,#e8f2fb_38%,#eef0ff_100%)] dark:bg-[radial-gradient(circle_at_top,_rgba(10,132,255,0.18),_transparent_24%),linear-gradient(180deg,rgba(255,255,255,0.03),transparent_18%),linear-gradient(135deg,#06111b_0%,#091521_38%,#101425_100%)] lg:rounded-[2rem]"
+      style={viewportHeight ? { height: `${viewportHeight}px` } : undefined}
+    >
       <ConversationList
         conversations={conversations}
         activeConvId={activeConvId}
@@ -270,7 +300,7 @@ function MessagesPageInner() {
           onSaveFile={handleSaveFile}
           onInitialized={() => setInitializing(false)}
           onLoadMore={loadMoreMessages}
-          onBack={() => setMobileView("list")}
+          onBack={closeConversation}
           convOpenedAt={convOpenedAtRef.current}
           shouldScrollToBottomRef={shouldScrollToBottom}
           scrollBehaviorRef={scrollBehaviorRef}

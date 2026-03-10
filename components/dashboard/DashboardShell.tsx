@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useCallback, useRef } from "react";
+import { usePathname } from "next/navigation";
 import { Sidebar } from "@/components/dashboard/Sidebar";
 import { Header } from "@/components/dashboard/Header";
 import { MobileBottomNav } from "@/components/dashboard/MobileBottomNav";
@@ -8,6 +9,9 @@ import { PageTransition } from "@/components/dashboard/PageTransition";
 import { PushNotificationManager } from "@/components/dashboard/PushNotificationManager";
 import { useUnreadMessages } from "@/lib/stores/unread-messages";
 import { createClient } from "@/lib/supabase/client";
+import { usePresenceStore } from "@/lib/stores/presence";
+import type { RealtimeChannel } from "@supabase/supabase-js";
+import { cn } from "@/lib/utils";
 
 function UnreadBadgeSync() {
   const setTotalUnread = useUnreadMessages((s) => s.setTotalUnread);
@@ -61,7 +65,149 @@ function UnreadBadgeSync() {
   return null;
 }
 
+function PresenceSync() {
+  const pathname = usePathname();
+  const setOnlineUserIds = usePresenceStore((state) => state.setOnlineUserIds);
+  const clearOnlineUserIds = usePresenceStore((state) => state.clearOnlineUserIds);
+  const supabaseRef = useRef<ReturnType<typeof createClient> | null>(null);
+  const channelRef = useRef<RealtimeChannel | null>(null);
+  const currentUserIdRef = useRef<string | null>(null);
+  const latestPathnameRef = useRef(pathname);
+
+  useEffect(() => {
+    latestPathnameRef.current = pathname;
+  }, [pathname]);
+
+  const isAppActive = useCallback(() => {
+    if (typeof document === "undefined") return false;
+    return document.visibilityState === "visible" && document.hasFocus();
+  }, []);
+
+  const syncPresenceState = useCallback(() => {
+    const channel = channelRef.current;
+    if (!channel) return;
+
+    const state = channel.presenceState();
+    setOnlineUserIds(Object.keys(state));
+  }, [setOnlineUserIds]);
+
+  const updatePresence = useCallback(async () => {
+    const channel = channelRef.current;
+    const userId = currentUserIdRef.current;
+
+    if (!channel || !userId) return;
+
+    try {
+      if (isAppActive()) {
+        await channel.track({
+          user_id: userId,
+          pathname: latestPathnameRef.current,
+          online_at: new Date().toISOString(),
+        });
+      } else {
+        await channel.untrack();
+      }
+    } catch {
+      // ignore transient realtime failures
+    }
+  }, [isAppActive]);
+
+  useEffect(() => {
+    let cancelled = false;
+    let heartbeatId: number | null = null;
+
+    const setupPresence = async () => {
+      const supabase = createClient();
+      supabaseRef.current = supabase;
+
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (cancelled || !user) return;
+
+      currentUserIdRef.current = user.id;
+
+      const channel = supabase.channel("life-app-presence", {
+        config: {
+          presence: {
+            key: user.id,
+          },
+        },
+      });
+
+      channel
+        .on("presence", { event: "sync" }, syncPresenceState)
+        .on("presence", { event: "join" }, syncPresenceState)
+        .on("presence", { event: "leave" }, syncPresenceState)
+        .subscribe(async (status) => {
+          if (status === "SUBSCRIBED") {
+            await updatePresence();
+          }
+        });
+
+      channelRef.current = channel;
+
+      const handleActivityChange = () => {
+        void updatePresence();
+      };
+
+      document.addEventListener("visibilitychange", handleActivityChange);
+      window.addEventListener("focus", handleActivityChange);
+      window.addEventListener("blur", handleActivityChange);
+      window.addEventListener("pagehide", handleActivityChange);
+
+      heartbeatId = window.setInterval(() => {
+        if (isAppActive()) {
+          void updatePresence();
+        }
+      }, 25000);
+
+      return () => {
+        document.removeEventListener("visibilitychange", handleActivityChange);
+        window.removeEventListener("focus", handleActivityChange);
+        window.removeEventListener("blur", handleActivityChange);
+        window.removeEventListener("pagehide", handleActivityChange);
+      };
+    };
+
+    let removeListeners: (() => void) | undefined;
+
+    void setupPresence().then((cleanup) => {
+      removeListeners = cleanup;
+    });
+
+    return () => {
+      cancelled = true;
+      removeListeners?.();
+      if (heartbeatId) {
+        window.clearInterval(heartbeatId);
+      }
+
+      const channel = channelRef.current;
+      const supabase = supabaseRef.current;
+      clearOnlineUserIds();
+
+      if (channel) {
+        void channel.untrack().catch(() => {});
+        if (supabase) {
+          void supabase.removeChannel(channel);
+        }
+      }
+    };
+  }, [clearOnlineUserIds, isAppActive, syncPresenceState, updatePresence]);
+
+  useEffect(() => {
+    void updatePresence();
+  }, [pathname, updatePresence]);
+
+  return null;
+}
+
 export function DashboardShell({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
+  const isMessagesRoute = pathname.startsWith("/dashboard/messages");
+
   return (
     <div className="premium-shell-bg premium-grid relative flex h-dvh overflow-hidden">
       <div className="fixed inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.18),transparent_20%)] dark:bg-[linear-gradient(180deg,rgba(255,255,255,0.03),transparent_18%)]" />
@@ -72,7 +218,12 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
       <div className="relative z-10 flex h-full min-h-0 flex-1">
         <Sidebar />
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden lg:pl-3 lg:pr-4 lg:py-4">
-          <main className="flex-1 overflow-y-auto overflow-x-hidden no-scrollbar px-4 py-4 pb-[120px] lg:rounded-[2rem] lg:border lg:border-white/25 lg:bg-white/14 lg:px-8 lg:py-8 lg:pb-8 lg:shadow-[0_24px_70px_rgba(15,23,42,0.08)] lg:backdrop-blur-[6px] dark:lg:border-white/10 dark:lg:bg-white/[0.02]">
+          <main className={cn(
+            "flex-1 overflow-y-auto overflow-x-hidden no-scrollbar lg:rounded-[2rem] lg:border lg:border-white/25 lg:bg-white/14 lg:shadow-[0_24px_70px_rgba(15,23,42,0.08)] lg:backdrop-blur-[6px] dark:lg:border-white/10 dark:lg:bg-white/[0.02]",
+            isMessagesRoute
+              ? "overflow-hidden px-0 py-0 pb-[96px] lg:pb-0"
+              : "px-4 py-4 pb-[120px] lg:px-8 lg:py-8 lg:pb-8"
+          )}>
             <PageTransition>{children}</PageTransition>
           </main>
         </div>
@@ -80,6 +231,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
         <MobileBottomNav />
         <PushNotificationManager />
         <UnreadBadgeSync />
+        <PresenceSync />
       </div>
     </div>
   );
