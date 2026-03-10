@@ -23,7 +23,7 @@ export async function GET() {
     // 1. Récupérer les participations du user courant (exclure les supprimées)
     const { data: participations, error: pErr } = await supabase
       .from("conversation_participants")
-      .select("conversation_id, unread_count")
+      .select("conversation_id, unread_count, is_favorite, favorite_position")
       .eq("user_id", user.id)
       .is("deleted_at", null);
 
@@ -91,9 +91,17 @@ export async function GET() {
           },
           last_message: lastMessage ?? null,
           unread_count: p.unread_count,
+          is_favorite: p.is_favorite ?? false,
+          favorite_position: p.favorite_position ?? null,
         };
       })
       .sort((a, b) => {
+        // Favoris en premier (par position), puis par dernière activité
+        if (a.is_favorite && !b.is_favorite) return -1;
+        if (!a.is_favorite && b.is_favorite) return 1;
+        if (a.is_favorite && b.is_favorite) {
+          return (a.favorite_position ?? 0) - (b.favorite_position ?? 0);
+        }
         const dateA = a.last_message?.created_at ?? "";
         const dateB = b.last_message?.created_at ?? "";
         return dateB.localeCompare(dateA);
@@ -201,6 +209,56 @@ export async function DELETE(request: Request) {
     return NextResponse.json({ success: true });
   } catch (err) {
     console.error("[DELETE /api/conversations]", err);
+    return NextResponse.json({ error: "Erreur serveur" }, { status: 500 });
+  }
+}
+
+/* ═══════════════════════════════════════════════════════
+   PATCH /api/conversations
+   Body: { conversation_id, is_favorite }
+   Toggle le favori pour l'utilisateur courant.
+   ═══════════════════════════════════════════════════════ */
+export async function PATCH(request: Request) {
+  try {
+    const user = await getAuthUser();
+    if (!user) return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+
+    const body = await request.json();
+    const { conversation_id, is_favorite } = body;
+    if (!conversation_id || typeof is_favorite !== "boolean") {
+      return NextResponse.json({ error: "conversation_id et is_favorite requis" }, { status: 400 });
+    }
+
+    const supabase = createAdminClient();
+
+    // Si on ajoute en favori, calculer la prochaine position
+    let favorite_position: number | null = null;
+    if (is_favorite) {
+      const { data: maxPos } = await supabase
+        .from("conversation_participants")
+        .select("favorite_position")
+        .eq("user_id", user.id)
+        .eq("is_favorite", true)
+        .order("favorite_position", { ascending: false, nullsFirst: false })
+        .limit(1)
+        .maybeSingle();
+      favorite_position = (maxPos?.favorite_position ?? 0) + 1;
+    }
+
+    const { error } = await supabase
+      .from("conversation_participants")
+      .update({
+        is_favorite,
+        favorite_position: is_favorite ? favorite_position : null,
+      })
+      .eq("conversation_id", conversation_id)
+      .eq("user_id", user.id);
+
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+    return NextResponse.json({ success: true, is_favorite, favorite_position });
+  } catch (err) {
+    console.error("[PATCH /api/conversations]", err);
     return NextResponse.json({ error: "Erreur serveur" }, { status: 500 });
   }
 }
