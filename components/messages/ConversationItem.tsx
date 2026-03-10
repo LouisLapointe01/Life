@@ -37,15 +37,52 @@ export function ConversationItem({ conv, isActive, onOpen, onDelete, onToggleFav
         <div className="absolute left-0 top-4 bottom-4 w-[3px] rounded-r-full bg-primary" />
       )}
 
-      <div className="grid min-w-0 grid-cols-[auto,minmax(0,1fr),auto] items-center gap-2.5">
+      {onToggleFavorite && (
+        <button
+          onClick={(event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            onToggleFavorite();
+          }}
+          className={cn(
+            "absolute bottom-2 right-2 z-10 flex h-6 w-6 items-center justify-center rounded-full border shadow-sm transition-all",
+            conv.is_favorite
+              ? "border-white/80 bg-yellow-400 text-yellow-950 dark:border-zinc-900"
+              : "border-white/55 bg-white/75 text-muted-foreground hover:text-yellow-500 dark:border-white/10 dark:bg-white/[0.06]"
+          )}
+          aria-label={conv.is_favorite ? "Retirer des favoris" : "Ajouter aux favoris"}
+        >
+          <Star className={cn("h-3 w-3", conv.is_favorite && "fill-current")} />
+        </button>
+      )}
+
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <button
+            className="absolute right-2 top-1.5 z-10 flex h-6.5 w-6.5 items-center justify-center rounded-full text-muted-foreground/55 transition-all hover:bg-foreground/[0.06] hover:text-foreground"
+            aria-label="Ouvrir les actions de la conversation"
+          >
+            <MoreVertical className="h-3.5 w-3.5" />
+          </button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-40">
+          {onToggleFavorite && (
+            <DropdownMenuItem onClick={onToggleFavorite}>
+              <Star className={cn("mr-2 h-3.5 w-3.5", conv.is_favorite && "fill-yellow-400 text-yellow-400")} />
+              {conv.is_favorite ? "Retirer favori" : "Favori"}
+            </DropdownMenuItem>
+          )}
+          <DropdownMenuItem variant="destructive" onClick={onDelete}>
+            <Trash2 className="mr-2 h-3.5 w-3.5" />
+            Supprimer
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      <div className="grid min-w-0 grid-cols-[auto,minmax(0,1fr)] items-center gap-2.5 pr-8">
         <button onClick={onOpen} className="contents text-left">
-          <div className="relative">
+          <div>
             <Avatar url={conv.other_user.avatar_url} name={conv.other_user.full_name} size={38} />
-            {conv.is_favorite && (
-              <span className="absolute -bottom-1 -right-1 flex h-4.5 w-4.5 items-center justify-center rounded-full border border-white/90 bg-yellow-400 shadow-sm dark:border-zinc-900">
-                <Star className="h-2.5 w-2.5 fill-yellow-950 text-yellow-950" />
-              </span>
-            )}
           </div>
 
           <div className="min-w-0 overflow-hidden">
@@ -80,30 +117,6 @@ export function ConversationItem({ conv, isActive, onOpen, onDelete, onToggleFav
             </div>
           </div>
         </button>
-
-        <div className="flex items-center justify-end self-stretch">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button
-                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-muted-foreground/55 transition-all hover:bg-foreground/[0.06] hover:text-foreground"
-              >
-                <MoreVertical className="h-3.5 w-3.5" />
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-40">
-              {onToggleFavorite && (
-                <DropdownMenuItem onClick={onToggleFavorite}>
-                  <Star className={cn("mr-2 h-3.5 w-3.5", conv.is_favorite && "fill-yellow-400 text-yellow-400")} />
-                  {conv.is_favorite ? "Retirer favori" : "Favori"}
-                </DropdownMenuItem>
-              )}
-              <DropdownMenuItem variant="destructive" onClick={onDelete}>
-                <Trash2 className="mr-2 h-3.5 w-3.5" />
-                Supprimer
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
       </div>
     </div>
   );
