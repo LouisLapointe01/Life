@@ -80,28 +80,45 @@ export function ConversationList({
     return userResults.filter((u) => !existingUserIds.has(u.id));
   }, [userResults, conversations]);
 
+  const favoritesCount = useMemo(
+    () => conversations.filter((conversation) => conversation.is_favorite).length,
+    [conversations]
+  );
+
   return (
     <div
       className={cn(
-        "relative flex flex-col w-full lg:w-[300px] xl:w-[340px] shrink-0",
-        "border-r border-foreground/[0.06]",
+        "relative flex w-full shrink-0 flex-col border-r border-foreground/[0.08] bg-white/18 backdrop-blur-xl lg:w-[320px] xl:w-[360px] dark:bg-black/12",
         mobileView === "chat" && "hidden lg:flex"
       )}
     >
-      {/* Barre de recherche */}
-      <div className="px-3 sm:px-4 pt-5 sm:pt-3 pb-2.5 sm:pb-3 border-b border-foreground/[0.06]">
-        <div className="relative w-3/4 sm:w-full">
-          <Search className="absolute left-2.5 sm:left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+      <div className="border-b border-foreground/[0.08] px-4 pb-2.5 pt-4 lg:px-5 lg:pt-6">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="text-[21px] font-semibold tracking-[-0.03em] text-foreground">Messages</p>
+            <p className="mt-0.5 text-[12px] text-muted-foreground">
+              {conversations.length} conversation{conversations.length > 1 ? "s" : ""}
+              {favoritesCount > 0 ? ` • ${favoritesCount} favori${favoritesCount > 1 ? "s" : ""}` : ""}
+            </p>
+          </div>
+          <div className="flex items-center gap-2 rounded-full border border-white/45 bg-white/55 px-2.5 py-1.5 shadow-[0_8px_24px_rgba(15,23,42,0.06)] dark:border-white/10 dark:bg-white/[0.05]">
+            <div className="h-2 w-2 rounded-full bg-primary/80" />
+            <span className="text-[10px] font-medium text-muted-foreground">Actif</span>
+          </div>
+        </div>
+
+        <div className="relative mt-3.5">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <input
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Rechercher…"
-            className="w-full rounded-xl border border-foreground/[0.08] bg-foreground/[0.03] pl-8 sm:pl-9 pr-8 py-2 text-[13px] outline-none focus:border-primary/50 transition-colors"
+            className="w-full rounded-[1.15rem] border border-white/50 bg-white/60 py-2.5 pl-10 pr-9 text-[14px] outline-none transition-colors placeholder:text-muted-foreground/80 focus:border-primary/40 dark:border-white/10 dark:bg-white/[0.05]"
           />
           {searchQuery && (
             <button
               onClick={() => { setSearchQuery(""); setUserResults([]); }}
-              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
             >
               <X className="h-3.5 w-3.5" />
             </button>
@@ -109,8 +126,7 @@ export function ConversationList({
         </div>
       </div>
 
-      {/* Liste */}
-      <div className="relative flex-1 overflow-y-auto">
+      <div className="relative flex-1 overflow-y-auto px-2 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] pt-1.5 lg:px-3 lg:pb-3">
         {showMobileMask && (
           <div
             className={cn(
@@ -137,11 +153,10 @@ export function ConversationList({
           </div>
         ) : (
           <>
-            {/* Section : Conversations filtrées */}
             {filteredConversations.length > 0 ? (
               <>
                 {searchQuery.length >= 2 && (
-                  <p className="px-4 pt-3 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/50">
+                  <p className="px-3 pb-2 pt-3 text-[10px] font-semibold uppercase tracking-[0.22em] text-muted-foreground/55">
                     Conversations
                   </p>
                 )}
@@ -157,16 +172,17 @@ export function ConversationList({
                 ))}
               </>
             ) : searchQuery.length < 2 ? (
-              <div className="flex flex-col items-center justify-center h-full py-16 text-center px-6">
-                <MessageCircle className="h-10 w-10 text-muted-foreground/20 mb-3" />
-                <p className="text-[13px] font-medium text-muted-foreground">Aucune conversation</p>
-                <p className="text-[12px] text-muted-foreground/60 mt-1">
+              <div className="flex h-full flex-col items-center justify-center px-6 py-16 text-center">
+                <div className="mb-4 rounded-3xl border border-white/45 bg-white/55 p-4 shadow-[0_14px_34px_rgba(15,23,42,0.08)] dark:border-white/10 dark:bg-white/[0.05]">
+                  <MessageCircle className="h-9 w-9 text-primary/70" />
+                </div>
+                <p className="text-[14px] font-semibold text-foreground">Aucune conversation</p>
+                <p className="mt-1 text-[12px] text-muted-foreground/70">
                   Recherchez un utilisateur pour démarrer
                 </p>
               </div>
             ) : null}
 
-            {/* Section : Démarrer une conversation (nouveaux users) */}
             {searchQuery.length >= 2 && (
               <>
                 {searchLoading && (
@@ -176,26 +192,26 @@ export function ConversationList({
                 )}
                 {!searchLoading && newUsers.length > 0 && (
                   <>
-                    <p className="px-4 pt-3 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/50">
+                    <p className="px-3 pb-2 pt-4 text-[10px] font-semibold uppercase tracking-[0.22em] text-muted-foreground/55">
                       Démarrer une conversation
                     </p>
-                    <div className="px-2 pb-2 space-y-0.5">
+                    <div className="space-y-1 px-1 pb-2">
                       {newUsers.map((u) => (
                         <button
                           key={u.id}
                           onClick={() => onStartConversation(u.id)}
                           disabled={startingConv === u.id}
-                          className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left hover:bg-foreground/[0.06] transition-colors disabled:opacity-50"
+                          className="flex w-full items-center gap-3 rounded-2xl border border-white/45 bg-white/52 px-3 py-3 text-left transition-colors hover:bg-white/72 disabled:opacity-50 dark:border-white/10 dark:bg-white/[0.04] dark:hover:bg-white/[0.08]"
                         >
                           <Avatar url={u.avatar_url} name={u.full_name} size={32} />
                           <div className="flex-1 min-w-0">
-                            <p className="text-[13px] font-medium truncate">{u.full_name}</p>
-                            {u.email && <p className="text-[11px] text-muted-foreground truncate">{u.email}</p>}
+                            <p className="truncate text-[13px] font-medium">{u.full_name}</p>
+                            {u.email && <p className="truncate text-[11px] text-muted-foreground">{u.email}</p>}
                           </div>
                           {startingConv === u.id ? (
                             <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />
                           ) : (
-                            <span className="shrink-0 rounded-lg bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">Nouveau</span>
+                            <span className="shrink-0 rounded-full bg-primary/10 px-2.5 py-1 text-[10px] font-medium text-primary">Nouveau</span>
                           )}
                         </button>
                       ))}

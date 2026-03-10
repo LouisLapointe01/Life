@@ -8,6 +8,8 @@ interface MessageBubbleProps {
   msg: Message;
   isMe: boolean;
   isNew: boolean;
+  groupedWithPrevious?: boolean;
+  groupedWithNext?: boolean;
   otherUser: { full_name: string; avatar_url: string | null };
   onSaveFile?: (msg: Message) => void;
 }
@@ -61,45 +63,56 @@ function getDeliveryMeta(status?: "sending" | "sent" | "delivered" | "failed") {
   }
 }
 
-export function MessageBubble({ msg, isMe, isNew, otherUser, onSaveFile }: MessageBubbleProps) {
+export function MessageBubble({
+  msg,
+  isMe,
+  isNew,
+  groupedWithPrevious = false,
+  groupedWithNext = false,
+  otherUser,
+  onSaveFile,
+}: MessageBubbleProps) {
   const isGif = isGiphyUrl(msg.content) || isImageUrl(msg.content);
   const hasFile = msg.file_url && msg.file_name;
   const deliveryMeta = isMe ? getDeliveryMeta(msg.delivery_status) : null;
+  const showAvatar = !isMe && !groupedWithNext;
+  const showMeta = !groupedWithNext || deliveryMeta?.label === "Echec";
 
   return (
     <div
       className={cn(
         "flex gap-2",
         isMe ? "flex-row-reverse" : "flex-row",
+        groupedWithPrevious ? "mt-1" : "mt-3",
         isNew && "animate-in slide-in-from-bottom-2 duration-200 ease-out"
       )}
     >
-      {!isMe && (
+      {!isMe && showAvatar ? (
         <Avatar
           url={msg.sender?.avatar_url ?? otherUser.avatar_url}
           name={msg.sender?.full_name ?? otherUser.full_name}
           size={28}
         />
-      )}
-      <div className={cn("flex flex-col min-w-0", isMe ? "items-end max-w-[75%]" : "items-start max-w-[75%]")}>
-        {/* GIF / Image message */}
+      ) : !isMe ? (
+        <div className="w-7 shrink-0" />
+      ) : null}
+      <div className={cn("flex min-w-0 flex-col", isMe ? "items-end max-w-[78%] sm:max-w-[70%]" : "items-start max-w-[82%] sm:max-w-[72%]")}>
         {isGif ? (
-          <div className="rounded-2xl overflow-hidden max-w-[280px]">
+          <div className="max-w-[280px] overflow-hidden rounded-[1.4rem] border border-white/30 shadow-[0_10px_28px_rgba(15,23,42,0.08)] dark:border-white/10">
             <img
               src={msg.content.trim()}
               alt="GIF"
-              className="w-full rounded-2xl"
+              className="w-full rounded-[1.4rem]"
               loading="lazy"
             />
           </div>
         ) : hasFile ? (
-          /* File attachment */
           <div
             className={cn(
-              "px-3.5 py-2.5 rounded-2xl flex items-center gap-3 min-w-[200px]",
+              "flex min-w-[200px] items-center gap-3 rounded-[1.35rem] px-3.5 py-3 shadow-[0_10px_28px_rgba(15,23,42,0.06)]",
               isMe
-                ? "bg-primary text-primary-foreground rounded-br-sm"
-                : "bg-foreground/[0.06] rounded-bl-sm"
+                ? "rounded-br-md bg-primary text-primary-foreground"
+                : "rounded-bl-md border border-white/40 bg-white/62 text-foreground dark:border-white/10 dark:bg-white/[0.05]"
             )}
           >
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-background/20">
@@ -127,42 +140,43 @@ export function MessageBubble({ msg, isMe, isNew, otherUser, onSaveFile }: Messa
             </a>
           </div>
         ) : (
-          /* Text message */
           <div
             className={cn(
-              "px-3.5 py-2 text-[13px] leading-relaxed whitespace-pre-wrap break-all overflow-hidden",
+              "overflow-hidden whitespace-pre-wrap break-words px-3.5 py-2.5 text-[14px] leading-[1.45] shadow-[0_10px_28px_rgba(15,23,42,0.05)]",
               isMe
-                ? "bg-primary text-primary-foreground rounded-2xl rounded-br-sm"
-                : "bg-foreground/[0.06] rounded-2xl rounded-bl-sm"
+                ? "rounded-[1.35rem] rounded-br-md bg-primary text-primary-foreground"
+                : "rounded-[1.35rem] rounded-bl-md border border-white/40 bg-white/62 text-foreground dark:border-white/10 dark:bg-white/[0.05]"
             )}
           >
             {msg.content}
           </div>
         )}
-        <div className="flex items-center gap-1.5 mt-1">
-          <span className="text-[10px] text-muted-foreground">
-            {timeAgo(msg.created_at)}
-          </span>
-          {deliveryMeta && (
-            <span
-              className={cn(
-                "inline-flex items-center gap-1 text-[10px] transition-[opacity,transform,color] duration-300 ease-out",
-                deliveryMeta.className
-              )}
-            >
-              <deliveryMeta.icon className={cn("h-3 w-3", deliveryMeta.iconClassName)} />
-              {deliveryMeta.label}
+        {showMeta && (
+          <div className={cn("mt-1 flex items-center gap-1.5 px-1", isMe ? "justify-end" : "justify-start")}>
+            <span className="text-[10px] text-muted-foreground">
+              {timeAgo(msg.created_at)}
             </span>
-          )}
-          {hasFile && !isMe && onSaveFile && (
-            <button
-              onClick={() => onSaveFile(msg)}
-              className="text-[10px] text-primary hover:underline"
-            >
-              Sauvegarder
-            </button>
-          )}
-        </div>
+            {deliveryMeta && (
+              <span
+                className={cn(
+                  "inline-flex items-center gap-1 text-[10px] transition-[opacity,transform,color] duration-300 ease-out",
+                  deliveryMeta.className
+                )}
+              >
+                <deliveryMeta.icon className={cn("h-3 w-3", deliveryMeta.iconClassName)} />
+                {deliveryMeta.label}
+              </span>
+            )}
+            {hasFile && !isMe && onSaveFile && (
+              <button
+                onClick={() => onSaveFile(msg)}
+                className="text-[10px] text-primary hover:underline"
+              >
+                Sauvegarder
+              </button>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
