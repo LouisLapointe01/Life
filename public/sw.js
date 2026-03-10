@@ -91,7 +91,7 @@ self.addEventListener("push", (event) => {
         body: body || "",
         icon: "/icons/icon-192.png",
         badge: "/icons/icon-96.png",
-        tag: conversationId ? `conv-${conversationId}` : "life-notif",
+        tag: `msg-${Date.now()}`,
         renotify: true,
         data: { url: targetUrl, conversationId: conversationId || null },
         actions: conversationId

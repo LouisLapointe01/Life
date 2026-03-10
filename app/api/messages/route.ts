@@ -29,7 +29,7 @@ export async function GET(request: Request) {
     // Vérifier participation ET récupérer les messages en parallèle
     let msgQuery = supabase
       .from("messages")
-      .select("id, conversation_id, sender_id, content, created_at")
+      .select("id, conversation_id, sender_id, content, created_at, file_url, file_name, file_type, file_size")
       .eq("conversation_id", conversation_id)
       .order("created_at", { ascending: false })
       .limit(limit);
@@ -94,7 +94,7 @@ export async function POST(request: Request) {
     if (!user) return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
 
     const body = await request.json();
-    const { conversation_id, content } = body;
+    const { conversation_id, content, file_url, file_name, file_type, file_size } = body;
 
     if (!conversation_id || !content?.trim()) {
       return NextResponse.json({ error: "conversation_id et content requis" }, { status: 400 });
@@ -113,10 +113,20 @@ export async function POST(request: Request) {
     if (!participation) return NextResponse.json({ error: "Accès refusé" }, { status: 403 });
 
     // Insérer le message
+    const insertData: Record<string, unknown> = {
+      conversation_id,
+      sender_id: user.id,
+      content: content.trim(),
+    };
+    if (file_url) insertData.file_url = file_url;
+    if (file_name) insertData.file_name = file_name;
+    if (file_type) insertData.file_type = file_type;
+    if (file_size) insertData.file_size = file_size;
+
     const { data: message, error: msgErr } = await supabase
       .from("messages")
-      .insert({ conversation_id, sender_id: user.id, content: content.trim() })
-      .select("id, conversation_id, sender_id, content, created_at")
+      .insert(insertData)
+      .select("id, conversation_id, sender_id, content, created_at, file_url, file_name, file_type, file_size")
       .single();
 
     if (msgErr || !message) return NextResponse.json({ error: msgErr?.message ?? "Erreur" }, { status: 500 });
@@ -164,8 +174,8 @@ export async function POST(request: Request) {
       await Promise.allSettled(
         others.map((o) =>
           sendPushToUser(o.user_id, {
-            title: senderName,
-            body: notifBody,
+            title: "Life",
+            body: `${senderName} : ${notifBody}`,
             conversationId: conversation_id,
           })
         )
