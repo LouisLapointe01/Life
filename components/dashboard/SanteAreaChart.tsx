@@ -26,7 +26,7 @@ interface TooltipPayloadItem { value: number; name: string }
 function TooltipPerso({ active, payload, label }: { active?: boolean; payload?: TooltipPayloadItem[]; label?: string }) {
   if (!active || !payload?.length) return null;
   return (
-    <div className="glass-card px-3 py-2 text-[12px]">
+    <div className="premium-panel-soft px-3 py-2 text-[12px]">
       <p className="font-semibold mb-1">{label}</p>
       {payload.map((p) => (
         <p key={p.name} className="text-muted-foreground">
@@ -45,7 +45,7 @@ export default function SanteAreaChart({
   onToggle: (v: GraphiqueMetrique) => void;
 }) {
   return (
-    <div className="glass-card p-6">
+    <div className="premium-panel p-6">
       <div className="flex items-center justify-between mb-5">
         <div>
           <h3 className="text-[15px] font-semibold">Tendance hebdomadaire</h3>

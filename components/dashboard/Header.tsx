@@ -270,12 +270,12 @@ export function Header() {
 
   return (
     <>
-    <div className={cn("fixed top-4 right-4 flex items-center gap-1 rounded-2xl bg-white/15 dark:bg-white/[0.04] backdrop-blur-xl border border-white/10 dark:border-white/[0.06] px-1.5 py-1 shadow-sm", showNotifs ? "z-[90]" : "z-30")}>
+    <div className={cn("premium-panel fixed right-4 top-4 flex items-center gap-1 rounded-[1.4rem] px-1.5 py-1.5", showNotifs ? "z-[90]" : "z-30")}>
       {/* Notifications Bell */}
       <div className="relative" ref={notifRef}>
         <button
           onClick={() => setShowNotifs(!showNotifs)}
-          className="relative flex h-8 w-8 items-center justify-center rounded-xl text-muted-foreground/70 transition-all duration-200 hover:bg-foreground/[0.06] hover:text-foreground"
+          className="relative flex h-9 w-9 items-center justify-center rounded-xl text-muted-foreground/70 transition-all duration-200 hover:bg-foreground/[0.06] hover:text-foreground"
         >
           <Bell className="h-4 w-4" />
           {unreadCount > 0 && (
@@ -287,16 +287,16 @@ export function Header() {
       </div>
 
       {/* Separator */}
-      <div className="h-4 w-px bg-border/50" />
+      <div className="h-5 w-px bg-border/60" />
 
       {/* Profile */}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <button className="flex items-center rounded-xl p-0.5 transition-all duration-200 hover:bg-foreground/[0.06]">
             {avatarUrl ? (
-              <img src={avatarUrl} alt={fullName} className="h-7 w-7 rounded-full ring-1 ring-white/10" referrerPolicy="no-referrer" />
+              <img src={avatarUrl} alt={fullName} className="h-8 w-8 rounded-full ring-1 ring-white/25" referrerPolicy="no-referrer" />
             ) : (
-              <div className="flex h-7 w-7 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-blue-600 text-xs font-semibold text-white">
+              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-cyan-500 text-xs font-semibold text-white shadow-sm">
                 {fullName.charAt(0).toUpperCase()}
               </div>
             )}

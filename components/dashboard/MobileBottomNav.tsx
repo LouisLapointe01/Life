@@ -15,7 +15,7 @@ export function MobileBottomNav() {
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 lg:hidden">
       <div
-        className="flex items-stretch gap-1 bg-white/50 px-2 pt-2 dark:bg-white/[0.06] backdrop-blur-2xl border-t border-white/30 dark:border-white/10"
+        className="mx-2 mb-2 flex items-stretch gap-1 rounded-[1.8rem] border border-white/40 bg-white/58 px-2 pt-2 shadow-[0_14px_40px_rgba(15,23,42,0.10)] backdrop-blur-2xl dark:border-white/10 dark:bg-white/[0.06]"
         style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
       >
         {mobileTabs.map((item) => {
@@ -35,7 +35,7 @@ export function MobileBottomNav() {
               {isActive && (
                 <motion.div
                   layoutId="mobile-bottom-nav-active"
-                  className="absolute inset-0 rounded-2xl bg-white/70 shadow-[0_8px_24px_rgba(15,23,42,0.08)] dark:bg-white/[0.08]"
+                  className="absolute inset-0 rounded-2xl bg-white/82 shadow-[0_10px_28px_rgba(15,23,42,0.10)] dark:bg-white/[0.08]"
                   transition={{ type: "spring", stiffness: 420, damping: 34, mass: 0.8 }}
                 />
               )}

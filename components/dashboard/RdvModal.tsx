@@ -247,7 +247,7 @@ export function RdvModal() {
                     <button
                       key={type.id}
                       onClick={() => { setSelectedType(type); setStep("date"); }}
-                      className="group glass-card flex items-center gap-4 p-4 text-left transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5"
+                      className="group premium-panel-soft flex items-center gap-4 p-4 text-left transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5"
                     >
                       <div
                         className="flex h-11 w-11 items-center justify-center rounded-2xl"
@@ -277,7 +277,7 @@ export function RdvModal() {
                   <span className="text-[12px] text-muted-foreground">· {selectedType.duration_min} min</span>
                 </div>
               )}
-              <div className="glass-card overflow-hidden">
+              <div className="premium-panel overflow-hidden">
                 <div className="p-5">
                   <p className="mb-4 text-center text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
                     Choisissez une date
@@ -322,7 +322,7 @@ export function RdvModal() {
                   </div>
                 )}
               </div>
-              <div className="glass-card overflow-hidden">
+              <div className="premium-panel overflow-hidden">
                 <div className="p-5">
                   <p className="mb-4 text-center text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
                     Créneaux disponibles
@@ -420,7 +420,7 @@ export function RdvModal() {
 
               {/* Contact picker (admin only) */}
               {isAdmin && contacts.length > 0 && (
-                <div className="glass-card overflow-hidden">
+                <div className="premium-panel overflow-hidden">
                   <div className="p-4">
                     <div className="flex items-center justify-between mb-3">
                       <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
@@ -502,7 +502,7 @@ export function RdvModal() {
                 </div>
               )}
 
-              <div className="glass-card overflow-hidden">
+              <div className="premium-panel overflow-hidden">
                 <div className="p-5">
                   <p className="mb-4 text-center text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
                     Vos informations

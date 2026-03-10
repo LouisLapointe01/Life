@@ -56,9 +56,15 @@ export default function LoginPage() {
       <div className="glass-orb glass-orb-green fixed w-[300px] h-[300px] bottom-10 right-10" style={{ animationDelay: "3s" }} />
       <div className="glass-orb glass-orb-blue fixed w-[250px] h-[250px] top-1/2 left-1/2" style={{ animationDelay: "5s" }} />
 
-      <div className="relative z-10 w-full max-w-sm">
-        {/* Card glassmorphism */}
-        <div className="glass-surface p-8">
+      <div className="relative z-10 w-full max-w-md">
+        <div className="mb-4 rounded-[1.7rem] border border-white/14 bg-white/10 p-4 text-white/80 shadow-[0_24px_70px_-40px_rgba(0,0,0,0.65)] backdrop-blur-2xl">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-white/55">Connexion</p>
+          <p className="mt-2 text-sm leading-6 text-white/72">
+            Accédez à votre espace personnel avec une interface plus calme, plus nette et cohérente avec le dashboard.
+          </p>
+        </div>
+
+        <div className="rounded-[2rem] border border-white/14 bg-white/12 p-8 shadow-[0_34px_90px_-48px_rgba(0,0,0,0.7)] backdrop-blur-2xl">
           {/* Logo */}
           <div className="mb-8 flex flex-col items-center gap-3">
             <div className="flex h-16 w-16 items-center justify-center rounded-[22px] bg-gradient-to-br from-white/30 to-white/10 backdrop-blur-xl shadow-xl border border-white/30">
@@ -73,11 +79,11 @@ export default function LoginPage() {
           </div>
 
           {/* Tab switcher */}
-          <div className="mb-6 flex gap-1 rounded-2xl bg-white/10 p-1 backdrop-blur-sm">
+          <div className="mb-6 flex gap-1 rounded-2xl border border-white/10 bg-white/8 p-1 backdrop-blur-xl">
             <button
               onClick={() => setTab("email")}
               className={`flex-1 rounded-xl py-2 text-[13px] font-medium transition-all duration-200 ${tab === "email"
-                  ? "bg-white/20 shadow-sm text-white backdrop-blur-sm"
+                  ? "bg-white/16 shadow-sm text-white backdrop-blur-xl"
                   : "text-white/60 hover:text-white"
                 }`}
             >
@@ -86,7 +92,7 @@ export default function LoginPage() {
             <button
               onClick={() => setTab("google")}
               className={`flex-1 rounded-xl py-2 text-[13px] font-medium transition-all duration-200 ${tab === "google"
-                  ? "bg-white/20 shadow-sm text-white backdrop-blur-sm"
+                  ? "bg-white/16 shadow-sm text-white backdrop-blur-xl"
                   : "text-white/60 hover:text-white"
                 }`}
             >
@@ -110,7 +116,7 @@ export default function LoginPage() {
                     setForm((f) => ({ ...f, email: e.target.value }))
                   }
                   placeholder="vous@exemple.com"
-                  className="w-full rounded-xl bg-white/15 backdrop-blur-sm border border-white/20 px-4 py-3 text-[14px] text-white placeholder:text-white/40 outline-none transition-all focus:border-white/40 focus:bg-white/20 focus:ring-2 focus:ring-white/20"
+                  className="w-full rounded-xl border border-white/18 bg-white/12 px-4 py-3 text-[14px] text-white placeholder:text-white/40 outline-none transition-all focus:border-white/34 focus:bg-white/16 focus:ring-2 focus:ring-white/16"
                 />
               </div>
               <div className="space-y-1.5">
@@ -127,7 +133,7 @@ export default function LoginPage() {
                       setForm((f) => ({ ...f, password: e.target.value }))
                     }
                     placeholder="••••••••"
-                    className="w-full rounded-xl bg-white/15 backdrop-blur-sm border border-white/20 px-4 py-3 pr-11 text-[14px] text-white placeholder:text-white/40 outline-none transition-all focus:border-white/40 focus:bg-white/20 focus:ring-2 focus:ring-white/20"
+                    className="w-full rounded-xl border border-white/18 bg-white/12 px-4 py-3 pr-11 text-[14px] text-white placeholder:text-white/40 outline-none transition-all focus:border-white/34 focus:bg-white/16 focus:ring-2 focus:ring-white/16"
                   />
                   <button
                     type="button"
@@ -144,7 +150,7 @@ export default function LoginPage() {
               </div>
 
               {error && (
-                <div className="rounded-2xl bg-red-500/20 backdrop-blur-sm border border-red-400/30 px-4 py-3 text-[13px] text-red-100 font-medium">
+                <div className="rounded-2xl border border-red-300/24 bg-red-500/18 px-4 py-3 text-[13px] font-medium text-red-100 backdrop-blur-xl">
                   {error}
                 </div>
               )}
@@ -152,7 +158,7 @@ export default function LoginPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="flex w-full items-center justify-center gap-2 rounded-2xl bg-white/25 backdrop-blur-sm border border-white/30 py-3 text-[14px] font-semibold text-white shadow-lg transition-all hover:bg-white/35 hover:shadow-xl hover:-translate-y-0.5 disabled:opacity-50"
+                className="flex w-full items-center justify-center gap-2 rounded-2xl border border-white/24 bg-white/18 py-3 text-[14px] font-semibold text-white shadow-[0_18px_45px_-28px_rgba(0,0,0,0.55)] backdrop-blur-xl transition-all hover:-translate-y-0.5 hover:bg-white/28 disabled:opacity-50"
               >
                 {loading ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
@@ -167,7 +173,7 @@ export default function LoginPage() {
           {tab === "google" && (
             <button
               onClick={handleGoogleLogin}
-              className="flex w-full items-center justify-center gap-3 rounded-2xl bg-white/15 backdrop-blur-sm border border-white/20 py-3 text-[14px] font-medium text-white transition-all duration-200 hover:bg-white/25"
+              className="flex w-full items-center justify-center gap-3 rounded-2xl border border-white/20 bg-white/12 py-3 text-[14px] font-medium text-white backdrop-blur-xl transition-all duration-200 hover:bg-white/22"
             >
               <Chrome className="h-5 w-5" />
               Continuer avec Google

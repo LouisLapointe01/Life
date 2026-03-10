@@ -47,7 +47,7 @@ import {
 
 const GraphiqueSection = dynamic(() => import("@/components/dashboard/SanteAreaChart"), {
   ssr: false,
-  loading: () => <div className="glass-card p-6 h-[268px] animate-pulse" />,
+  loading: () => <div className="premium-panel p-6 h-[268px] animate-pulse" />,
 });
 
 /* ═══════════════════════════════════════════════════════
@@ -319,6 +319,33 @@ export default function SantePage() {
 
   return (
     <div className="mx-auto max-w-6xl space-y-6">
+      <section className="premium-panel overflow-hidden p-5 sm:p-7">
+        <div className="premium-grid absolute inset-0 opacity-40" />
+        <div className="relative flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+          <div className="space-y-2">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
+              Santé
+            </p>
+            <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
+              Un cockpit bien-être plus lisible au quotidien.
+            </h1>
+            <p className="max-w-2xl text-sm leading-6 text-muted-foreground">
+              Les métriques, objectifs et états de forme sont regroupés dans des blocs plus stables visuellement pour une lecture plus rapide.
+            </p>
+          </div>
+          <div className="grid grid-cols-2 gap-3 sm:min-w-[320px]">
+            <div className="rounded-[1.4rem] border border-white/10 bg-white/55 p-4 shadow-[0_18px_48px_-30px_rgba(15,23,42,0.45)] backdrop-blur-xl dark:bg-white/[0.04]">
+              <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">Modules</p>
+              <p className="mt-2 text-2xl font-semibold tracking-tight">{visibleSections.length}</p>
+            </div>
+            <div className="rounded-[1.4rem] border border-white/10 bg-white/55 p-4 shadow-[0_18px_48px_-30px_rgba(15,23,42,0.45)] backdrop-blur-xl dark:bg-white/[0.04]">
+              <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">Mode</p>
+              <p className="mt-2 text-sm font-medium text-foreground">{editMode ? "Édition" : "Consultation"}</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* ─── Dynamic sections ─── */}
       <div className="space-y-6">
         {visibleSections.map((section) => renderSection(section.id))}
@@ -326,7 +353,7 @@ export default function SantePage() {
 
       {/* ═══ Edit Métrique Dialog ═══ */}
       <Dialog open={editingMetrique !== null} onOpenChange={(open) => !open && setEditingMetrique(null)}>
-        <DialogContent className="glass-card border-white/10 sm:max-w-sm">
+        <DialogContent className="premium-panel border-white/10 sm:max-w-sm">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Pencil className="h-4 w-4 text-primary" />
@@ -424,7 +451,7 @@ export default function SantePage() {
 
       {/* ═══ Settings Dialog ═══ */}
       <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
-        <DialogContent className="glass-card border-white/10 sm:max-w-md">
+        <DialogContent className="premium-panel border-white/10 sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Settings2 className="h-4 w-4 text-primary" />
@@ -565,7 +592,7 @@ export default function SantePage() {
 
 function ScoreSection({ score, editMode }: { score: number; editMode: boolean }) {
   return (
-    <div className="glass-card p-6 flex flex-col items-center justify-center gap-4">
+    <div className="premium-panel p-6 flex flex-col items-center justify-center gap-4">
       <div className="text-center">
         <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
           Score bien-être global
@@ -614,7 +641,7 @@ function MetriquesSection({
         return (
           <div
             key={m.id}
-            className="glass-card p-4 group relative"
+            className="premium-panel-soft p-4 group relative"
           >
             {/* Edit overlay */}
             {editMode && (
@@ -666,7 +693,7 @@ function ObjectifsSection({
   const pct = objectifs.length > 0 ? Math.round((done / objectifs.length) * 100) : 0;
 
   return (
-    <div className="glass-card p-6">
+    <div className="premium-panel p-6">
       <div className="flex items-center justify-between mb-5">
         <div>
           <h3 className="text-[15px] font-semibold">Objectifs du jour</h3>
@@ -748,7 +775,7 @@ function HumeurSection({
   onSelect: (v: number) => void;
 }) {
   return (
-    <div className="glass-card p-6">
+    <div className="premium-panel p-6">
       <div className="mb-5">
         <h3 className="text-[15px] font-semibold">Humeur du jour</h3>
         <p className="text-[12px] text-muted-foreground mt-0.5">Comment vous sentez-vous ?</p>

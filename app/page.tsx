@@ -32,7 +32,7 @@ export default function LandingPage() {
       {/* ── Content ── */}
       <div className="relative z-10">
         {/* ─── Navbar ─── */}
-        <nav className="sticky top-0 z-50 backdrop-blur-xl bg-white/10 border-b border-white/15">
+        <nav className="sticky top-0 z-50 border-b border-white/10 bg-white/8 backdrop-blur-2xl">
           <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-5 sm:px-8">
             <div className="flex items-center gap-2.5">
               <LeafLogo size={36} className="shrink-0 rounded-xl shadow-lg" />
@@ -61,7 +61,7 @@ export default function LandingPage() {
               </Link>
               <Link
                 href="/register"
-                className="rounded-xl bg-white/20 backdrop-blur-sm border border-white/25 px-4 py-2 text-[13px] font-semibold text-white shadow-lg hover:bg-white/30 hover:-translate-y-0.5 transition-all"
+                className="rounded-xl border border-white/25 bg-white/18 px-4 py-2 text-[13px] font-semibold text-white shadow-[0_18px_45px_-28px_rgba(0,0,0,0.55)] backdrop-blur-xl transition-all hover:-translate-y-0.5 hover:bg-white/28"
               >
                 S&apos;inscrire
               </Link>
@@ -72,7 +72,7 @@ export default function LandingPage() {
         {/* ─── Hero ─── */}
         <section className="px-5 sm:px-8 pt-20 sm:pt-28 pb-20">
           <div className="mx-auto max-w-4xl text-center">
-            <div className="mx-auto mb-6 inline-flex items-center gap-2 rounded-full bg-white/15 backdrop-blur-sm border border-white/20 px-4 py-1.5">
+            <div className="mx-auto mb-6 inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/12 px-4 py-1.5 shadow-[0_14px_36px_-24px_rgba(0,0,0,0.55)] backdrop-blur-xl">
               <Zap className="h-3.5 w-3.5 text-yellow-300" />
               <span className="text-[12px] font-medium text-white/90">Votre tableau de bord personnel</span>
             </div>
@@ -108,7 +108,7 @@ export default function LandingPage() {
         {/* ─── Section Projet ─── */}
         <section id="projet" className="px-5 sm:px-8 py-20">
           <div className="mx-auto max-w-5xl">
-            <div className="glass-surface p-8 sm:p-12">
+            <div className="rounded-[2rem] border border-white/14 bg-white/12 p-8 shadow-[0_30px_80px_-45px_rgba(0,0,0,0.6)] backdrop-blur-2xl sm:p-12">
               <div className="flex flex-col lg:flex-row gap-8 lg:gap-12 items-center">
                 <div className="flex-1">
                   <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 mb-4">
@@ -135,7 +135,7 @@ export default function LandingPage() {
                     { icon: Globe, label: "Accessible", desc: "Web & mobile" },
                     { icon: Heart, label: "Bien-être", desc: "Suivi santé" },
                   ].map((item) => (
-                    <div key={item.label} className="flex flex-col items-center gap-2 rounded-2xl bg-white/10 backdrop-blur-sm border border-white/15 p-4 sm:p-5 text-center hover:bg-white/15 transition-all">
+                    <div key={item.label} className="flex flex-col items-center gap-2 rounded-[1.4rem] border border-white/12 bg-white/10 p-4 text-center backdrop-blur-xl transition-all hover:-translate-y-0.5 hover:bg-white/14 sm:p-5">
                       <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/15">
                         <item.icon className="h-5 w-5 text-white" />
                       </div>
@@ -207,7 +207,7 @@ export default function LandingPage() {
               ].map((feature) => (
                 <div
                   key={feature.title}
-                  className="group glass-surface p-6 hover:bg-white/25 transition-all"
+                  className="group rounded-[1.8rem] border border-white/12 bg-white/12 p-6 shadow-[0_24px_70px_-42px_rgba(0,0,0,0.55)] backdrop-blur-2xl transition-all hover:-translate-y-1 hover:bg-white/16"
                 >
                   <div
                     className={`flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br ${feature.gradient} shadow-lg ${feature.shadow}`}
@@ -225,7 +225,7 @@ export default function LandingPage() {
         {/* ─── Section RDV ─── */}
         <section id="rdv" className="px-5 sm:px-8 py-20">
           <div className="mx-auto max-w-3xl">
-            <div className="glass-surface p-8 sm:p-12 text-center">
+            <div className="rounded-[2rem] border border-white/14 bg-white/12 p-8 text-center shadow-[0_30px_80px_-45px_rgba(0,0,0,0.6)] backdrop-blur-2xl sm:p-12">
               <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-[22px] bg-gradient-to-br from-white/30 to-white/10 border border-white/30">
                 <CalendarDays className="h-8 w-8 text-white" />
               </div>
@@ -249,7 +249,7 @@ export default function LandingPage() {
         {/* ─── Section Contact ─── */}
         <section id="contact" className="px-5 sm:px-8 py-20 pb-32">
           <div className="mx-auto max-w-3xl">
-            <div className="glass-surface p-8 sm:p-12">
+            <div className="rounded-[2rem] border border-white/14 bg-white/12 p-8 shadow-[0_30px_80px_-45px_rgba(0,0,0,0.6)] backdrop-blur-2xl sm:p-12">
               <div className="flex flex-col lg:flex-row gap-8 lg:gap-12">
                 <div className="flex-1">
                   <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 mb-4">

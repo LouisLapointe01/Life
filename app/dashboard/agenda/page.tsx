@@ -490,7 +490,62 @@ export default function AgendaPage() {
 
   return (
     <div className="mx-auto max-w-7xl space-y-4 lg:space-y-6">
-      {/* Stats */}
+      <section className="grid gap-4 xl:grid-cols-[minmax(0,1.2fr)_360px]">
+        <div className="premium-panel relative overflow-hidden rounded-[2rem] px-5 py-5 lg:px-7 lg:py-6">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(59,130,246,0.12),transparent_28%),radial-gradient(circle_at_bottom_left,rgba(16,185,129,0.10),transparent_22%)]" />
+          <div className="relative flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+            <div className="max-w-2xl">
+              <p className="text-[12px] font-semibold uppercase tracking-[0.24em] text-primary/75">Agenda</p>
+              <h1 className="mt-3 text-[28px] font-semibold tracking-[-0.05em] text-foreground lg:text-[40px]">
+                Une vue claire sur vos rendez-vous.
+              </h1>
+              <p className="mt-3 max-w-xl text-[14px] leading-6 text-muted-foreground lg:text-[15px]">
+                Suivi des disponibilités, lecture rapide des rendez-vous et panneau détail plus lisible, dans une interface plus sobre et plus premium.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:min-w-[320px]">
+              <div className="premium-panel-soft rounded-[1.35rem] px-4 py-3">
+                <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">Date</p>
+                <p className="mt-2 text-[15px] font-semibold text-foreground">{format(selectedDate, "d MMM", { locale: fr })}</p>
+              </div>
+              <div className="premium-panel-soft rounded-[1.35rem] px-4 py-3">
+                <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">Vue</p>
+                <p className="mt-2 text-[15px] font-semibold capitalize text-foreground">{viewMode === "month" ? "Mois" : "Semaine"}</p>
+              </div>
+              <div className="premium-panel-soft rounded-[1.35rem] px-4 py-3 sm:col-span-2 xl:col-span-1">
+                <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">Filtre</p>
+                <p className="mt-2 text-[15px] font-semibold text-foreground">{filter === "all" ? "Tous" : filter === "pending" ? "En attente" : filter === "confirmed" ? "Confirmés" : "Annulés"}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="premium-panel-soft rounded-[2rem] px-4 py-4 lg:px-5 lg:py-5">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-[12px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">Cadence</p>
+              <p className="mt-2 text-[20px] font-semibold tracking-[-0.04em] text-foreground">Résumé du jour</p>
+            </div>
+            <div className="rounded-full bg-primary/10 px-3 py-1 text-[11px] font-medium text-primary">Focus</div>
+          </div>
+          <div className="mt-4 space-y-3">
+            <div className="flex items-center justify-between rounded-[1.2rem] bg-white/55 px-4 py-3 dark:bg-white/[0.05]">
+              <span className="text-[13px] text-muted-foreground">Rendez-vous visibles</span>
+              <span className="text-[14px] font-semibold text-foreground">{appointmentsForDay.length}</span>
+            </div>
+            <div className="flex items-center justify-between rounded-[1.2rem] bg-white/55 px-4 py-3 dark:bg-white/[0.05]">
+              <span className="text-[13px] text-muted-foreground">Annulés</span>
+              <span className="text-[14px] font-semibold text-foreground">{cancelledForDay.length}</span>
+            </div>
+            <div className="flex items-center justify-between rounded-[1.2rem] bg-white/55 px-4 py-3 dark:bg-white/[0.05]">
+              <span className="text-[13px] text-muted-foreground">Panneau détail</span>
+              <span className="text-[14px] font-semibold text-foreground">{selectedAppointment ? "Ouvert" : showRdvForm ? "Création" : "Repos"}</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-4">
         {[
           { label: "Aujourd'hui", value: stats.today, icon: CalendarDays, color: "text-blue-500", gradient: "from-blue-500/20 to-blue-600/20" },
@@ -498,13 +553,13 @@ export default function AgendaPage() {
           { label: "Confirmés", value: stats.confirmed, icon: CheckCircle2, color: "text-green-500", gradient: "from-green-500/20 to-green-600/20" },
           { label: "À venir", value: stats.total, icon: TrendingUp, color: "text-purple-500", gradient: "from-purple-500/20 to-purple-600/20" },
         ].map((stat) => (
-          <div key={stat.label} className="glass-card p-4 sm:p-5">
+          <div key={stat.label} className="premium-panel-soft rounded-[1.7rem] p-4 sm:p-5">
             <div className="flex items-center justify-between">
-              <div className={`flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-xl bg-gradient-to-br ${stat.gradient}`}>
+              <div className={`flex h-10 w-10 sm:h-11 sm:w-11 items-center justify-center rounded-2xl bg-gradient-to-br ${stat.gradient}`}>
                 <stat.icon className={`h-4 w-4 sm:h-5 sm:w-5 ${stat.color}`} />
               </div>
             </div>
-            <p className="mt-2 sm:mt-3 text-xl sm:text-2xl font-bold">{stat.value}</p>
+            <p className="mt-3 text-xl font-bold tracking-[-0.05em] sm:text-2xl">{stat.value}</p>
             <p className="text-[11px] sm:text-[12px] text-muted-foreground">{stat.label}</p>
           </div>
         ))}
@@ -515,17 +570,17 @@ export default function AgendaPage() {
         {/* Left: Calendar + List */}
         <div className="lg:col-span-8 space-y-4">
           {/* Calendar Nav */}
-          <div className="glass-card p-3 sm:p-4">
+          <div className="premium-panel rounded-[1.9rem] p-3 sm:p-4 lg:p-5">
             <div className="flex items-center justify-between gap-2 mb-3 sm:mb-4">
               <div className="flex items-center gap-1 sm:gap-2 shrink-0">
-                <button onClick={navigatePrev} className="flex h-8 w-8 items-center justify-center rounded-xl text-muted-foreground hover:bg-foreground/[0.06] hover:text-foreground transition-colors"><ChevronLeft className="h-4 w-4" /></button>
+                <button onClick={navigatePrev} className="premium-panel-soft flex h-9 w-9 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:text-foreground"><ChevronLeft className="h-4 w-4" /></button>
                 <button onClick={goToToday} className="hidden sm:block rounded-xl px-3 py-1.5 text-[12px] font-medium text-muted-foreground hover:bg-foreground/[0.06] hover:text-foreground transition-colors">Aujourd&apos;hui</button>
-                <button onClick={navigateNext} className="flex h-8 w-8 items-center justify-center rounded-xl text-muted-foreground hover:bg-foreground/[0.06] hover:text-foreground transition-colors"><ChevronRight className="h-4 w-4" /></button>
+                <button onClick={navigateNext} className="premium-panel-soft flex h-9 w-9 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:text-foreground"><ChevronRight className="h-4 w-4" /></button>
               </div>
-              <h3 className="text-[13px] sm:text-[15px] font-semibold capitalize truncate">
+              <h3 className="text-[13px] sm:text-[15px] font-semibold tracking-[-0.03em] capitalize truncate">
                 {viewMode === "month" ? format(selectedDate, "MMMM yyyy", { locale: fr }) : `${format(weekDays[0], "d MMM", { locale: fr })} — ${format(weekDays[6], "d MMM yyyy", { locale: fr })}`}
               </h3>
-              <div className="flex rounded-xl bg-foreground/[0.04] p-0.5 shrink-0">
+              <div className="premium-panel-soft flex rounded-xl p-0.5 shrink-0">
                 <button onClick={() => setViewMode("month")} className={cn("rounded-lg px-2 sm:px-3 py-1.5 text-[11px] sm:text-[12px] font-medium transition-all", viewMode === "month" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground")}>Mois</button>
                 <button onClick={() => setViewMode("week")} className={cn("rounded-lg px-2 sm:px-3 py-1.5 text-[11px] sm:text-[12px] font-medium transition-all", viewMode === "week" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground")}>Sem.</button>
               </div>
@@ -539,7 +594,7 @@ export default function AgendaPage() {
                     <div key={d} className="text-center text-[11px] font-semibold uppercase tracking-wider text-muted-foreground py-2">{d}</div>
                   ))}
                 </div>
-                <div className="grid grid-cols-7 gap-px bg-foreground/[0.04] rounded-xl overflow-hidden">
+                <div className="grid grid-cols-7 gap-px bg-foreground/[0.04] rounded-[1.2rem] overflow-hidden">
                   {monthDays.map((day) => {
                     const count = appointmentCountForDay(day);
                     const isSelected = isSameDay(day, selectedDate);
@@ -596,7 +651,7 @@ export default function AgendaPage() {
           </div>
 
           {/* Filters */}
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+          <div className="premium-panel-soft flex flex-col gap-2 rounded-[1.7rem] p-3 sm:flex-row sm:items-center sm:gap-3">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <input type="text" placeholder="Rechercher..." value={search} onChange={(e) => setSearch(e.target.value)} className="w-full glass-input py-2.5 pl-10 pr-4 text-[13px]" />
@@ -619,7 +674,7 @@ export default function AgendaPage() {
                   {" · "}{cancelledForDay.length} annulé{cancelledForDay.length !== 1 ? "s" : ""}
                 </div>
                 {cancelledForDay.length === 0 ? (
-                  <div className="glass-card flex flex-col items-center gap-3 py-16">
+                  <div className="premium-panel-soft flex flex-col items-center gap-3 rounded-[1.8rem] py-16">
                     <XCircle className="h-12 w-12 text-muted-foreground/40" />
                     <p className="text-[14px] text-muted-foreground">Aucun rendez-vous annulé ce jour.</p>
                   </div>
@@ -629,7 +684,7 @@ export default function AgendaPage() {
                     const myType = getMyType(apt, profile?.id);
                     const participantCount = apt.appointment_participants?.length || 0;
                     return (
-                      <button key={apt.id} onClick={() => setSelectedAppointment(apt)} className={cn("group w-full text-left rounded-2xl p-3 sm:p-4 transition-all duration-300 opacity-60", isSelected ? "glass-card shadow-lg opacity-100" : "hover:bg-foreground/[0.04] hover:opacity-80")}>
+                      <button key={apt.id} onClick={() => setSelectedAppointment(apt)} className={cn("group w-full text-left rounded-[1.7rem] p-3 sm:p-4 transition-all duration-300 opacity-60", isSelected ? "premium-panel shadow-lg opacity-100" : "premium-panel-soft hover:bg-white/72 hover:opacity-80 dark:hover:bg-white/[0.08]")}>
                         <div className="flex items-start gap-3 sm:gap-4">
                           <div className="flex flex-col items-center text-center min-w-[48px] sm:min-w-[56px]">
                             <span className="text-base sm:text-lg font-bold line-through text-muted-foreground">{format(new Date(apt.start_at), "HH:mm")}</span>
@@ -667,7 +722,7 @@ export default function AgendaPage() {
                   {" · "}{appointmentsForDay.length} rendez-vous
                 </div>
                 {appointmentsForDay.length === 0 ? (
-                  <div className="glass-card flex flex-col items-center gap-3 py-16">
+                  <div className="premium-panel-soft flex flex-col items-center gap-3 rounded-[1.8rem] py-16">
                     <CalendarIcon className="h-12 w-12 text-muted-foreground/40" />
                     <p className="text-[14px] text-muted-foreground">Aucun rendez-vous ce jour.</p>
                   </div>
@@ -679,7 +734,7 @@ export default function AgendaPage() {
                     const myPart = getMyParticipant(apt, profile?.id);
                     const participantCount = apt.appointment_participants?.length || 0;
                     return (
-                      <button key={apt.id} onClick={() => setSelectedAppointment(apt)} className={cn("group w-full text-left rounded-2xl p-3 sm:p-4 transition-all duration-300", isSelected ? "glass-card shadow-lg" : "hover:bg-foreground/[0.04]")}>
+                      <button key={apt.id} onClick={() => setSelectedAppointment(apt)} className={cn("group w-full text-left rounded-[1.7rem] p-3 sm:p-4 transition-all duration-300", isSelected ? "premium-panel shadow-lg" : "premium-panel-soft hover:bg-white/72 dark:hover:bg-white/[0.08]")}>
                         <div className="flex items-start gap-3 sm:gap-4">
                           <div className="flex flex-col items-center text-center min-w-[48px] sm:min-w-[56px]">
                             <span className="text-base sm:text-lg font-bold">{format(new Date(apt.start_at), "HH:mm")}</span>
@@ -765,7 +820,7 @@ export default function AgendaPage() {
         )}
         {!selectedAppointment && !showRdvForm && (
           <div className="hidden lg:block lg:col-span-4">
-            <div className="glass-card flex flex-col items-center justify-center py-20 text-center">
+            <div className="premium-panel flex flex-col items-center justify-center rounded-[2rem] py-20 text-center">
               <div className="flex h-16 w-16 items-center justify-center rounded-3xl bg-primary/10 mb-4"><CalendarIcon className="h-7 w-7 text-primary" /></div>
               <p className="text-[14px] font-medium">Aucun RDV sélectionné</p>
               <p className="mt-1 text-[12px] text-muted-foreground max-w-[200px]">Cliquez sur un rendez-vous pour voir les détails.</p>
@@ -776,7 +831,7 @@ export default function AgendaPage() {
 
       {/* FAB — toujours visible */}
       {!showRdvForm && !selectedAppointment && (
-        <button onClick={() => { resetRdvForm(); setShowRdvForm(true); }} className="fixed bottom-20 right-4 z-40 flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg shadow-primary/30 transition-all hover:shadow-xl hover:scale-105 active:scale-95 lg:bottom-6" aria-label="Nouveau rendez-vous">
+        <button onClick={() => { resetRdvForm(); setShowRdvForm(true); }} className="fixed bottom-20 right-4 z-40 flex h-13 w-13 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg shadow-primary/30 transition-all hover:shadow-xl hover:scale-105 active:scale-95 lg:bottom-8 lg:right-8" aria-label="Nouveau rendez-vous">
           <Plus className="h-5 w-5" />
         </button>
       )}
@@ -822,7 +877,7 @@ function RdvCreationPanel({
   onCancelDuplicate: () => void;
 }) {
   return (
-    <div className="glass-card overflow-hidden">
+    <div className="premium-panel overflow-hidden rounded-[2rem]">
       <div className="flex items-center justify-between p-4 sm:p-5 border-b border-foreground/[0.06]">
         <div className="flex items-center gap-2">
           <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-primary/20 to-primary/5"><CalendarDays className="h-4 w-4 text-primary" /></div>
@@ -831,7 +886,7 @@ function RdvCreationPanel({
         <button onClick={onClose} className="flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-foreground/[0.06] transition-colors"><X className="h-4 w-4" /></button>
       </div>
 
-      <div className="p-4 sm:p-5 space-y-4">
+      <div className="space-y-4 p-4 sm:p-5">
         {step !== "confirmation" && (
           <div className="flex items-center justify-center gap-1">
             {stepLabels.map((label, i) => {
@@ -1250,7 +1305,7 @@ function AppointmentDetail({
   };
 
   return (
-    <div className="glass-card overflow-hidden">
+    <div className="premium-panel overflow-hidden rounded-[2rem]">
       {/* Header */}
       <div className="relative p-5 sm:p-6" style={{ background: `linear-gradient(135deg, ${myType.color}22, ${myType.color}08)` }}>
         <button onClick={onClose} className="absolute left-4 top-4 flex items-center gap-1.5 rounded-xl px-2 py-1 text-[12px] font-medium text-muted-foreground hover:text-foreground hover:bg-foreground/[0.06] transition-colors lg:hidden">
@@ -1271,7 +1326,7 @@ function AppointmentDetail({
         </div>
       </div>
 
-      <div className="p-5 sm:p-6 space-y-5">
+      <div className="space-y-5 p-5 sm:p-6">
         {/* Date & Time */}
         <div className="flex items-center gap-3">
           <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-500/10"><CalendarDays className="h-4 w-4 text-blue-500" /></div>

@@ -63,19 +63,16 @@ function UnreadBadgeSync() {
 
 export function DashboardShell({ children }: { children: React.ReactNode }) {
   return (
-    <div className="relative flex h-dvh overflow-hidden">
-      {/* Gradient background */}
-      <div className="fixed inset-0 bg-gradient-to-br from-[#43CEA2]/20 via-[#2B8ECC]/15 to-[#185A9D]/20" />
-      <div className="fixed inset-0 gradient-mesh" />
-      {/* Subtle glass orbs */}
-      <div className="glass-orb glass-orb-cyan fixed w-[500px] h-[500px] -top-40 -left-40 opacity-30 hidden lg:block" />
-      <div className="glass-orb glass-orb-green fixed w-[400px] h-[400px] bottom-[-100px] right-[-100px] opacity-25 hidden lg:block" style={{ animationDelay: "4s" }} />
-      <div className="glass-orb glass-orb-purple fixed w-[300px] h-[300px] top-[50%] left-[50%] opacity-20 hidden lg:block" style={{ animationDelay: "7s" }} />
+    <div className="premium-shell-bg premium-grid relative flex h-dvh overflow-hidden">
+      <div className="fixed inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.18),transparent_20%)] dark:bg-[linear-gradient(180deg,rgba(255,255,255,0.03),transparent_18%)]" />
+      <div className="glass-orb glass-orb-cyan fixed -left-28 -top-24 hidden h-[420px] w-[420px] opacity-30 lg:block" />
+      <div className="glass-orb glass-orb-green fixed bottom-[-140px] right-[-120px] hidden h-[340px] w-[340px] opacity-20 lg:block" style={{ animationDelay: "4s" }} />
+      <div className="glass-orb glass-orb-purple fixed left-[44%] top-[18%] hidden h-[260px] w-[260px] opacity-15 lg:block" style={{ animationDelay: "7s" }} />
 
-      <div className="relative z-10 flex flex-1 h-full min-h-0">
+      <div className="relative z-10 flex h-full min-h-0 flex-1">
         <Sidebar />
-        <div className="flex flex-1 flex-col overflow-hidden min-h-0">
-          <main className="flex-1 overflow-y-auto overflow-x-hidden no-scrollbar px-4 py-4 pb-[120px] lg:px-8 lg:py-6 lg:pb-6">
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden lg:pl-3 lg:pr-4 lg:py-4">
+          <main className="flex-1 overflow-y-auto overflow-x-hidden no-scrollbar px-4 py-4 pb-[120px] lg:rounded-[2rem] lg:border lg:border-white/25 lg:bg-white/14 lg:px-8 lg:py-8 lg:pb-8 lg:shadow-[0_24px_70px_rgba(15,23,42,0.08)] lg:backdrop-blur-[6px] dark:lg:border-white/10 dark:lg:bg-white/[0.02]">
             <PageTransition>{children}</PageTransition>
           </main>
         </div>

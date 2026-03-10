@@ -441,8 +441,35 @@ export default function FichiersPage() {
   const totalItemsInCurrent = drive.folders.length + drive.files.length;
 
   return (
-    <div className="mx-auto max-w-6xl space-y-4 lg:space-y-6 overflow-hidden">
+    <div className="mx-auto max-w-6xl space-y-4 overflow-hidden lg:space-y-6">
       <input ref={fileInputRef} type="file" multiple className="hidden" onChange={handleFilesSelected} accept="*/*" />
+
+      <section className="premium-panel overflow-hidden p-5 sm:p-6">
+        <div className="premium-grid absolute inset-0 opacity-40" />
+        <div className="relative flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+          <div className="space-y-2">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
+              Drive personnel
+            </p>
+            <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
+              Vos fichiers, rangés dans une interface plus nette.
+            </h1>
+            <p className="max-w-2xl text-sm leading-6 text-muted-foreground">
+              Navigation, catégories et actions rapides ont été regroupées dans des surfaces plus lisibles sans alourdir la page.
+            </p>
+          </div>
+          <div className="grid grid-cols-2 gap-3 sm:min-w-[300px]">
+            <div className="rounded-[1.4rem] border border-white/10 bg-white/55 p-4 shadow-[0_18px_48px_-30px_rgba(15,23,42,0.45)] backdrop-blur-xl dark:bg-white/[0.04]">
+              <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">Éléments</p>
+              <p className="mt-2 text-2xl font-semibold tracking-tight">{totalItemsInCurrent}</p>
+            </div>
+            <div className="rounded-[1.4rem] border border-white/10 bg-white/55 p-4 shadow-[0_18px_48px_-30px_rgba(15,23,42,0.45)] backdrop-blur-xl dark:bg-white/[0.04]">
+              <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">Recherche</p>
+              <p className="mt-2 text-sm font-medium text-foreground">{drive.search ? "Active" : "Globale"}</p>
+            </div>
+          </div>
+        </div>
+      </section>
 
       {/* Migration dialog */}
       <Dialog open={migrating}>
@@ -456,7 +483,7 @@ export default function FichiersPage() {
       </Dialog>
 
       {/* Search + Actions */}
-      <div className="glass-card p-2 sm:p-4 space-y-2 sm:space-y-0 sm:flex sm:items-center sm:justify-between sm:gap-2">
+      <div className="premium-panel p-2 sm:p-4 space-y-2 sm:space-y-0 sm:flex sm:items-center sm:justify-between sm:gap-2">
         <div className="relative w-2/3 sm:flex-1 sm:w-auto min-w-0">
           <Search className="absolute left-2.5 sm:left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 sm:h-4 sm:w-4 text-muted-foreground" />
           <input value={drive.search} onChange={(e) => drive.setSearch(e.target.value)} placeholder="Rechercher..." className="glass-input w-full py-2 sm:py-2.5 pl-8 sm:pl-10 pr-3 sm:pr-4 text-[13px] sm:text-[14px]" />
@@ -481,7 +508,7 @@ export default function FichiersPage() {
           <select
             value={drive.category}
             onChange={(e) => drive.setCategory(e.target.value)}
-            className="glass-input w-full appearance-none py-2 pl-9 pr-9 text-[13px] font-medium"
+            className="glass-input w-full appearance-none rounded-2xl border border-white/10 bg-white/60 py-2 pl-9 pr-9 text-[13px] font-medium backdrop-blur-xl dark:bg-white/[0.04]"
           >
             {CATEGORIES.map((cat) => (
               <option key={cat} value={cat}>{cat}</option>
@@ -519,7 +546,7 @@ export default function FichiersPage() {
           {/* Skeleton liste sur mobile, grille sur desktop */}
           <div className="hidden sm:grid gap-3 grid-cols-3 lg:grid-cols-4">
             {[...Array(4)].map((_, i) => (
-              <div key={i} className="glass-card p-4 animate-pulse">
+              <div key={i} className="premium-panel p-4 animate-pulse">
                 <div className="h-10 w-10 rounded-xl bg-foreground/[0.06]" />
                 <div className="mt-3 space-y-2">
                   <div className="h-4 w-3/4 rounded bg-foreground/[0.06]" />
@@ -528,7 +555,7 @@ export default function FichiersPage() {
               </div>
             ))}
           </div>
-          <div className="sm:hidden glass-card divide-y divide-foreground/[0.06] overflow-hidden">
+          <div className="sm:hidden premium-panel divide-y divide-foreground/[0.06] overflow-hidden">
             {[...Array(4)].map((_, i) => (
               <div key={i} className="flex items-center gap-3 px-3 py-2.5 animate-pulse">
                 <div className="h-8 w-8 shrink-0 rounded-lg bg-foreground/[0.06]" />
@@ -542,7 +569,7 @@ export default function FichiersPage() {
         </div>
       ) : totalItemsInCurrent === 0 && !drive.search ? (
         /* Empty state */
-        <div className="glass-card flex flex-col items-center gap-3 px-4 py-12 sm:py-16 text-center">
+        <div className="premium-panel flex flex-col items-center gap-3 px-4 py-12 sm:py-16 text-center">
           <FolderOpen className="h-10 w-10 sm:h-12 sm:w-12 text-muted-foreground/40" />
           <p className="text-[13px] sm:text-[14px] text-muted-foreground">{drive.allFolders.length === 0 && drive.files.length === 0 ? "Aucun fichier. Importez votre premier document." : "Ce dossier est vide."}</p>
           <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
@@ -559,7 +586,7 @@ export default function FichiersPage() {
               {effectiveView === "grid" ? (
                 <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4">
                   {drive.folders.map((folder) => (
-                    <button key={folder.id} onClick={() => drive.navigateToFolder(folder.id)} onContextMenu={(e) => { e.preventDefault(); setContextFolder(folder); }} className="glass-card group relative flex flex-col items-start gap-3 p-4 text-left transition-all hover:shadow-md hover:-translate-y-0.5">
+                    <button key={folder.id} onClick={() => drive.navigateToFolder(folder.id)} onContextMenu={(e) => { e.preventDefault(); setContextFolder(folder); }} className="premium-panel-soft group relative flex flex-col items-start gap-3 p-4 text-left transition-all hover:shadow-md hover:-translate-y-0.5">
                       <div className="flex w-full items-center justify-between">
                         <div className="flex h-10 w-10 items-center justify-center rounded-xl" style={{ background: `linear-gradient(135deg, ${folder.color}30, ${folder.color}10)` }}>
                           <FolderIcon className="h-5 w-5" style={{ color: folder.color }} />
@@ -575,7 +602,7 @@ export default function FichiersPage() {
                   ))}
                 </div>
               ) : (
-                <div className="glass-card divide-y divide-foreground/[0.06] overflow-hidden">
+                <div className="premium-panel divide-y divide-foreground/[0.06] overflow-hidden">
                   {drive.folders.map((folder) => (
                     <button key={folder.id} onClick={() => drive.navigateToFolder(folder.id)} onContextMenu={(e) => { e.preventDefault(); setContextFolder(folder); }} className="group flex w-full items-center gap-2.5 sm:gap-4 px-3 sm:px-5 py-2.5 sm:py-4 transition-colors hover:bg-foreground/[0.02] text-left">
                       <div className="flex h-8 w-8 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-lg sm:rounded-xl" style={{ background: `linear-gradient(135deg, ${folder.color}30, ${folder.color}10)` }}>
@@ -608,7 +635,7 @@ export default function FichiersPage() {
                     const Icon = fileIcons[file.file_type] || File;
                     const colorClass = fileColors[file.file_type] || fileColors.other;
                     return (
-                      <div key={file.id} className="glass-card group relative overflow-hidden p-4 sm:p-5">
+                      <div key={file.id} className="premium-panel-soft group relative overflow-hidden p-4 sm:p-5">
                         <div className="flex items-start justify-between">
                           <div className={cn("flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-2xl bg-gradient-to-br", colorClass)}><Icon className="h-4 w-4 sm:h-5 sm:w-5" /></div>
                           <button onClick={() => setContextFile(file)} className="flex h-8 w-8 items-center justify-center rounded-xl text-muted-foreground transition-all hover:bg-foreground/[0.06] hover:text-foreground opacity-0 group-hover:opacity-100"><MoreHorizontal className="h-4 w-4" /></button>
@@ -627,7 +654,7 @@ export default function FichiersPage() {
                   })}
                 </div>
               ) : (
-                <div className="glass-card divide-y divide-foreground/[0.06] overflow-hidden">
+                <div className="premium-panel divide-y divide-foreground/[0.06] overflow-hidden">
                   {drive.files.map((file) => {
                     const Icon = fileIcons[file.file_type] || File;
                     const colorClass = fileColors[file.file_type] || fileColors.other;
@@ -656,7 +683,7 @@ export default function FichiersPage() {
           )}
 
           {totalItemsInCurrent === 0 && drive.search && (
-            <div className="glass-card flex flex-col items-center gap-3 py-16">
+            <div className="premium-panel flex flex-col items-center gap-3 py-16">
               <FolderOpen className="h-12 w-12 text-muted-foreground/40" />
               <p className="text-[14px] text-muted-foreground">Aucun résultat pour &laquo;{drive.search}&raquo;</p>
             </div>
