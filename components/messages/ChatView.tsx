@@ -20,6 +20,7 @@ interface ChatViewProps {
   onSendGif?: (url: string) => void;
   onFileSelect?: (file: File) => void;
   onSaveFile?: (msg: Message) => void;
+  onInitialized?: () => void;
   onLoadMore: () => void;
   onBack: () => void;
   convOpenedAt: number;
@@ -39,6 +40,7 @@ export function ChatView({
   onSendGif,
   onFileSelect,
   onSaveFile,
+  onInitialized,
   onLoadMore,
   onBack,
   convOpenedAt,
@@ -88,10 +90,10 @@ export function ChatView({
         shouldScrollToBottom.current = true;
         onLoadMore();
       } else {
-        // Fin de l'initialisation une fois l'écran plein
+        onInitialized?.();
       }
     }
-  }, [messages, loadingMessages, loadingMore, hasMore, onLoadMore]);
+  }, [messages, loadingMessages, loadingMore, hasMore, onLoadMore, onInitialized]);
 
   // Exposer shouldScrollToBottom pour les messages realtime
   const triggerScrollToBottom = useCallback(() => {
