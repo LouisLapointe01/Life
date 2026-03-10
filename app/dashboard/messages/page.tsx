@@ -266,6 +266,7 @@ function MessagesPageInner() {
           onSendGif={handleSendGif}
           onFileSelect={handleFileSelect}
           onSaveFile={handleSaveFile}
+          onInitialized={() => setInitializing(false)}
           onLoadMore={loadMoreMessages}
           onBack={() => setMobileView("list")}
           convOpenedAt={convOpenedAtRef.current}
