@@ -240,7 +240,7 @@ function MessagesPageInner() {
   }, []);
 
   return (
-    <div className="-mx-4 -mt-4 -mb-[120px] lg:-mx-8 lg:-mt-6 lg:-mb-6 flex overflow-hidden h-[calc(100dvh-3.5rem)] lg:h-dvh">
+    <div className="-mx-4 -mt-4 -mb-[120px] flex h-[calc(100dvh-3.5rem)] overflow-hidden bg-[radial-gradient(circle_at_top,_rgba(0,122,255,0.10),_transparent_28%),linear-gradient(180deg,rgba(255,255,255,0.24),transparent_18%),linear-gradient(135deg,#edf6ff_0%,#e8f2fb_38%,#eef0ff_100%)] lg:-mx-8 lg:-mt-6 lg:-mb-6 lg:h-dvh dark:bg-[radial-gradient(circle_at_top,_rgba(10,132,255,0.18),_transparent_24%),linear-gradient(180deg,rgba(255,255,255,0.03),transparent_18%),linear-gradient(135deg,#06111b_0%,#091521_38%,#101425_100%)]">
       <ConversationList
         conversations={conversations}
         activeConvId={activeConvId}
@@ -253,7 +253,7 @@ function MessagesPageInner() {
         mobileView={mobileView}
       />
 
-      <div className={cn("flex flex-col flex-1 overflow-hidden", mobileView === "list" && "hidden lg:flex")}>
+      <div className={cn("flex min-w-0 flex-1 flex-col overflow-hidden", mobileView === "list" && "hidden lg:flex")}>
         <ChatView
           activeConv={activeConv}
           messages={messages}

@@ -28,6 +28,15 @@ interface ChatViewProps {
   scrollBehaviorRef: React.MutableRefObject<ScrollBehavior>;
 }
 
+function shouldGroupMessages(previous: Message | null, current: Message) {
+  if (!previous) return false;
+  if (previous.sender_id !== current.sender_id) return false;
+
+  const previousTime = new Date(previous.created_at).getTime();
+  const currentTime = new Date(current.created_at).getTime();
+  return Math.abs(currentTime - previousTime) < 5 * 60 * 1000;
+}
+
 export function ChatView({
   activeConv,
   messages,
@@ -153,12 +162,12 @@ export function ChatView({
 
   if (!activeConv) {
     return (
-      <div className="flex flex-col items-center justify-center h-full text-center px-6">
-        <div className="h-16 w-16 rounded-2xl bg-teal-500/10 flex items-center justify-center mb-4">
-          <MessageCircle className="h-8 w-8 text-teal-500" />
+      <div className="flex h-full flex-col items-center justify-center px-6 text-center">
+        <div className="mb-4 flex h-18 w-18 items-center justify-center rounded-[2rem] border border-white/50 bg-white/58 shadow-[0_16px_40px_rgba(15,23,42,0.08)] dark:border-white/10 dark:bg-white/[0.05]">
+          <MessageCircle className="h-8 w-8 text-primary/80" />
         </div>
-        <p className="text-[15px] font-semibold">Vos messages</p>
-        <p className="text-[13px] text-muted-foreground mt-1">
+        <p className="text-[18px] font-semibold tracking-[-0.03em]">Vos messages</p>
+        <p className="mt-1 text-[13px] text-muted-foreground">
           Sélectionnez une conversation ou démarrez-en une nouvelle
         </p>
       </div>
@@ -166,22 +175,23 @@ export function ChatView({
   }
 
   return (
-    <div className="relative flex-1 overflow-hidden">
-      {/* Header chat — flottant */}
-      <div className="absolute top-3 left-3 z-20 flex items-center gap-2">
+    <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden bg-white/20 backdrop-blur-[18px] dark:bg-black/10 lg:m-3 lg:rounded-[2rem] lg:border lg:border-white/20 lg:shadow-[0_20px_60px_rgba(15,23,42,0.10)] lg:dark:border-white/10">
+      <div className="relative z-20 flex shrink-0 items-center gap-2 border-b border-foreground/[0.08] bg-white/48 px-3 py-3 backdrop-blur-xl dark:bg-black/12 lg:px-4 lg:py-4">
         <button
           onClick={onBack}
-          className="flex lg:hidden h-9 w-9 items-center justify-center rounded-full bg-background/70 backdrop-blur-xl text-muted-foreground hover:bg-background/90 hover:text-foreground transition-all shadow-md"
+          className="flex h-10 w-10 items-center justify-center rounded-full border border-white/45 bg-white/58 text-muted-foreground shadow-sm transition-all hover:bg-white/78 hover:text-foreground dark:border-white/10 dark:bg-white/[0.05] lg:hidden"
         >
           <ArrowLeft className="h-4 w-4" />
         </button>
-        <div className="flex items-center gap-2 rounded-full bg-background/70 backdrop-blur-xl pl-1 pr-3 py-1 shadow-md">
-          <Avatar url={activeConv.other_user.avatar_url} name={activeConv.other_user.full_name} size={28} />
-          <p className="text-[13px] font-semibold">{activeConv.other_user.full_name}</p>
+        <div className="flex min-w-0 flex-1 items-center gap-3 rounded-[1.25rem] border border-white/45 bg-white/58 px-2 py-2 shadow-sm dark:border-white/10 dark:bg-white/[0.05]">
+          <Avatar url={activeConv.other_user.avatar_url} name={activeConv.other_user.full_name} size={34} />
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-[14px] font-semibold text-foreground">{activeConv.other_user.full_name}</p>
+            <p className="truncate text-[11px] text-muted-foreground">Conversation privée</p>
+          </div>
         </div>
       </div>
 
-      {/* Spinner overlay pendant init */}
       {(loadingMessages || initializing) && (
         <div className="absolute inset-0 z-10 hidden items-center justify-center lg:flex">
           <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
@@ -213,50 +223,58 @@ export function ChatView({
         </div>
       )}
 
-      {/* Zone messages */}
       <div
         ref={scrollContainerRef}
         onScroll={handleScroll}
         className={cn(
-          "absolute inset-0 overflow-y-auto overscroll-contain no-scrollbar px-4 pt-14 pb-[72px] space-y-3",
+          "relative flex-1 overflow-y-auto overscroll-contain no-scrollbar px-3 pb-3 pt-3 sm:px-4 sm:pt-4",
           (loadingMessages || initializing) && "invisible lg:visible",
           showMobileMask && "lg:opacity-100"
         )}
       >
-        {/* Pull-to-refresh overlay sticky */}
         {loadingMore && !initializing && (
           <div className="sticky top-2 z-10 flex justify-center">
-            <div className="rounded-full bg-background/80 backdrop-blur-xl p-2 shadow-md">
+            <div className="rounded-full border border-white/45 bg-white/72 p-2 shadow-md backdrop-blur-xl dark:border-white/10 dark:bg-white/[0.05]">
               <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
             </div>
           </div>
         )}
         {!hasMore && messages.length > 0 && !initializing && (
-          <p className="text-center text-[11px] text-muted-foreground/40 py-2">Début de la conversation</p>
+          <p className="py-2 text-center text-[11px] text-muted-foreground/45">Début de la conversation</p>
         )}
         {!loadingMessages && messages.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-full text-center">
-            <p className="text-[12px] text-muted-foreground">Aucun message. Dites bonjour !</p>
+          <div className="flex h-full flex-col items-center justify-center text-center">
+            <div className="rounded-[1.75rem] border border-white/45 bg-white/58 px-5 py-4 shadow-[0_16px_40px_rgba(15,23,42,0.08)] dark:border-white/10 dark:bg-white/[0.05]">
+              <p className="text-[13px] font-medium text-foreground">Aucun message pour l’instant</p>
+              <p className="mt-1 text-[12px] text-muted-foreground">Commencez avec un message simple.</p>
+            </div>
           </div>
         ) : (
-          messages.map((msg) => {
+          <div className="space-y-1.5 pb-1">
+          {messages.map((msg, index) => {
             const isMe = msg.sender_id === myUserId;
             const isNew = new Date(msg.created_at).getTime() > convOpenedAt;
+            const previousMessage = index > 0 ? messages[index - 1] : null;
+            const nextMessage = index < messages.length - 1 ? messages[index + 1] : null;
+            const groupedWithPrevious = shouldGroupMessages(previousMessage, msg);
+            const groupedWithNext = nextMessage ? shouldGroupMessages(msg, nextMessage) : false;
             return (
               <MessageBubble
                 key={msg.id}
                 msg={msg}
                 isMe={isMe}
                 isNew={isNew}
+                groupedWithPrevious={groupedWithPrevious}
+                groupedWithNext={groupedWithNext}
                 otherUser={activeConv.other_user}
                 onSaveFile={onSaveFile}
               />
             );
-          })
+          })}
+          </div>
         )}
       </div>
 
-      {/* Zone saisie */}
       <ChatInput
         value={newMessage}
         onChange={onNewMessageChange}
