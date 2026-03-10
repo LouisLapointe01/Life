@@ -149,20 +149,75 @@ export default function DashboardPage() {
 
     return (
         <div className="mx-auto max-w-6xl space-y-5 lg:space-y-8">
-            {/* ─── Quick Stats Bar ─── */}
+            <section className="grid gap-4 lg:grid-cols-[minmax(0,1.35fr)_minmax(320px,0.75fr)]">
+                <div className="premium-panel relative overflow-hidden rounded-[2rem] px-5 py-5 lg:px-7 lg:py-7">
+                    <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(0,122,255,0.12),transparent_28%),radial-gradient(circle_at_bottom_left,rgba(52,199,89,0.10),transparent_24%)]" />
+                    <div className="relative flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+                        <div className="max-w-2xl">
+                            <p className="text-[12px] font-semibold uppercase tracking-[0.24em] text-primary/75">Tableau de bord</p>
+                            <h1 className="mt-3 text-[30px] font-semibold tracking-[-0.05em] text-foreground lg:text-[42px]">
+                                {greeting}, Louis.
+                            </h1>
+                            <p className="mt-3 max-w-xl text-[14px] leading-6 text-muted-foreground lg:text-[15px]">
+                                Un espace central plus clair, plus calme et plus rapide pour suivre votre quotidien, vos rendez-vous et vos documents sans surcharge visuelle.
+                            </p>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:min-w-[320px]">
+                            <div className="premium-panel-soft rounded-[1.4rem] px-4 py-3">
+                                <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">Modules</p>
+                                <p className="mt-2 text-[24px] font-semibold tracking-[-0.04em] text-foreground">{visibleWidgets.length}</p>
+                            </div>
+                            <div className="premium-panel-soft rounded-[1.4rem] px-4 py-3">
+                                <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">Stats</p>
+                                <p className="mt-2 text-[24px] font-semibold tracking-[-0.04em] text-foreground">{visibleStats.length}</p>
+                            </div>
+                            <div className="premium-panel-soft rounded-[1.4rem] px-4 py-3 sm:col-span-2 lg:col-span-1">
+                                <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">Mode</p>
+                                <p className="mt-2 text-[16px] font-semibold text-foreground">{editMode ? "Edition" : "Live"}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="premium-panel-soft rounded-[2rem] px-4 py-4 lg:px-5 lg:py-5">
+                    <div className="flex items-center justify-between gap-3">
+                        <div>
+                            <p className="text-[12px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">Aperçu</p>
+                            <p className="mt-2 text-[20px] font-semibold tracking-[-0.04em] text-foreground">Vue rapide</p>
+                        </div>
+                        <div className="rounded-full bg-primary/10 px-3 py-1 text-[11px] font-medium text-primary">Premium lite</div>
+                    </div>
+                    <div className="mt-4 space-y-3">
+                        <div className="flex items-center justify-between rounded-[1.3rem] bg-white/55 px-4 py-3 dark:bg-white/[0.05]">
+                            <span className="text-[13px] text-muted-foreground">Widgets visibles</span>
+                            <span className="text-[14px] font-semibold text-foreground">{visibleWidgets.length}</span>
+                        </div>
+                        <div className="flex items-center justify-between rounded-[1.3rem] bg-white/55 px-4 py-3 dark:bg-white/[0.05]">
+                            <span className="text-[13px] text-muted-foreground">Sections masquées</span>
+                            <span className="text-[14px] font-semibold text-foreground">{hiddenWidgets.length + hiddenStats.length}</span>
+                        </div>
+                        <div className="flex items-center justify-between rounded-[1.3rem] bg-white/55 px-4 py-3 dark:bg-white/[0.05]">
+                            <span className="text-[13px] text-muted-foreground">Rendu actuel</span>
+                            <span className="text-[14px] font-semibold text-foreground">Fluide</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
             <div
-                className="glass-card grid grid-cols-2 gap-3 px-4 py-4 lg:flex lg:items-center lg:justify-between lg:px-6"
+                className="premium-panel-soft grid grid-cols-2 gap-3 rounded-[1.8rem] px-4 py-4 lg:flex lg:items-center lg:justify-between lg:px-6"
             >
                 {visibleStats.map((stat) => {
                     const StatIcon = getIcon(stat.iconKey);
                     return (
                         <div key={stat.id} className="group relative flex items-center gap-3">
-                            <div className={stat.color}>
+                            <div className={cn("premium-panel-soft flex h-11 w-11 items-center justify-center rounded-2xl", stat.color)}>
                                 <StatIcon className="h-5 w-5" />
                             </div>
                             <div>
                                 <p className="text-xs text-muted-foreground">{stat.label}</p>
-                                <p className="text-sm font-semibold">{stat.value}</p>
+                                <p className="text-sm font-semibold tracking-[-0.03em]">{stat.value}</p>
                             </div>
                             {/* Edit button */}
                             {editMode && (
@@ -183,7 +238,7 @@ export default function DashboardPage() {
                 {visibleWidgets.map((widget, index) => {
                     const WidgetIcon = getIcon(widget.iconKey);
                     const content = (
-                        <div className="glass-card relative overflow-hidden p-6 group">
+                        <div className="premium-panel relative overflow-hidden rounded-[1.9rem] p-6 group">
                             {/* Background gradient blob */}
                             <div
                                 className={`absolute -right-8 -top-8 h-32 w-32 rounded-full bg-gradient-to-br ${widget.gradient} opacity-20 blur-2xl transition-all duration-500 group-hover:opacity-30 group-hover:scale-125`}
@@ -191,7 +246,7 @@ export default function DashboardPage() {
 
                             {/* Edit overlay */}
                             {editMode && (
-                                <div className="absolute inset-0 z-10 flex items-center justify-center gap-2 rounded-[1.25rem] bg-black/5 dark:bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <div className="absolute inset-0 z-10 flex items-center justify-center gap-2 rounded-[1.9rem] bg-black/5 opacity-0 transition-opacity group-hover:opacity-100 dark:bg-white/5">
                                     <button
                                         onClick={(e) => {
                                             e.preventDefault();
@@ -225,18 +280,18 @@ export default function DashboardPage() {
                                         <WidgetIcon className="h-5 w-5 text-white" />
                                     </div>
                                     <div>
-                                        <h3 className="text-[15px] font-semibold">{widget.title}</h3>
+                                        <h3 className="text-[15px] font-semibold tracking-[-0.03em]">{widget.title}</h3>
                                         <p className="text-xs text-muted-foreground">{widget.description}</p>
                                     </div>
                                 </div>
-                                <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-foreground/[0.04] text-muted-foreground transition-all duration-300 group-hover:bg-foreground/[0.08] group-hover:text-foreground">
+                                <div className="premium-panel-soft flex h-9 w-9 items-center justify-center rounded-xl text-muted-foreground transition-all duration-300 group-hover:text-foreground">
                                     <ArrowUpRight className="h-4 w-4" />
                                 </div>
                             </div>
 
                             {/* Stat */}
                             <div className="relative mt-8">
-                                <span className="text-4xl font-bold tracking-tight">{widget.stat}</span>
+                                <span className="text-4xl font-bold tracking-[-0.06em]">{widget.stat}</span>
                                 <span className="ml-2 text-sm text-muted-foreground">{widget.statLabel}</span>
                             </div>
 
@@ -277,7 +332,7 @@ export default function DashboardPage() {
                 {hiddenWidgets.length > 0 && (
                     <button
                         onClick={() => setSettingsOpen(true)}
-                        className="glass-card flex flex-col items-center justify-center gap-3 p-6 min-h-[200px] border-2 border-dashed border-foreground/10 hover:border-primary/30 hover:bg-primary/[0.03] transition-all duration-300"
+                        className="premium-panel-soft flex min-h-[200px] flex-col items-center justify-center gap-3 rounded-[1.9rem] border-2 border-dashed border-foreground/10 p-6 transition-all duration-300 hover:border-primary/30 hover:bg-primary/[0.03]"
                     >
                         <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10">
                             <Plus className="h-5 w-5 text-primary" />
@@ -294,7 +349,7 @@ export default function DashboardPage() {
 
             {/* ═══ Edit Widget Dialog ═══ */}
             <Dialog open={editingWidget !== null} onOpenChange={(open) => !open && setEditingWidget(null)}>
-                <DialogContent className="glass-card border-white/10 sm:max-w-sm">
+                <DialogContent className="premium-panel border-white/10 sm:max-w-sm">
                     <DialogHeader>
                         <DialogTitle className="flex items-center gap-2">
                             <Pencil className="h-4 w-4 text-primary" />
@@ -350,7 +405,7 @@ export default function DashboardPage() {
 
             {/* ═══ Edit Stat Dialog ═══ */}
             <Dialog open={editingStat !== null} onOpenChange={(open) => !open && setEditingStat(null)}>
-                <DialogContent className="glass-card border-white/10 sm:max-w-xs">
+                <DialogContent className="premium-panel border-white/10 sm:max-w-xs">
                     <DialogHeader>
                         <DialogTitle className="flex items-center gap-2">
                             <Pencil className="h-4 w-4 text-primary" />
@@ -383,7 +438,7 @@ export default function DashboardPage() {
 
             {/* ═══ Settings Dialog ═══ */}
             <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
-                <DialogContent className="glass-card border-white/10 sm:max-w-md">
+                <DialogContent className="premium-panel border-white/10 sm:max-w-md">
                     <DialogHeader>
                         <DialogTitle className="flex items-center gap-2">
                             <Settings2 className="h-4 w-4 text-primary" />

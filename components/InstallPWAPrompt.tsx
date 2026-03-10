@@ -211,7 +211,7 @@ export function InstallPWAPrompt() {
 
             {/* Prompt */}
             <div className="fixed bottom-0 left-0 right-0 z-[101] p-4 animate-slide-up safe-bottom">
-                <div className="glass-card mx-auto max-w-md overflow-hidden">
+                <div className="premium-panel mx-auto max-w-md overflow-hidden">
                     {/* Header gradient */}
                     <div className="relative h-2 bg-gradient-to-r from-teal-500 via-cyan-400 to-emerald-400" />
 

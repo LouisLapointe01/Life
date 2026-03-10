@@ -248,7 +248,7 @@ export default function RdvPage() {
     return (
         <div className="space-y-8 animate-fade-in">
             {/* ─── Header ─── */}
-            <div className="text-center">
+            <section className="rounded-[2rem] border border-white/14 bg-white/10 p-6 text-center shadow-[0_32px_90px_-48px_rgba(0,0,0,0.7)] backdrop-blur-2xl sm:p-8">
                 <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-3xl bg-gradient-to-br from-white/30 to-white/10 backdrop-blur-xl border border-white/30 shadow-xl">
                     <CalendarDays className="h-6 w-6 text-white" />
                 </div>
@@ -258,7 +258,7 @@ export default function RdvPage() {
                 <p className="mt-2 text-[13px] sm:text-[14px] text-white/60 max-w-md mx-auto">
                     Choisissez un destinataire, un type de rendez-vous, une date et un créneau.
                 </p>
-            </div>
+            </section>
 
             {/* ─── Step Indicator ─── */}
             {step !== "confirmation" && (
@@ -301,7 +301,7 @@ export default function RdvPage() {
                         Avec qui souhaitez-vous prendre rendez-vous ?
                     </p>
 
-                    <div className="glass-surface overflow-hidden">
+                    <div className="rounded-[2rem] border border-white/14 bg-white/10 overflow-hidden shadow-[0_28px_80px_-46px_rgba(0,0,0,0.68)] backdrop-blur-2xl">
                         <div className="p-4 sm:p-6">
                             {/* Mode info for visitors */}
                             {!isLoggedIn && (
@@ -429,7 +429,7 @@ export default function RdvPage() {
                     </p>
 
                     {types.length === 0 ? (
-                        <div className="glass-surface flex flex-col items-center gap-3 py-16">
+                        <div className="rounded-[2rem] border border-white/14 bg-white/10 flex flex-col items-center gap-3 py-16 shadow-[0_28px_80px_-46px_rgba(0,0,0,0.68)] backdrop-blur-2xl">
                             <CalendarDays className="h-12 w-12 text-white/25" />
                             <p className="text-[14px] text-white/50">Aucun type disponible pour le moment.</p>
                         </div>
@@ -439,7 +439,7 @@ export default function RdvPage() {
                                 <button
                                     key={type.id}
                                     onClick={() => { setSelectedType(type); setStep("date"); }}
-                                    className="group glass-surface flex items-center gap-4 p-4 sm:p-5 text-left transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5"
+                                    className="group rounded-[1.7rem] border border-white/14 bg-white/10 flex items-center gap-4 p-4 sm:p-5 text-left shadow-[0_22px_60px_-38px_rgba(0,0,0,0.6)] backdrop-blur-2xl transition-all duration-300 hover:-translate-y-0.5 hover:bg-white/14"
                                 >
                                     <div
                                         className="flex h-11 w-11 sm:h-12 sm:w-12 items-center justify-center rounded-2xl"
@@ -485,7 +485,7 @@ export default function RdvPage() {
                         )}
                     </div>
 
-                    <div className="glass-surface overflow-hidden">
+                    <div className="rounded-[2rem] border border-white/14 bg-white/10 overflow-hidden shadow-[0_28px_80px_-46px_rgba(0,0,0,0.68)] backdrop-blur-2xl">
                         <div className="p-4 sm:p-6">
                             <p className="mb-4 text-center text-[12px] font-semibold uppercase tracking-widest text-white/60">
                                 Choisissez une date
@@ -537,7 +537,7 @@ export default function RdvPage() {
                         )}
                     </div>
 
-                    <div className="glass-surface overflow-hidden">
+                    <div className="rounded-[2rem] border border-white/14 bg-white/10 overflow-hidden shadow-[0_28px_80px_-46px_rgba(0,0,0,0.68)] backdrop-blur-2xl">
                         <div className="p-4 sm:p-6">
                             <p className="mb-5 text-center text-[12px] font-semibold uppercase tracking-widest text-white/60">
                                 Créneaux disponibles
@@ -641,7 +641,7 @@ export default function RdvPage() {
 
                     {/* Contact picker (admin only) */}
                     {isAdmin && contacts.length > 0 && (
-                        <div className="glass-surface overflow-hidden">
+                        <div className="rounded-[2rem] border border-white/14 bg-white/10 overflow-hidden shadow-[0_28px_80px_-46px_rgba(0,0,0,0.68)] backdrop-blur-2xl">
                             <div className="p-4">
                                 <div className="flex items-center justify-between mb-3">
                                     <p className="text-[12px] font-semibold uppercase tracking-widest text-white/60">
@@ -725,7 +725,7 @@ export default function RdvPage() {
                         </div>
                     )}
 
-                    <div className="glass-surface overflow-hidden">
+                    <div className="rounded-[2rem] border border-white/14 bg-white/10 overflow-hidden shadow-[0_28px_80px_-46px_rgba(0,0,0,0.68)] backdrop-blur-2xl">
                         <div className="p-4 sm:p-6">
                             <p className="mb-5 text-center text-[12px] font-semibold uppercase tracking-widest text-white/60">
                                 Vos informations
@@ -821,7 +821,7 @@ export default function RdvPage() {
             {/* ─── Confirmation ─── */}
             {step === "confirmation" && (
                 <div className="animate-slide-up">
-                    <div className="glass-surface flex flex-col items-center gap-5 py-10 sm:py-14 px-6 sm:px-8 text-center">
+                    <div className="rounded-[2rem] border border-white/14 bg-white/10 flex flex-col items-center gap-5 py-10 sm:py-14 px-6 sm:px-8 text-center shadow-[0_28px_80px_-46px_rgba(0,0,0,0.68)] backdrop-blur-2xl">
                         <div className="relative">
                             <div className="flex h-20 w-20 items-center justify-center rounded-[28px] bg-gradient-to-br from-green-400/30 to-green-500/20 border border-green-400/30">
                                 <CheckCircle2 className="h-10 w-10 text-green-300" />

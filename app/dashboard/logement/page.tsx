@@ -297,7 +297,7 @@ function DeviceToggle({
                 className={cn(
                     "w-full flex items-center gap-3 rounded-2xl px-4 py-3 transition-all duration-300",
                     device.status === "on"
-                        ? "glass-card bg-gradient-to-br from-white/80 to-white/40 dark:from-white/10 dark:to-white/5"
+                        ? "premium-panel bg-gradient-to-br from-white/80 to-white/40 dark:from-white/10 dark:to-white/5"
                         : "bg-foreground/[0.03] hover:bg-foreground/[0.06]"
                 )}
             >
@@ -501,12 +501,33 @@ export default function LogementPage() {
 
     return (
         <div className="mx-auto max-w-7xl space-y-4 lg:space-y-6">
+            <section className="premium-panel overflow-hidden p-5 sm:p-7">
+                <div className="premium-grid absolute inset-0 opacity-40" />
+                <div className="relative flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+                    <div className="space-y-2">
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
+                            Habitat connecté
+                        </p>
+                        <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
+                            Une vue maison plus premium et plus respirable.
+                        </h1>
+                        <p className="max-w-2xl text-sm leading-6 text-muted-foreground">
+                            Les pièces, appareils et statuts critiques sont réorganisés dans des panneaux plus nets, avec une lecture plus confortable sur grand écran.
+                        </p>
+                    </div>
+                    <div className="rounded-[1.4rem] border border-white/10 bg-white/55 p-4 shadow-[0_18px_48px_-30px_rgba(15,23,42,0.45)] backdrop-blur-xl dark:bg-white/[0.04]">
+                        <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">Pièce active</p>
+                        <p className="mt-2 text-lg font-semibold tracking-tight">{currentRoom.name}</p>
+                    </div>
+                </div>
+            </section>
+
             {/* ─── Energy Stats ─── */}
             <div
                 className="grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-4"
             >
                 {dynamicEnergyData.map((stat) => (
-                    <div key={stat.label} className="glass-card p-5">
+                    <div key={stat.label} className="premium-panel p-5">
                         <div className="flex items-center justify-between">
                             <div className={`${stat.color}`}>
                                 <stat.icon className="h-5 w-5" />
@@ -566,8 +587,8 @@ export default function LogementPage() {
                                     className={cn(
                                         "group w-full text-left rounded-2xl p-4 transition-all duration-300",
                                         isSelected
-                                            ? "glass-card shadow-lg"
-                                            : "hover:bg-foreground/[0.04]"
+                                            ? "premium-panel shadow-lg ring-2 ring-primary/20"
+                                            : "premium-panel-soft hover:-translate-y-0.5"
                                     )}
                                 >
                                     <div className="flex items-center gap-3">
@@ -617,7 +638,7 @@ export default function LogementPage() {
 
                 {/* Room Detail Panel */}
                 <div className="lg:col-span-5 space-y-4">
-                    <div className="glass-card overflow-hidden">
+                    <div className="premium-panel overflow-hidden">
                         {/* Room header with gradient */}
                         <div
                             className={`relative bg-gradient-to-br ${currentRoom.gradient} p-6 text-white`}
@@ -707,7 +728,7 @@ export default function LogementPage() {
                 {/* Right sidebar: Security + Quick actions */}
                 <div className="lg:col-span-3 space-y-4">
                     {/* Security Panel */}
-                    <div className="glass-card p-5">
+                    <div className="premium-panel p-5">
                         <div className="flex items-center gap-2 mb-4">
                             <Shield className="h-4 w-4 text-green-500" />
                             <h4 className="text-[13px] font-semibold uppercase tracking-wider text-muted-foreground">
@@ -760,7 +781,7 @@ export default function LogementPage() {
                     </div>
 
                     {/* Quick Actions — now functional */}
-                    <div className="glass-card p-5">
+                    <div className="premium-panel p-5">
                         <h4 className="text-[13px] font-semibold uppercase tracking-wider text-muted-foreground mb-4">
                             Actions rapides
                         </h4>
@@ -790,7 +811,7 @@ export default function LogementPage() {
                     </div>
 
                     {/* Network Status */}
-                    <div className="glass-card p-5">
+                    <div className="premium-panel p-5">
                         <div className="flex items-center gap-2 mb-3">
                             <Wifi className="h-4 w-4 text-blue-500" />
                             <h4 className="text-[13px] font-semibold uppercase tracking-wider text-muted-foreground">
@@ -824,7 +845,7 @@ export default function LogementPage() {
 
             {/* ═══════ Add Device Dialog ═══════ */}
             <Dialog open={addOpen} onOpenChange={setAddOpen}>
-                <DialogContent className="glass-card border-white/10 sm:max-w-md">
+                <DialogContent className="premium-panel border-white/10 sm:max-w-md">
                     <DialogHeader>
                         <DialogTitle>Ajouter un appareil</DialogTitle>
                         <DialogDescription>
@@ -938,7 +959,7 @@ export default function LogementPage() {
 
             {/* ═══════ Delete Confirmation Dialog ═══════ */}
             <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
-                <DialogContent className="glass-card border-white/10 sm:max-w-sm">
+                <DialogContent className="premium-panel border-white/10 sm:max-w-sm">
                     <DialogHeader>
                         <DialogTitle className="flex items-center gap-2">
                             <Trash2 className="h-5 w-5 text-red-500" />

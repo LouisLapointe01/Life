@@ -317,6 +317,33 @@ export default function AnnuairePage() {
 
   return (
     <div className="mx-auto max-w-7xl space-y-6">
+      <section className="premium-panel overflow-hidden p-5 sm:p-7">
+        <div className="premium-grid absolute inset-0 opacity-40" />
+        <div className="relative flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+          <div className="max-w-2xl space-y-2">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
+              Relationnel
+            </p>
+            <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
+              Un annuaire plus clair, plus posé, plus premium.
+            </h1>
+            <p className="max-w-xl text-sm leading-6 text-muted-foreground">
+              Retrouvez vos proches, vos contacts utiles et leurs informations dans une vue plus structurée, pensée pour desktop et mobile.
+            </p>
+          </div>
+          <div className="grid grid-cols-2 gap-3 sm:min-w-[280px]">
+            <div className="rounded-[1.4rem] border border-white/10 bg-white/55 p-4 shadow-[0_18px_48px_-30px_rgba(15,23,42,0.45)] backdrop-blur-xl dark:bg-white/[0.04]">
+              <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">Contacts</p>
+              <p className="mt-2 text-2xl font-semibold tracking-tight">{contacts.length}</p>
+            </div>
+            <div className="rounded-[1.4rem] border border-white/10 bg-white/55 p-4 shadow-[0_18px_48px_-30px_rgba(15,23,42,0.45)] backdrop-blur-xl dark:bg-white/[0.04]">
+              <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">Proches</p>
+              <p className="mt-2 text-2xl font-semibold tracking-tight">{stats.proches}</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* ─── Stats ─── */}
       <div
         className="grid grid-cols-2 gap-4 lg:grid-cols-4"
@@ -351,7 +378,7 @@ export default function AnnuairePage() {
             color: "text-purple-500",
           },
         ].map((stat) => (
-          <div key={stat.label} className="glass-card p-5">
+          <div key={stat.label} className="premium-panel p-5">
             <div
               className={`flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br ${stat.gradient}`}
             >
@@ -375,7 +402,7 @@ export default function AnnuairePage() {
           )}
         >
           {/* Barre de recherche */}
-          <div className="relative">
+          <div className="premium-panel-soft relative p-3 sm:p-4">
             <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <input
               type="text"
@@ -410,7 +437,7 @@ export default function AnnuairePage() {
 
           {/* Liste vide */}
           {filtered.length === 0 ? (
-            <div className="glass-card flex flex-col items-center gap-4 py-20 text-center">
+            <div className="premium-panel flex flex-col items-center gap-4 py-20 text-center">
               <div className="flex h-16 w-16 items-center justify-center rounded-3xl bg-foreground/[0.04]">
                 <Users className="h-7 w-7 text-muted-foreground/50" />
               </div>
@@ -590,10 +617,10 @@ function ContactCard({
   return (
     <div
       className={cn(
-        "group relative flex items-center gap-4 rounded-2xl p-4 transition-all duration-200 cursor-pointer",
+        "group relative flex items-center gap-4 rounded-[1.5rem] border border-white/10 p-4 transition-all duration-200 cursor-pointer",
         isSelected
-          ? "glass-card shadow-lg ring-2 ring-primary/30"
-          : "hover:bg-foreground/[0.04]"
+          ? "premium-panel shadow-lg ring-2 ring-primary/20"
+          : "premium-panel-soft hover:-translate-y-0.5"
       )}
       onClick={onClick}
     >
@@ -700,7 +727,7 @@ function ContactDetail({
   };
 
   return (
-    <div className="glass-card overflow-hidden">
+    <div className="premium-panel overflow-hidden">
       {/* En-tête coloré */}
       <div
         className="relative p-6"

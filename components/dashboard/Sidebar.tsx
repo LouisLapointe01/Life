@@ -35,27 +35,31 @@ export function Sidebar() {
   return (
     <aside
       className={cn(
-        "hidden lg:flex h-dvh flex-col transition-all duration-300 ease-[cubic-bezier(0.25,0.46,0.45,0.94)] bg-white/40 dark:bg-white/[0.06] backdrop-blur-2xl border-r border-white/30 dark:border-white/10",
+        "premium-panel hidden h-dvh flex-col border-r-0 transition-all duration-300 ease-[cubic-bezier(0.25,0.46,0.45,0.94)] lg:ml-4 lg:mt-4 lg:flex lg:rounded-[2rem]",
         collapsed ? "w-[72px]" : "w-[260px]"
       )}
     >
       {/* Logo */}
-      <div className="flex h-[72px] items-center gap-3 px-5">
+      <div className="flex h-[78px] items-center gap-3 px-5">
         {!collapsed && (
-          <div className="flex items-center gap-2.5 animate-fade-in">
-            <LeafLogo size={36} className="shrink-0 rounded-xl shadow-lg shadow-teal-500/30" />
-            <span className="text-xl font-bold tracking-tight bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text">
+          <div className="flex items-center gap-3 animate-fade-in">
+            <div className="premium-panel-soft flex h-11 w-11 items-center justify-center rounded-2xl">
+              <LeafLogo size={30} className="shrink-0" />
+            </div>
+            <span className="bg-gradient-to-r from-foreground via-foreground/92 to-foreground/60 bg-clip-text text-[22px] font-semibold tracking-tight text-transparent">
               Life
             </span>
           </div>
         )}
         {collapsed && (
-          <LeafLogo size={36} className="shrink-0 rounded-xl shadow-lg shadow-teal-500/30 mx-auto" />
+          <div className="premium-panel-soft mx-auto flex h-11 w-11 items-center justify-center rounded-2xl">
+            <LeafLogo size={28} className="shrink-0" />
+          </div>
         )}
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 space-y-1 px-3 py-3 overflow-y-auto scrollbar-thin">
+      <nav className="scrollbar-thin flex-1 space-y-1.5 overflow-y-auto px-3 py-3">
         <AnimatePresence initial={false}>
           {visibleTabs.map((item, index) => {
             const isActive =
@@ -75,7 +79,7 @@ export function Sidebar() {
                   <Link
                     href={item.href}
                     className={cn(
-                      "relative flex flex-1 items-center gap-3 rounded-2xl px-3 py-2.5 text-[13px] font-medium transition-all duration-300",
+                      "relative flex flex-1 items-center gap-3 rounded-[1.15rem] px-3 py-3 text-[13px] font-medium transition-all duration-300",
                       isActive
                         ? "text-foreground"
                         : "text-muted-foreground hover:text-foreground"
@@ -87,9 +91,9 @@ export function Sidebar() {
                       <motion.div
                         layoutId="sidebar-active"
                         className={cn(
-                          "absolute inset-0 rounded-2xl bg-gradient-to-r opacity-100",
+                          "absolute inset-0 rounded-[1.15rem] bg-gradient-to-r opacity-100",
                           item.color,
-                          "shadow-sm"
+                          "shadow-[0_12px_28px_rgba(15,23,42,0.10)]"
                         )}
                         transition={{ type: "spring", stiffness: 350, damping: 30 }}
                       />
@@ -97,12 +101,12 @@ export function Sidebar() {
 
                     {/* Hover background */}
                     {!isActive && (
-                      <div className="absolute inset-0 rounded-2xl bg-foreground/[0.04] opacity-0 transition-opacity duration-200 group-hover:opacity-100" />
+                      <div className="absolute inset-0 rounded-[1.15rem] bg-foreground/[0.04] opacity-0 transition-opacity duration-200 group-hover:opacity-100" />
                     )}
 
                     <div
                       className={cn(
-                        "relative z-10 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl transition-all duration-300",
+                        "relative z-10 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-all duration-300",
                         isActive
                           ? `${item.iconColor}`
                           : "text-muted-foreground group-hover:text-foreground"
@@ -192,10 +196,10 @@ export function Sidebar() {
       </nav>
 
       {/* Collapse toggle */}
-      <div className="px-3 pb-4">
+      <div className="px-3 pb-4 pt-1">
         <button
           onClick={() => setCollapsed(!collapsed)}
-          className="flex w-full items-center justify-center gap-2 rounded-2xl px-3 py-2.5 text-muted-foreground transition-all duration-200 hover:bg-foreground/[0.04] hover:text-foreground"
+          className="premium-panel-soft flex w-full items-center justify-center gap-2 rounded-[1.15rem] px-3 py-2.5 text-muted-foreground transition-all duration-200 hover:bg-white/80 hover:text-foreground dark:hover:bg-white/[0.08]"
         >
           {collapsed ? (
             <PanelLeft className="h-[18px] w-[18px]" />

@@ -115,9 +115,45 @@ const tabs: { key: Tab; label: string; icon: typeof CalendarDays }[] = [
 export default function ParametresPage() {
   const profile = useProfile();
   const [activeTab, setActiveTab] = useState<Tab>("types");
+  const [compactMobileTabs, setCompactMobileTabs] = useState(false);
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia("(max-width: 430px)");
+    const updateCompactTabs = (event?: MediaQueryListEvent) => {
+      setCompactMobileTabs(event ? event.matches : mediaQuery.matches);
+    };
+
+    updateCompactTabs();
+    mediaQuery.addEventListener("change", updateCompactTabs);
+
+    return () => {
+      mediaQuery.removeEventListener("change", updateCompactTabs);
+    };
+  }, []);
 
   return (
-    <div className="mx-auto w-full max-w-4xl pb-16 lg:pb-24">
+    <div className="mx-auto w-full max-w-4xl space-y-5 pb-16 lg:pb-24">
+      <section className="premium-panel overflow-hidden p-5 sm:p-7">
+        <div className="premium-grid absolute inset-0 opacity-40" />
+        <div className="relative flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+          <div className="space-y-2">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
+              Paramètres
+            </p>
+            <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
+              Une zone de configuration plus claire et mieux hiérarchisée.
+            </h1>
+            <p className="max-w-2xl text-sm leading-6 text-muted-foreground">
+              Les réglages clés sont maintenant présentés comme de vrais modules, plus cohérents avec le reste du dashboard.
+            </p>
+          </div>
+          <div className="rounded-[1.4rem] border border-white/10 bg-white/55 p-4 shadow-[0_18px_48px_-30px_rgba(15,23,42,0.45)] backdrop-blur-xl dark:bg-white/[0.04]">
+            <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">Onglet actif</p>
+            <p className="mt-2 text-lg font-semibold tracking-tight">{tabs.find((tab) => tab.key === activeTab)?.label}</p>
+          </div>
+        </div>
+      </section>
+
       {/* Content */}
       <AnimatePresence mode="wait">
         <motion.div
@@ -160,29 +196,34 @@ export default function ParametresPage() {
       )}
 
       {/* Tab Navigation — pill flottant (mobile + pc) */}
-      <div className="fixed bottom-[4.5rem] left-0 right-0 z-40 pointer-events-none flex justify-center items-end lg:bottom-4 lg:left-[260px] lg:right-0">
-        <div className="pointer-events-auto flex items-center gap-0.5 rounded-2xl bg-white/15 dark:bg-white/[0.04] backdrop-blur-xl border border-white/10 dark:border-white/[0.06] px-1.5 py-1 shadow-sm">
+      <div className="fixed bottom-[4.5rem] left-0 right-0 z-40 pointer-events-none flex justify-center items-end px-2 lg:bottom-4 lg:left-[260px] lg:right-0 lg:px-0">
+        <div className="pointer-events-auto flex max-w-full items-center gap-0.5 rounded-[1.35rem] border border-white/10 bg-white/65 px-1 py-1 shadow-[0_22px_50px_-32px_rgba(15,23,42,0.6)] backdrop-blur-2xl dark:bg-white/[0.05] dark:border-white/[0.08]">
           {tabs.map((tab) => {
             const isActive = activeTab === tab.key;
             return (
               <button
                 key={tab.key}
                 onClick={() => setActiveTab(tab.key)}
+                aria-label={tab.label}
+                title={tab.label}
                 className={cn(
-                  "relative flex items-center justify-center gap-1.5 rounded-xl px-3 py-2 text-[12px] font-medium transition-colors duration-200 whitespace-nowrap",
+                  "relative flex items-center justify-center gap-1.5 rounded-xl py-2 text-[12px] font-medium transition-colors duration-200 whitespace-nowrap",
+                  compactMobileTabs ? "px-2.5" : "px-3",
                   isActive ? "text-foreground" : "text-muted-foreground hover:text-foreground"
                 )}
               >
                 {isActive && (
                   <motion.div
                     layoutId="params-tab-active"
-                    className="absolute inset-0 rounded-xl bg-card shadow-sm"
+                    className="absolute inset-0 rounded-xl bg-white shadow-sm dark:bg-white/[0.08]"
                     transition={{ type: "spring", stiffness: 350, damping: 30 }}
                   />
                 )}
                 <tab.icon className="relative z-10 h-3.5 w-3.5 shrink-0" />
                 <span className="relative z-10 hidden sm:inline">{tab.label}</span>
-                <span className="relative z-10 sm:hidden">{tab.label.split(" ")[0]}</span>
+                {!compactMobileTabs && (
+                  <span className="relative z-10 sm:hidden">{tab.label.split(" ")[0]}</span>
+                )}
               </button>
             );
           })}
@@ -235,7 +276,7 @@ function DashboardSectionsSettings() {
           {visibleTabs.map((tab, index) => (
             <div
               key={tab.id}
-              className="glass-card flex items-center gap-2 sm:gap-3 p-2.5 sm:p-3.5"
+              className="premium-panel-soft flex items-center gap-2 sm:gap-3 p-2.5 sm:p-3.5"
             >
               {/* Icon du tab */}
               <div
@@ -318,7 +359,7 @@ function DashboardSectionsSettings() {
                 className={cn(
                   "flex flex-col items-center gap-1.5 sm:gap-2 rounded-xl sm:rounded-2xl p-2.5 sm:p-3.5 transition-all duration-200",
                   isInMobile
-                    ? "glass-card shadow-sm ring-2 ring-primary/30"
+                    ? "premium-panel shadow-sm ring-2 ring-primary/20"
                     : "bg-foreground/[0.03] hover:bg-foreground/[0.06]",
                   !isVisible && "opacity-30 cursor-not-allowed"
                 )}
@@ -554,7 +595,7 @@ function AppointmentTypesSection({ userId }: { userId?: string }) {
 
       {/* List */}
       {types.length === 0 ? (
-        <div className="glass-card flex flex-col items-center gap-3 py-12 sm:py-16 px-4">
+        <div className="premium-panel flex flex-col items-center gap-3 py-12 sm:py-16 px-4">
           <CalendarDays className="h-10 w-10 sm:h-12 sm:w-12 text-muted-foreground/40" />
           <p className="text-[13px] sm:text-[14px] text-muted-foreground text-center">
             Aucun type de rendez-vous. Créez-en un pour commencer.
@@ -565,7 +606,7 @@ function AppointmentTypesSection({ userId }: { userId?: string }) {
           {types.map((type) => (
             <div
               key={type.id}
-              className="glass-card flex items-center gap-2.5 sm:gap-4 p-3 sm:p-4"
+              className="premium-panel-soft flex items-center gap-2.5 sm:gap-4 p-3 sm:p-4"
             >
               <div
                 className="flex h-9 w-9 sm:h-11 sm:w-11 shrink-0 items-center justify-center rounded-xl sm:rounded-2xl"
@@ -801,7 +842,7 @@ function AvailabilitySection({ userId }: { userId?: string }) {
 
       {/* List grouped by day */}
       {rules.length === 0 ? (
-        <div className="glass-card flex flex-col items-center gap-3 py-12 sm:py-16 px-4">
+        <div className="premium-panel flex flex-col items-center gap-3 py-12 sm:py-16 px-4">
           <Clock className="h-10 w-10 sm:h-12 sm:w-12 text-muted-foreground/40" />
           <p className="text-[14px] text-muted-foreground">
             Aucune plage horaire. Ajoutez vos disponibilités.
@@ -819,7 +860,7 @@ function AvailabilitySection({ userId }: { userId?: string }) {
                 {dayRules.map((rule) => (
                   <div
                     key={rule.id}
-                    className="glass-card flex items-center gap-2.5 sm:gap-4 p-3 sm:p-4"
+                    className="premium-panel-soft flex items-center gap-2.5 sm:gap-4 p-3 sm:p-4"
                   >
                     <div className="flex h-8 w-8 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-lg sm:rounded-xl bg-orange-500/10">
                       <Clock className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-orange-500" />
@@ -914,7 +955,7 @@ function ContactsSection() {
       </div>
 
       {contacts.length === 0 ? (
-        <div className="glass-card flex flex-col items-center gap-3 py-12 sm:py-16 px-4">
+        <div className="premium-panel flex flex-col items-center gap-3 py-12 sm:py-16 px-4">
           <Users className="h-10 w-10 sm:h-12 sm:w-12 text-muted-foreground/40" />
           <p className="text-[14px] text-muted-foreground">
             Aucun contact dans l&apos;annuaire.
@@ -1008,7 +1049,7 @@ function NotificationsSettings() {
         </div>
       </div>
 
-      <div className="glass-card p-4 sm:p-5 space-y-4">
+      <div className="premium-panel p-4 sm:p-5 space-y-4">
         {status === "loading" && (
           <div className="flex items-center gap-3">
             <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
@@ -1082,7 +1123,7 @@ function NotificationsSettings() {
       </div>
 
       {status === "granted" && (
-        <div className="glass-card p-4 sm:p-5 space-y-2">
+        <div className="premium-panel-soft p-4 sm:p-5 space-y-2">
           <p className="text-[11px] sm:text-[12px] font-semibold uppercase tracking-widest text-muted-foreground">
             Ce qui déclenche une notification
           </p>
@@ -1115,7 +1156,7 @@ function ContactRow({
   onToggle: () => void;
 }) {
   return (
-    <div className="glass-card flex items-center gap-2.5 sm:gap-4 p-3 sm:p-4">
+    <div className="premium-panel-soft flex items-center gap-2.5 sm:gap-4 p-3 sm:p-4">
       <div
         className={cn(
           "flex h-8 w-8 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-xl sm:rounded-2xl text-[12px] sm:text-[14px] font-bold",
