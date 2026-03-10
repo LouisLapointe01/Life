@@ -2,6 +2,8 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 
+const NOTIFICATION_SELECT = "id, user_id, type, appointment_id, from_user_id, from_name, title, body, is_read, created_at";
+
 async function getAuthUser() {
   const authClient = await createClient();
   const { data: { user } } = await authClient.auth.getUser();
@@ -22,26 +24,30 @@ export async function GET(request: Request) {
 
     const supabase = createAdminClient();
 
-    let query = supabase
+    let notificationsQuery = supabase
       .from("notifications")
-      .select("*")
+      .select(NOTIFICATION_SELECT)
       .eq("user_id", user.id)
       .order("created_at", { ascending: false })
       .limit(limit);
 
-    if (unreadOnly) {
-      query = query.eq("is_read", false);
-    }
-
-    const { data, error } = await query;
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-
-    // Compter les non-lues
-    const { count } = await supabase
+    let unreadCountQuery = supabase
       .from("notifications")
-      .select("*", { count: "exact", head: true })
+      .select("id", { count: "exact", head: true })
       .eq("user_id", user.id)
       .eq("is_read", false);
+
+    if (unreadOnly) {
+      notificationsQuery = notificationsQuery.eq("is_read", false);
+    }
+
+    const [{ data, error }, { count, error: countError }] = await Promise.all([
+      notificationsQuery,
+      unreadCountQuery,
+    ]);
+
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    if (countError) return NextResponse.json({ error: countError.message }, { status: 500 });
 
     return NextResponse.json({ notifications: data || [], unread_count: count || 0 });
   } catch (err) {

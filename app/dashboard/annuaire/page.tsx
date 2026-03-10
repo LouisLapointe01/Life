@@ -114,6 +114,22 @@ function parseTags(raw: string): string[] {
     .filter(Boolean);
 }
 
+function normalizeContact(raw: Partial<Contact> & { id: string; first_name: string; user_id: string; created_at: string }): Contact {
+  return {
+    id: raw.id,
+    user_id: raw.user_id,
+    first_name: raw.first_name,
+    last_name: raw.last_name ?? null,
+    email: raw.email ?? null,
+    phone: raw.phone ?? null,
+    notes: raw.notes ?? null,
+    tags: Array.isArray(raw.tags) ? raw.tags : [],
+    is_close: Boolean(raw.is_close),
+    created_at: raw.created_at,
+    updated_at: raw.updated_at ?? raw.created_at,
+  };
+}
+
 /* ═══════════════════════════════════════════════════════
    Page principale
    ═══════════════════════════════════════════════════════ */
@@ -143,8 +159,11 @@ export default function AnnuairePage() {
     const res = await fetch("/api/contacts");
     if (res.ok) {
       const data = await res.json();
-      setContacts(data as Contact[]);
-      clientCache.set("contacts", data as Contact[]);
+      const normalized = Array.isArray(data)
+        ? data.map((contact) => normalizeContact(contact as Partial<Contact> & { id: string; first_name: string; user_id: string; created_at: string }))
+        : [];
+      setContacts(normalized);
+      clientCache.set("contacts", normalized);
     }
     setLoading(false);
   }, []);
@@ -250,7 +269,7 @@ export default function AnnuairePage() {
       if (res.ok) {
         const data = await res.json();
         if (selectedContact?.id === editContact.id) {
-          setSelectedContact(data as Contact);
+          setSelectedContact(normalizeContact(data as Partial<Contact> & { id: string; first_name: string; user_id: string; created_at: string }));
         }
       }
     } else {

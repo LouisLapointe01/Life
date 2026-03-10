@@ -3,6 +3,8 @@ import { createClient } from "@/lib/supabase/server";
 import { updateFolderSchema } from "@/lib/validations";
 import { NextRequest, NextResponse } from "next/server";
 
+const FOLDER_SELECT = "id, user_id, parent_id, name, color, created_at";
+
 type Params = { params: Promise<{ id: string }> };
 
 export async function PATCH(request: NextRequest, { params }: Params) {
@@ -65,7 +67,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
       .update(updates)
       .eq("id", id)
       .eq("user_id", user.id)
-      .select()
+      .select(FOLDER_SELECT)
       .single();
 
     if (error)

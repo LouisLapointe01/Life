@@ -3,6 +3,9 @@ import { createClient } from "@/lib/supabase/server";
 import { uploadFileMetaSchema } from "@/lib/validations";
 import { NextRequest, NextResponse } from "next/server";
 
+const FILE_SELECT = "id, user_id, folder_id, name, file_type, mime_type, size_bytes, category, storage_path, created_at";
+const FOLDER_SELECT = "id, user_id, parent_id, name, color, created_at";
+
 function detectFileType(name: string): string {
   const ext = name.split(".").pop()?.toLowerCase() ?? "";
   if (ext === "pdf") return "pdf";
@@ -32,7 +35,7 @@ export async function GET(request: NextRequest) {
     // Fichiers
     let filesQuery = supabase
       .from("user_files")
-      .select("*")
+      .select(FILE_SELECT)
       .eq("user_id", user.id)
       .order("created_at", { ascending: false });
 
@@ -52,7 +55,7 @@ export async function GET(request: NextRequest) {
     // Dossiers enfants
     let foldersQuery = supabase
       .from("user_folders")
-      .select("*")
+      .select(FOLDER_SELECT)
       .eq("user_id", user.id)
       .order("name");
 
@@ -147,7 +150,7 @@ export async function POST(request: NextRequest) {
         category: meta.category ?? "Autre",
         storage_path: storagePath,
       })
-      .select()
+      .select(FILE_SELECT)
       .single();
 
     if (dbError) {

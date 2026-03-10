@@ -3,6 +3,9 @@ import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 import { sendPushToUser } from "@/lib/push-notifications";
 
+const MESSAGE_SELECT = "id, conversation_id, sender_id, content, created_at, file_url, file_name, file_type, file_size";
+const SENDER_PROFILE_SELECT = "id, full_name, avatar_url";
+
 async function getAuthUser() {
   const authClient = await createClient();
   const { data: { user } } = await authClient.auth.getUser();
@@ -29,7 +32,7 @@ export async function GET(request: Request) {
     // Vérifier participation ET récupérer les messages en parallèle
     let msgQuery = supabase
       .from("messages")
-      .select("id, conversation_id, sender_id, content, created_at, file_url, file_name, file_type, file_size")
+      .select(MESSAGE_SELECT)
       .eq("conversation_id", conversation_id)
       .order("created_at", { ascending: false })
       .limit(limit);
@@ -58,7 +61,7 @@ export async function GET(request: Request) {
     const { data: profiles } = senderIds.length
       ? await supabase
           .from("profiles")
-          .select("id, full_name, avatar_url")
+          .select(SENDER_PROFILE_SELECT)
           .in("id", senderIds)
       : { data: [] };
 
@@ -126,17 +129,25 @@ export async function POST(request: Request) {
     const { data: message, error: msgErr } = await supabase
       .from("messages")
       .insert(insertData)
-      .select("id, conversation_id, sender_id, content, created_at, file_url, file_name, file_type, file_size")
+      .select(MESSAGE_SELECT)
       .single();
 
     if (msgErr || !message) return NextResponse.json({ error: msgErr?.message ?? "Erreur" }, { status: 500 });
 
-    // Incrémenter unread_count pour les autres participants
-    const { data: others } = await supabase
-      .from("conversation_participants")
-      .select("id, user_id, unread_count")
-      .eq("conversation_id", conversation_id)
-      .neq("user_id", user.id);
+    const [{ data: others }, { data: senderProfile }] = await Promise.all([
+      supabase
+        .from("conversation_participants")
+        .select("id, user_id, unread_count")
+        .eq("conversation_id", conversation_id)
+        .neq("user_id", user.id),
+      supabase
+        .from("profiles")
+        .select(SENDER_PROFILE_SELECT)
+        .eq("id", user.id)
+        .maybeSingle(),
+    ]);
+
+    const senderName = senderProfile?.full_name ?? "Quelqu'un";
 
     if (others && others.length > 0) {
       await Promise.all(
@@ -148,46 +159,30 @@ export async function POST(request: Request) {
         )
       );
 
-      // Créer des notifications pour les autres participants
-      const { data: senderProfile } = await supabase
-        .from("profiles")
-        .select("full_name")
-        .eq("id", user.id)
-        .maybeSingle();
-
-      const senderName = senderProfile?.full_name ?? "Quelqu'un";
-
       const notifBody = content.trim().length > 100 ? content.trim().slice(0, 100) + "…" : content.trim();
 
-      await supabase.from("notifications").insert(
-        others.map((o) => ({
-          user_id: o.user_id,
-          type: "message",
-          title: `Nouveau message de ${senderName}`,
-          body: notifBody,
-          from_user_id: user.id,
-          from_name: senderName,
-        }))
-      );
-
-      // Envoyer push notifications
-      await Promise.allSettled(
-        others.map((o) =>
-          sendPushToUser(o.user_id, {
-            title: "Life",
-            body: `${senderName} : ${notifBody}`,
-            conversationId: conversation_id,
-          })
-        )
-      );
+      await Promise.all([
+        supabase.from("notifications").insert(
+          others.map((o) => ({
+            user_id: o.user_id,
+            type: "message",
+            title: `Nouveau message de ${senderName}`,
+            body: notifBody,
+            from_user_id: user.id,
+            from_name: senderName,
+          }))
+        ),
+        Promise.allSettled(
+          others.map((o) =>
+            sendPushToUser(o.user_id, {
+              title: "Life",
+              body: `${senderName} : ${notifBody}`,
+              conversationId: conversation_id,
+            })
+          )
+        ),
+      ]);
     }
-
-    // Récupérer le profil de l'expéditeur pour enrichir la réponse
-    const { data: senderProfile } = await supabase
-      .from("profiles")
-      .select("full_name, avatar_url")
-      .eq("id", user.id)
-      .maybeSingle();
 
     return NextResponse.json({
       message: { ...message, sender: senderProfile ?? null },

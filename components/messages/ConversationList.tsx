@@ -31,7 +31,21 @@ export function ConversationList({
   const [searchQuery, setSearchQuery] = useState("");
   const [userResults, setUserResults] = useState<UserResult[]>([]);
   const [searchLoading, setSearchLoading] = useState(false);
+  const [showMobileMask, setShowMobileMask] = useState(loadingConvs);
+  const [mobileMaskVisible, setMobileMaskVisible] = useState(loadingConvs);
   const searchDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    if (loadingConvs) {
+      setShowMobileMask(true);
+      requestAnimationFrame(() => setMobileMaskVisible(true));
+      return;
+    }
+
+    setMobileMaskVisible(false);
+    const timeout = window.setTimeout(() => setShowMobileMask(false), 180);
+    return () => window.clearTimeout(timeout);
+  }, [loadingConvs]);
 
   // Recherche API pour les nouveaux utilisateurs
   useEffect(() => {
@@ -69,7 +83,7 @@ export function ConversationList({
   return (
     <div
       className={cn(
-        "flex flex-col w-full lg:w-[300px] xl:w-[340px] shrink-0",
+        "relative flex flex-col w-full lg:w-[300px] xl:w-[340px] shrink-0",
         "border-r border-foreground/[0.06]",
         mobileView === "chat" && "hidden lg:flex"
       )}
@@ -96,7 +110,27 @@ export function ConversationList({
       </div>
 
       {/* Liste */}
-      <div className="flex-1 overflow-y-auto">
+      <div className="relative flex-1 overflow-y-auto">
+        {showMobileMask && (
+          <div
+            className={cn(
+              "absolute inset-0 z-10 lg:hidden transition-opacity duration-180 ease-out pointer-events-none",
+              mobileMaskVisible ? "opacity-100" : "opacity-0"
+            )}
+          >
+            <div className="mobile-loading-veil absolute inset-0" />
+            <div className="relative flex h-full items-start justify-center pt-24">
+              <div className="mobile-loading-indicator rounded-full px-4 py-2.5">
+                <div className="flex items-center gap-2">
+                  <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground/70" />
+                  <span className="text-[12px] font-medium text-muted-foreground/80">
+                    Chargement des conversations
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
         {loadingConvs ? (
           <div className="flex justify-center pt-10">
             <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />

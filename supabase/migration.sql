@@ -173,7 +173,23 @@ CREATE INDEX IF NOT EXISTS idx_notif_created ON notifications(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_types_user ON appointment_types(user_id);
 CREATE INDEX IF NOT EXISTS idx_avail_user ON availability_rules(user_id);
 CREATE INDEX IF NOT EXISTS idx_contacts_user ON contacts(user_id);
+CREATE INDEX IF NOT EXISTS idx_contacts_user_close ON contacts(user_id, is_close);
+CREATE INDEX IF NOT EXISTS idx_contacts_user_email ON contacts(user_id, email);
+CREATE INDEX IF NOT EXISTS idx_apt_requester_start ON appointments(requester_id, start_at);
+CREATE INDEX IF NOT EXISTS idx_apt_user_start ON appointments(user_id, start_at);
+CREATE INDEX IF NOT EXISTS idx_apt_participant_user_appointment ON appointment_participants(user_id, appointment_id);
+CREATE INDEX IF NOT EXISTS idx_apt_participant_appointment_user ON appointment_participants(appointment_id, user_id);
 CREATE INDEX IF NOT EXISTS idx_reschedule_apt ON reschedule_requests(appointment_id);
+CREATE INDEX IF NOT EXISTS idx_messages_conversation_created ON messages(conversation_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_messages_conversation_sender ON messages(conversation_id, sender_id);
+CREATE INDEX IF NOT EXISTS idx_conv_participants_user_deleted ON conversation_participants(user_id, deleted_at);
+CREATE INDEX IF NOT EXISTS idx_conv_participants_conversation_user ON conversation_participants(conversation_id, user_id);
+CREATE INDEX IF NOT EXISTS idx_conv_participants_user_favorite ON conversation_participants(user_id, is_favorite, favorite_position);
+CREATE INDEX IF NOT EXISTS idx_notifications_user_read_created ON notifications(user_id, is_read, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_user_files_user_folder_created ON user_files(user_id, folder_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_user_files_user_category_created ON user_files(user_id, category, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_user_files_user_name ON user_files(user_id, name);
+CREATE INDEX IF NOT EXISTS idx_user_folders_user_parent_name ON user_folders(user_id, parent_id, name);
 
 -- ============================================================
 -- ROW LEVEL SECURITY
