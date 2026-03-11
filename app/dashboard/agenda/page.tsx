@@ -125,7 +125,7 @@ function getMyParticipant(apt: Appointment, currentUserId?: string): Participant
    Page
    ═══════════════════════════════════════════════════════ */
 export default function AgendaPage() {
-  const profile = useProfile();
+  const { profile } = useProfile();
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);

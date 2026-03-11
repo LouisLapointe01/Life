@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useRef } from "react";
 import { Download, X, Share, MoreVertical, Menu } from "lucide-react";
-import Image from "next/image";
 
 interface BeforeInstallPromptEvent extends Event {
     prompt(): Promise<void>;
@@ -136,7 +135,10 @@ export function InstallPWAPrompt() {
         // Vérifier si l'app est déjà installée
         const isStandalone =
             window.matchMedia("(display-mode: standalone)").matches ||
-            (window.navigator as unknown as { standalone?: boolean }).standalone === true;
+            window.matchMedia("(display-mode: fullscreen)").matches ||
+            window.matchMedia("(display-mode: minimal-ui)").matches ||
+            (window.navigator as unknown as { standalone?: boolean }).standalone === true ||
+            document.referrer.startsWith("android-app://");
 
         if (isStandalone) return;
 
@@ -220,7 +222,7 @@ export function InstallPWAPrompt() {
                             <>
                                 <div className="flex items-start gap-4">
                                     {/* App icon */}
-                                    <Image
+                                    <img
                                         src="/icons/icon-192.png"
                                         alt="Life"
                                         width={56}

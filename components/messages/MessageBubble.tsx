@@ -96,7 +96,7 @@ export function MessageBubble({
       ) : !isMe ? (
         <div className="w-7 shrink-0" />
       ) : null}
-      <div className={cn("flex min-w-0 flex-col", isMe ? "items-end max-w-[78%] sm:max-w-[70%]" : "items-start max-w-[82%] sm:max-w-[72%]")}>
+      <div className={cn("flex min-w-0 flex-col", isMe ? "items-end max-w-[78%] sm:max-w-[70%] lg:max-w-[60%] xl:max-w-[50%]" : "items-start max-w-[82%] sm:max-w-[72%] lg:max-w-[60%] xl:max-w-[50%]")}>
         {isGif ? (
           <div className="max-w-[280px] overflow-hidden rounded-[1.4rem] border border-white/30 shadow-[0_10px_28px_rgba(15,23,42,0.08)] dark:border-white/10">
             <img
@@ -147,6 +147,7 @@ export function MessageBubble({
                 ? "rounded-[1.35rem] rounded-br-md bg-primary text-primary-foreground"
                 : "rounded-[1.35rem] rounded-bl-md border border-white/40 bg-white/62 text-foreground dark:border-white/10 dark:bg-white/[0.05]"
             )}
+            style={{ overflowWrap: "anywhere" }}
           >
             {msg.content}
           </div>
