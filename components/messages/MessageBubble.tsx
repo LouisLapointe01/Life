@@ -109,7 +109,7 @@ export function MessageBubble({
         ) : hasFile ? (
           <div
             className={cn(
-              "flex min-w-[200px] items-center gap-3 rounded-[1.35rem] px-3.5 py-3 shadow-[0_10px_28px_rgba(15,23,42,0.06)]",
+              "flex min-w-0 items-center gap-3 rounded-[1.35rem] px-3.5 py-3 shadow-[0_10px_28px_rgba(15,23,42,0.06)]",
               isMe
                 ? "rounded-br-md bg-primary text-primary-foreground"
                 : "rounded-bl-md border border-white/40 bg-white/62 text-foreground dark:border-white/10 dark:bg-white/[0.05]"

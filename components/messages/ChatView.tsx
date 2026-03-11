@@ -186,7 +186,7 @@ export function ChatView({
   }
 
   return (
-    <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden bg-white/20 backdrop-blur-[18px] dark:bg-black/10 lg:m-3 lg:rounded-[2rem] lg:border lg:border-white/20 lg:shadow-[0_20px_60px_rgba(15,23,42,0.10)] lg:dark:border-white/10">
+    <div className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-white/20 backdrop-blur-[18px] dark:bg-black/10 lg:m-3 lg:rounded-[2rem] lg:border lg:border-white/20 lg:shadow-[0_20px_60px_rgba(15,23,42,0.10)] lg:dark:border-white/10">
       <div className="relative z-20 flex shrink-0 items-center gap-2 border-b border-foreground/[0.08] bg-white/48 px-3 py-3 backdrop-blur-xl dark:bg-black/12 lg:px-4 lg:py-4">
         <button
           onClick={onBack}
@@ -244,7 +244,7 @@ export function ChatView({
         ref={scrollContainerRef}
         onScroll={handleScroll}
         className={cn(
-          "relative flex-1 overflow-y-auto overscroll-contain no-scrollbar px-3 pb-3 pt-3 sm:px-4 sm:pt-4",
+          "relative flex-1 overflow-y-auto overflow-x-hidden overscroll-contain no-scrollbar px-3 pb-3 pt-3 sm:px-4 sm:pt-4",
           (loadingMessages || initializing) && "invisible lg:visible",
           showMobileMask && "lg:opacity-100"
         )}
