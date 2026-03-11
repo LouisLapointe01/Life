@@ -112,7 +112,7 @@ const tabs: { key: Tab; label: string; icon: typeof CalendarDays }[] = [
    ═══════════════════════════════════════════════════════ */
 
 export default function ParametresPage() {
-  const profile = useProfile();
+  const { profile } = useProfile();
   const [activeTab, setActiveTab] = useState<Tab>("types");
   const [compactMobileTabs, setCompactMobileTabs] = useState(false);
 
