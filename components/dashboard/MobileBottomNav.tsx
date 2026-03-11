@@ -5,12 +5,14 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { useMobileVisibleTabs } from "@/lib/stores/dashboard-tabs";
+import { useMobileUiStore } from "@/lib/stores/mobile-ui";
 import { useUnreadMessages } from "@/lib/stores/unread-messages";
 import { motion } from "framer-motion";
 
 export function MobileBottomNav() {
   const pathname = usePathname();
   const mobileTabs = useMobileVisibleTabs();
+  const isMobileNavVisible = useMobileUiStore((state) => state.isMobileNavVisible);
   const totalUnread = useUnreadMessages((s) => s.totalUnread);
   const [viewportWidth, setViewportWidth] = useState(390);
 
@@ -24,7 +26,13 @@ export function MobileBottomNav() {
   const hideLabels = mobileTabs.length >= 6 || viewportWidth < 390;
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 lg:hidden">
+    <nav
+      className={cn(
+        "fixed bottom-0 left-0 right-0 z-50 transition-all duration-250 lg:hidden",
+        isMobileNavVisible ? "translate-y-0 opacity-100" : "pointer-events-none translate-y-[calc(100%+1rem)] opacity-0"
+      )}
+      aria-hidden={!isMobileNavVisible}
+    >
       <div
         className="mx-2 mb-2 flex items-stretch gap-1 rounded-[1.8rem] border border-white/40 bg-white/58 px-2 pt-2 shadow-[0_14px_40px_rgba(15,23,42,0.10)] backdrop-blur-2xl dark:border-white/10 dark:bg-white/[0.06]"
         style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}

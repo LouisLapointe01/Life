@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
+import { useMobileUiStore } from "@/lib/stores/mobile-ui";
 import { useUnreadMessages } from "@/lib/stores/unread-messages";
 import { Loader2, Trash2 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -35,6 +36,7 @@ function MessagesPageInner() {
   const [startingConv, setStartingConv] = useState<string | null>(null);
   const [viewportHeight, setViewportHeight] = useState<number | null>(null);
   const convOpenedAtRef = useRef<number>(0);
+  const setMobileNavVisible = useMobileUiStore((state) => state.setMobileNavVisible);
 
   // Hooks
   const {
@@ -266,10 +268,26 @@ function MessagesPageInner() {
     };
   }, []);
 
+  useEffect(() => {
+    const mediaQuery = window.matchMedia("(min-width: 1024px)");
+
+    const syncMobileNav = () => {
+      setMobileNavVisible(mediaQuery.matches || mobileView !== "chat");
+    };
+
+    syncMobileNav();
+    mediaQuery.addEventListener("change", syncMobileNav);
+
+    return () => {
+      mediaQuery.removeEventListener("change", syncMobileNav);
+      setMobileNavVisible(true);
+    };
+  }, [mobileView, setMobileNavVisible]);
+
   return (
     <div
-      className="flex h-full min-h-0 overflow-hidden bg-[radial-gradient(circle_at_top,_rgba(0,122,255,0.10),_transparent_28%),linear-gradient(180deg,rgba(255,255,255,0.24),transparent_18%),linear-gradient(135deg,#edf6ff_0%,#e8f2fb_38%,#eef0ff_100%)] dark:bg-[radial-gradient(circle_at_top,_rgba(10,132,255,0.18),_transparent_24%),linear-gradient(180deg,rgba(255,255,255,0.03),transparent_18%),linear-gradient(135deg,#06111b_0%,#091521_38%,#101425_100%)] lg:rounded-[2rem]"
-      style={viewportHeight ? { height: `${viewportHeight}px` } : undefined}
+      className="flex h-full min-h-0 min-w-0 overflow-hidden bg-[radial-gradient(circle_at_top,_rgba(0,122,255,0.10),_transparent_28%),linear-gradient(180deg,rgba(255,255,255,0.24),transparent_18%),linear-gradient(135deg,#edf6ff_0%,#e8f2fb_38%,#eef0ff_100%)] dark:bg-[radial-gradient(circle_at_top,_rgba(10,132,255,0.18),_transparent_24%),linear-gradient(180deg,rgba(255,255,255,0.03),transparent_18%),linear-gradient(135deg,#06111b_0%,#091521_38%,#101425_100%)] lg:rounded-[2rem]"
+      style={viewportHeight && mobileView === "chat" ? { height: `${viewportHeight}px` } : undefined}
     >
       <ConversationList
         conversations={conversations}

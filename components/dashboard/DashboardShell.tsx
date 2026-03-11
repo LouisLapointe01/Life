@@ -8,6 +8,7 @@ import { MobileBottomNav } from "@/components/dashboard/MobileBottomNav";
 import { PageTransition } from "@/components/dashboard/PageTransition";
 import { PushNotificationManager } from "@/components/dashboard/PushNotificationManager";
 import { useUnreadMessages } from "@/lib/stores/unread-messages";
+import { useMobileUiStore } from "@/lib/stores/mobile-ui";
 import { createClient } from "@/lib/supabase/client";
 import { usePresenceStore } from "@/lib/stores/presence";
 import type { RealtimeChannel } from "@supabase/supabase-js";
@@ -207,6 +208,7 @@ function PresenceSync() {
 export function DashboardShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const isMessagesRoute = pathname.startsWith("/dashboard/messages");
+  const isMobileNavVisible = useMobileUiStore((state) => state.isMobileNavVisible);
 
   return (
     <div className="premium-shell-bg premium-grid relative flex h-dvh overflow-hidden">
@@ -221,7 +223,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
           <main className={cn(
             "flex-1 overflow-y-auto overflow-x-hidden no-scrollbar lg:rounded-[2rem] lg:border lg:border-white/25 lg:bg-white/14 lg:shadow-[0_24px_70px_rgba(15,23,42,0.08)] lg:backdrop-blur-[6px] dark:lg:border-white/10 dark:lg:bg-white/[0.02]",
             isMessagesRoute
-              ? "overflow-hidden px-0 py-0 pb-[96px] lg:pb-0"
+              ? cn("overflow-hidden px-0 py-0", isMobileNavVisible ? "pb-[96px]" : "pb-0", "lg:pb-0")
               : "px-4 py-4 pb-[120px] lg:px-8 lg:py-8 lg:pb-8"
           )}>
             <PageTransition>{children}</PageTransition>
