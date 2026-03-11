@@ -159,6 +159,15 @@ export function MessageBubble({
             {msg.content}
           </div>
         )}
+        {hasFile && !isMe && onSaveFile && (
+          <button
+            onClick={() => onSaveFile(msg)}
+            className="mt-1.5 flex items-center gap-1 rounded-lg bg-primary/10 px-2.5 py-1 text-[11px] font-medium text-primary transition-colors hover:bg-primary/20"
+          >
+            <Download className="h-3 w-3" />
+            Sauvegarder dans Documents
+          </button>
+        )}
         {showMeta && (
           <div className={cn("mt-1 flex max-w-full flex-wrap items-center gap-1.5 px-1", isMe ? "justify-end" : "justify-start")}>
             <span className="text-[10px] text-muted-foreground">
@@ -174,14 +183,6 @@ export function MessageBubble({
                 <deliveryMeta.icon className={cn("h-3 w-3", deliveryMeta.iconClassName)} />
                 {deliveryMeta.label}
               </span>
-            )}
-            {hasFile && !isMe && onSaveFile && (
-              <button
-                onClick={() => onSaveFile(msg)}
-                className="text-[10px] text-primary hover:underline"
-              >
-                Sauvegarder
-              </button>
             )}
           </div>
         )}

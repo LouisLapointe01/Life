@@ -1,10 +1,10 @@
-const CACHE_NAME = "life-v3";
+const CACHE_NAME = "life-v4";
 const OFFLINE_URL = "/dashboard";
 
 const STATIC_ASSETS = [
     "/",
     "/dashboard",
-    "/manifest.json",
+    "/manifest.webmanifest",
     "/favicon.ico",
     "/icons/icon-16.png",
     "/icons/icon-32.png",
@@ -65,7 +65,7 @@ self.addEventListener("fetch", (event) => {
                 if (
                     response.status === 200 &&
                     response.type === "basic" &&
-                    (event.request.url.includes("/icons/") || event.request.url.includes("/manifest.json"))
+                    (event.request.url.includes("/icons/") || event.request.url.includes("/manifest.webmanifest"))
                 ) {
                     const clone = response.clone();
                     caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
