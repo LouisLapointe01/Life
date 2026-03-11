@@ -1,6 +1,6 @@
 import { useRef, useState, useCallback, useEffect } from "react";
 import { cn } from "@/lib/utils";
-import { Send, Smile, Paperclip, X, Loader2 } from "lucide-react";
+import { Send, Smile, Paperclip, X, Loader2, Plus } from "lucide-react";
 import data from "@emoji-mart/data";
 import Picker from "@emoji-mart/react";
 
@@ -22,6 +22,7 @@ export function ChatInput({ value, onChange, onSend, onSendGif, onFileSelect, di
   const [gifQuery, setGifQuery] = useState("");
   const [gifs, setGifs] = useState<{ id: string; url: string; preview: string }[]>([]);
   const [gifLoading, setGifLoading] = useState(false);
+  const [isMobileActionsOpen, setIsMobileActionsOpen] = useState(false);
   const gifDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
   const mediaPanelRef = useRef<HTMLDivElement>(null);
 
@@ -44,6 +45,7 @@ export function ChatInput({ value, onChange, onSend, onSendGif, onFileSelect, di
   const handleEmojiSelect = useCallback((emoji: { native: string }) => {
     onChange(value + emoji.native);
     setMediaPanelMode(null);
+    setIsMobileActionsOpen(false);
     inputRef.current?.focus();
   }, [value, onChange]);
 
@@ -98,8 +100,9 @@ export function ChatInput({ value, onChange, onSend, onSendGif, onFileSelect, di
   // Fermer les popups au clic extérieur
   useEffect(() => {
     const handler = (e: MouseEvent) => {
-      if (mediaPanelMode && mediaPanelRef.current && !mediaPanelRef.current.contains(e.target as Node)) {
+      if (mediaPanelRef.current && !mediaPanelRef.current.contains(e.target as Node)) {
         setMediaPanelMode(null);
+        setIsMobileActionsOpen(false);
       }
     };
     document.addEventListener("mousedown", handler);
@@ -110,14 +113,35 @@ export function ChatInput({ value, onChange, onSend, onSendGif, onFileSelect, di
     resizeTextarea();
   }, [resizeTextarea]);
 
+  const toggleMobileActions = useCallback(() => {
+    setMediaPanelMode(null);
+    setIsMobileActionsOpen((current) => !current);
+  }, []);
+
+  const openEmojiPanel = useCallback(() => {
+    setIsMobileActionsOpen(false);
+    setMediaPanelMode("emoji");
+  }, []);
+
+  const openGifPanel = useCallback(() => {
+    setIsMobileActionsOpen(false);
+    setMediaPanelMode("gif");
+  }, []);
+
+  const handleFileButtonClick = useCallback(() => {
+    setIsMobileActionsOpen(false);
+    fileInputRef.current?.click();
+  }, []);
+
   const hasGiphyKey = typeof window !== "undefined" && !!process.env.NEXT_PUBLIC_GIPHY_API_KEY;
 
   return (
     <div
-      className="relative z-20 shrink-0 border-t border-foreground/[0.08] bg-white/52 px-3 py-3 pb-[calc(0.85rem+env(safe-area-inset-bottom,0px))] backdrop-blur-2xl dark:bg-black/12 lg:px-4 lg:py-4 lg:pb-4"
+      className="relative z-20 shrink-0 border-t border-foreground/[0.08] bg-white/52 px-2.5 py-2.5 pb-[calc(0.7rem+env(safe-area-inset-bottom,0px))] backdrop-blur-2xl dark:bg-black/12 lg:px-4 lg:py-4 lg:pb-4"
     >
+      <div ref={mediaPanelRef}>
       {mediaPanelMode === "emoji" && (
-        <div ref={mediaPanelRef} className="absolute bottom-[calc(100%-0.5rem)] left-3 z-30 flex max-w-[min(22rem,calc(100vw-1.5rem))] flex-col gap-2 lg:left-4">
+        <div className="absolute bottom-[calc(100%-0.5rem)] left-2.5 z-30 flex max-w-[min(22rem,calc(100vw-1.25rem))] flex-col gap-2 lg:left-4">
           <div className="inline-flex items-center gap-2 self-start rounded-full border border-white/45 bg-white/82 px-3 py-2 shadow-lg backdrop-blur-xl dark:border-white/10 dark:bg-zinc-900/85">
             <span className="rounded-full bg-primary px-3 py-1 text-[12px] font-medium text-primary-foreground">Emojis</span>
             <button
@@ -142,8 +166,7 @@ export function ChatInput({ value, onChange, onSend, onSendGif, onFileSelect, di
 
       {mediaPanelMode === "gif" && (
         <div
-          ref={mediaPanelRef}
-          className="absolute bottom-[calc(100%-0.5rem)] left-3 right-3 z-30 overflow-hidden rounded-[1.6rem] border border-white/45 bg-white/92 shadow-xl backdrop-blur-xl dark:border-white/10 dark:bg-zinc-900/92 lg:left-4 lg:right-4"
+          className="absolute bottom-[calc(100%-0.5rem)] left-2.5 right-2.5 z-30 overflow-hidden rounded-[1.6rem] border border-white/45 bg-white/92 shadow-xl backdrop-blur-xl dark:border-white/10 dark:bg-zinc-900/92 lg:left-4 lg:right-4"
         >
           <div className="flex items-center gap-2 border-b border-foreground/[0.06] p-2.5">
             <span className="rounded-xl bg-primary px-3 py-1.5 text-[12px] font-medium text-primary-foreground">GIF</span>
@@ -216,12 +239,56 @@ export function ChatInput({ value, onChange, onSend, onSendGif, onFileSelect, di
         </div>
       )}
 
-        <div className="flex items-end gap-2.5">
+      {isMobileActionsOpen && (
+        <div className="absolute bottom-[calc(100%-0.45rem)] left-2.5 z-30 flex items-center gap-2 rounded-full border border-white/45 bg-white/90 px-2 py-2 shadow-xl backdrop-blur-xl dark:border-white/10 dark:bg-zinc-900/90 sm:hidden">
+          <button
+            onClick={openEmojiPanel}
+            className="flex h-9 w-9 items-center justify-center rounded-full border border-white/45 bg-white/70 text-muted-foreground transition-colors hover:bg-white hover:text-foreground dark:border-white/10 dark:bg-white/[0.05]"
+            aria-label="Ouvrir les emojis"
+          >
+            <Smile className="h-4 w-4" />
+          </button>
+          <button
+            onClick={openGifPanel}
+            className="flex h-9 items-center justify-center rounded-full border border-white/45 bg-white/70 px-3 text-[11px] font-bold text-muted-foreground transition-colors hover:bg-white hover:text-foreground dark:border-white/10 dark:bg-white/[0.05]"
+            aria-label="Ouvrir les GIF"
+          >
+            GIF
+          </button>
+          {onFileSelect && (
+            <button
+              onClick={handleFileButtonClick}
+              className="flex h-9 w-9 items-center justify-center rounded-full border border-white/45 bg-white/70 text-muted-foreground transition-colors hover:bg-white hover:text-foreground dark:border-white/10 dark:bg-white/[0.05]"
+              aria-label="Choisir un fichier"
+            >
+              <Paperclip className="h-4 w-4" />
+            </button>
+          )}
+        </div>
+      )}
+      </div>
+
+        <div className="flex min-w-0 items-end gap-2">
           <div className="mb-1 flex shrink-0 items-center gap-1">
           <button
-            onClick={() => setMediaPanelMode((current) => current === "emoji" ? null : "emoji")}
+            onClick={toggleMobileActions}
             className={cn(
-                "flex h-9 w-9 items-center justify-center rounded-full border transition-colors",
+              "flex h-9 w-9 items-center justify-center rounded-full border transition-colors sm:hidden",
+              isMobileActionsOpen
+                ? "border-primary/15 bg-primary/12 text-primary"
+                : "border-white/45 bg-white/56 text-muted-foreground hover:text-foreground hover:bg-white/78 dark:border-white/10 dark:bg-white/[0.05]"
+            )}
+            aria-label="Ouvrir les actions du message"
+          >
+            <Plus className={cn("h-4 w-4 transition-transform", isMobileActionsOpen && "rotate-45")} />
+          </button>
+          <button
+            onClick={() => {
+              setIsMobileActionsOpen(false);
+              setMediaPanelMode((current) => current === "emoji" ? null : "emoji");
+            }}
+            className={cn(
+                "hidden h-9 w-9 items-center justify-center rounded-full border transition-colors sm:flex",
                 mediaPanelMode === "emoji"
                   ? "border-primary/15 bg-primary/12 text-primary"
                   : "border-white/45 bg-white/56 text-muted-foreground hover:text-foreground hover:bg-white/78 dark:border-white/10 dark:bg-white/[0.05]"
@@ -231,9 +298,12 @@ export function ChatInput({ value, onChange, onSend, onSendGif, onFileSelect, di
           </button>
           {hasGiphyKey && (
             <button
-              onClick={() => setMediaPanelMode((current) => current === "gif" ? null : "gif")}
+              onClick={() => {
+                setIsMobileActionsOpen(false);
+                setMediaPanelMode((current) => current === "gif" ? null : "gif");
+              }}
               className={cn(
-                "flex h-9 w-9 items-center justify-center rounded-full border text-[11px] font-bold transition-colors",
+                "hidden h-9 w-9 items-center justify-center rounded-full border text-[11px] font-bold transition-colors sm:flex",
                 mediaPanelMode === "gif"
                   ? "border-primary/15 bg-primary/12 text-primary"
                   : "border-white/45 bg-white/56 text-muted-foreground hover:text-foreground hover:bg-white/78 dark:border-white/10 dark:bg-white/[0.05]"
@@ -244,9 +314,12 @@ export function ChatInput({ value, onChange, onSend, onSendGif, onFileSelect, di
           )}
           {!hasGiphyKey && (
             <button
-              onClick={() => setMediaPanelMode((current) => current === "gif" ? null : "gif")}
+              onClick={() => {
+                setIsMobileActionsOpen(false);
+                setMediaPanelMode((current) => current === "gif" ? null : "gif");
+              }}
               className={cn(
-                "flex h-9 items-center justify-center rounded-full border px-2.5 text-[11px] font-bold transition-colors",
+                "hidden h-9 items-center justify-center rounded-full border px-2.5 text-[11px] font-bold transition-colors sm:flex",
                 mediaPanelMode === "gif"
                   ? "border-primary/15 bg-primary/12 text-primary"
                   : "border-white/45 bg-white/56 text-muted-foreground hover:text-foreground hover:bg-white/78 dark:border-white/10 dark:bg-white/[0.05]"
@@ -257,8 +330,8 @@ export function ChatInput({ value, onChange, onSend, onSendGif, onFileSelect, di
           )}
           {onFileSelect && (
             <button
-              onClick={() => fileInputRef.current?.click()}
-              className="flex h-9 w-9 items-center justify-center rounded-full border border-white/45 bg-white/56 text-muted-foreground transition-colors hover:bg-white/78 hover:text-foreground dark:border-white/10 dark:bg-white/[0.05]"
+              onClick={handleFileButtonClick}
+              className="hidden h-9 w-9 items-center justify-center rounded-full border border-white/45 bg-white/56 text-muted-foreground transition-colors hover:bg-white/78 hover:text-foreground dark:border-white/10 dark:bg-white/[0.05] sm:flex"
             >
               <Paperclip className="h-4 w-4" />
             </button>
@@ -283,10 +356,10 @@ export function ChatInput({ value, onChange, onSend, onSendGif, onFileSelect, di
           placeholder="Écrire un message…"
           rows={1}
           className={cn(
-            "flex-1 resize-none rounded-[1.8rem] border border-white/55 bg-white/82 px-4 py-3 text-[15px] leading-6 outline-none shadow-[0_10px_28px_rgba(15,23,42,0.08)] backdrop-blur-xl transition-colors focus:border-primary/35 dark:border-white/10 dark:bg-white/[0.06]",
+            "min-w-0 flex-1 resize-none rounded-[1.65rem] border border-white/55 bg-white/82 px-3.5 py-2.5 text-[14px] leading-5 outline-none shadow-[0_10px_28px_rgba(15,23,42,0.08)] backdrop-blur-xl transition-colors focus:border-primary/35 dark:border-white/10 dark:bg-white/[0.06] sm:rounded-[1.8rem] sm:px-4 sm:py-3 sm:text-[15px] sm:leading-6",
             "max-h-32 overflow-y-auto"
           )}
-          style={{ minHeight: 48 }}
+          style={{ minHeight: 44 }}
           onInput={(e) => {
             const el = e.currentTarget;
             el.style.height = "auto";
@@ -297,7 +370,7 @@ export function ChatInput({ value, onChange, onSend, onSendGif, onFileSelect, di
           onClick={onSend}
           disabled={!value.trim() || disabled}
           className={cn(
-            "flex h-12 w-12 shrink-0 items-center justify-center rounded-full transition-all shadow-[0_10px_24px_rgba(15,23,42,0.12)]",
+            "flex h-11 w-11 shrink-0 items-center justify-center rounded-full transition-all shadow-[0_10px_24px_rgba(15,23,42,0.12)] sm:h-12 sm:w-12",
             value.trim()
               ? "bg-primary text-primary-foreground hover:bg-primary/90"
               : "bg-white/62 text-muted-foreground dark:bg-white/[0.06]"
