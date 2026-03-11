@@ -209,6 +209,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const isMessagesRoute = pathname.startsWith("/dashboard/messages");
   const isMobileNavVisible = useMobileUiStore((state) => state.isMobileNavVisible);
+  const shouldShowMobileHeader = !isMessagesRoute || isMobileNavVisible;
 
   return (
     <div className="premium-shell-bg premium-grid relative flex h-dvh overflow-hidden">
@@ -229,7 +230,9 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
             <PageTransition>{children}</PageTransition>
           </main>
         </div>
-        <Header />
+        <div className={cn(!shouldShowMobileHeader && "hidden lg:block")}>
+          <Header />
+        </div>
         <MobileBottomNav />
         <PushNotificationManager />
         <UnreadBadgeSync />

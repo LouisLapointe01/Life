@@ -187,24 +187,24 @@ export function ChatView({
 
   return (
     <div className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-white/20 backdrop-blur-[18px] dark:bg-black/10 lg:m-3 lg:rounded-[2rem] lg:border lg:border-white/20 lg:shadow-[0_20px_60px_rgba(15,23,42,0.10)] lg:dark:border-white/10">
-      <div className="relative z-20 flex shrink-0 items-center gap-2 border-b border-foreground/[0.08] bg-white/48 px-3 py-3 backdrop-blur-xl dark:bg-black/12 lg:px-4 lg:py-4">
+      <div className="relative z-20 flex shrink-0 items-center gap-2 border-b border-foreground/[0.08] bg-white/48 px-2.5 py-2.5 backdrop-blur-xl dark:bg-black/12 lg:px-4 lg:py-4">
         <button
           onClick={onBack}
-          className="flex h-10 w-10 items-center justify-center rounded-full border border-white/45 bg-white/58 text-muted-foreground shadow-sm transition-all hover:bg-white/78 hover:text-foreground dark:border-white/10 dark:bg-white/[0.05] lg:hidden"
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-white/45 bg-white/58 text-muted-foreground shadow-sm transition-all hover:bg-white/78 hover:text-foreground dark:border-white/10 dark:bg-white/[0.05] lg:hidden"
         >
           <ArrowLeft className="h-4 w-4" />
         </button>
-        <div className="flex min-w-0 flex-1 items-center gap-3 rounded-[1.25rem] border border-white/45 bg-white/58 px-2 py-2 shadow-sm dark:border-white/10 dark:bg-white/[0.05]">
+        <div className="flex min-w-0 flex-1 items-center gap-2.5 rounded-[1.1rem] border border-white/45 bg-white/58 px-2 py-2 shadow-sm dark:border-white/10 dark:bg-white/[0.05] lg:gap-3 lg:rounded-[1.25rem]">
           <Avatar
             url={activeConv.other_user.avatar_url}
             name={activeConv.other_user.full_name}
-            size={34}
+            size={32}
             isOnline={isOtherUserOnline}
             showPresence
           />
           <div className="min-w-0 flex-1">
-            <p className="truncate text-[14px] font-semibold text-foreground">{activeConv.other_user.full_name}</p>
-            <p className="truncate text-[11px] text-muted-foreground">Conversation privée</p>
+            <p className="truncate text-[13px] font-semibold text-foreground lg:text-[14px]">{activeConv.other_user.full_name}</p>
+            <p className="truncate text-[10px] text-muted-foreground lg:text-[11px]">Conversation privée</p>
           </div>
         </div>
       </div>
