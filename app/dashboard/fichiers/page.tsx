@@ -595,7 +595,7 @@ export default function FichiersPage() {
                           <MoreHorizontal className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                         </button>
                       </div>
-                      <div className="min-w-0 w-full">
+                      <div className="min-w-0 w-full overflow-hidden">
                         <p className="text-[12px] sm:text-[14px] font-semibold truncate">{folder.name}</p>
                       </div>
                     </button>
@@ -608,7 +608,7 @@ export default function FichiersPage() {
                       <div className="flex h-8 w-8 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-lg sm:rounded-xl" style={{ background: `linear-gradient(135deg, ${folder.color}30, ${folder.color}10)` }}>
                         <FolderIcon className="h-4 w-4 sm:h-5 sm:w-5" style={{ color: folder.color }} />
                       </div>
-                      <div className="flex-1 min-w-0">
+                      <div className="flex-1 min-w-0 overflow-hidden">
                         <p className="text-[13px] sm:text-[14px] font-semibold truncate">{folder.name}</p>
                       </div>
                       <div className="flex items-center gap-1 shrink-0">
@@ -640,7 +640,7 @@ export default function FichiersPage() {
                           <div className={cn("flex h-8 w-8 sm:h-12 sm:w-12 items-center justify-center rounded-xl sm:rounded-2xl bg-gradient-to-br", colorClass)}><Icon className="h-3.5 w-3.5 sm:h-5 sm:w-5" /></div>
                           <button onClick={() => setContextFile(file)} className="flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-lg sm:rounded-xl text-muted-foreground transition-all hover:bg-foreground/[0.06] hover:text-foreground sm:opacity-0 sm:group-hover:opacity-100"><MoreHorizontal className="h-3.5 w-3.5 sm:h-4 sm:w-4" /></button>
                         </div>
-                        <div className="mt-2 sm:mt-4 min-w-0">
+                        <div className="mt-2 sm:mt-4 min-w-0 overflow-hidden">
                           <p className="text-[12px] sm:text-[14px] font-semibold truncate">{file.name}</p>
                           <div className="mt-0.5 sm:mt-1 flex flex-wrap items-center gap-1 sm:gap-2 text-[10px] sm:text-[12px] text-muted-foreground"><span>{formatSize(file.size_bytes)}</span><span className="hidden sm:inline">·</span><span className="hidden sm:inline">{formatDate(file.created_at)}</span></div>
                           <div className="mt-1.5 sm:mt-2"><span className="inline-block rounded-lg bg-foreground/[0.04] px-1.5 sm:px-2 py-0.5 text-[9px] sm:text-[11px] font-medium text-muted-foreground">{file.category}</span></div>
@@ -661,7 +661,7 @@ export default function FichiersPage() {
                     return (
                       <div key={file.id} onClick={() => isMobile ? setContextFile(file) : undefined} className="group flex items-center gap-2.5 sm:gap-4 px-3 sm:px-5 py-2.5 sm:py-4 transition-colors hover:bg-foreground/[0.02]">
                         <div className={cn("flex h-8 w-8 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-lg sm:rounded-xl bg-gradient-to-br", colorClass)}><Icon className="h-3.5 w-3.5 sm:h-4 sm:w-4" /></div>
-                        <div className="flex-1 min-w-0">
+                        <div className="flex-1 min-w-0 overflow-hidden">
                           <p className="text-[12px] sm:text-[14px] font-semibold truncate">{file.name}</p>
                           <p className="text-[10px] sm:text-[12px] text-muted-foreground">{file.category} · {formatSize(file.size_bytes)}</p>
                         </div>
