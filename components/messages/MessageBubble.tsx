@@ -81,7 +81,7 @@ export function MessageBubble({
   return (
     <div
       className={cn(
-        "flex gap-2",
+        "flex w-full min-w-0 gap-2",
         isMe ? "flex-row-reverse" : "flex-row",
         groupedWithPrevious ? "mt-1" : "mt-3",
         isNew && "animate-in slide-in-from-bottom-2 duration-200 ease-out"
@@ -96,9 +96,16 @@ export function MessageBubble({
       ) : !isMe ? (
         <div className="w-7 shrink-0" />
       ) : null}
-      <div className={cn("flex min-w-0 flex-col", isMe ? "items-end max-w-[78%] sm:max-w-[70%] lg:max-w-[60%] xl:max-w-[50%]" : "items-start max-w-[82%] sm:max-w-[72%] lg:max-w-[60%] xl:max-w-[50%]")}>
+      <div
+        className={cn(
+          "flex min-w-0 flex-col",
+          isMe
+            ? "ml-auto items-end max-w-[min(78vw,22rem)] sm:max-w-[70%] lg:max-w-[60%] xl:max-w-[50%]"
+            : "mr-auto items-start max-w-[min(82vw,22rem)] sm:max-w-[72%] lg:max-w-[60%] xl:max-w-[50%]"
+        )}
+      >
         {isGif ? (
-          <div className="max-w-[280px] overflow-hidden rounded-[1.4rem] border border-white/30 shadow-[0_10px_28px_rgba(15,23,42,0.08)] dark:border-white/10">
+          <div className="max-w-full overflow-hidden rounded-[1.4rem] border border-white/30 shadow-[0_10px_28px_rgba(15,23,42,0.08)] dark:border-white/10">
             <img
               src={msg.content.trim()}
               alt="GIF"
@@ -109,7 +116,7 @@ export function MessageBubble({
         ) : hasFile ? (
           <div
             className={cn(
-              "flex min-w-0 items-center gap-3 rounded-[1.35rem] px-3.5 py-3 shadow-[0_10px_28px_rgba(15,23,42,0.06)]",
+              "flex min-w-0 max-w-full items-center gap-3 rounded-[1.35rem] px-3.5 py-3 shadow-[0_10px_28px_rgba(15,23,42,0.06)]",
               isMe
                 ? "rounded-br-md bg-primary text-primary-foreground"
                 : "rounded-bl-md border border-white/40 bg-white/62 text-foreground dark:border-white/10 dark:bg-white/[0.05]"
@@ -142,7 +149,7 @@ export function MessageBubble({
         ) : (
           <div
             className={cn(
-              "overflow-hidden whitespace-pre-wrap break-words px-3.5 py-2.5 text-[14px] leading-[1.45] shadow-[0_10px_28px_rgba(15,23,42,0.05)]",
+              "max-w-full overflow-hidden whitespace-pre-wrap break-words px-3.5 py-2.5 text-[14px] leading-[1.45] shadow-[0_10px_28px_rgba(15,23,42,0.05)]",
               isMe
                 ? "rounded-[1.35rem] rounded-br-md bg-primary text-primary-foreground"
                 : "rounded-[1.35rem] rounded-bl-md border border-white/40 bg-white/62 text-foreground dark:border-white/10 dark:bg-white/[0.05]"
@@ -153,7 +160,7 @@ export function MessageBubble({
           </div>
         )}
         {showMeta && (
-          <div className={cn("mt-1 flex items-center gap-1.5 px-1", isMe ? "justify-end" : "justify-start")}>
+          <div className={cn("mt-1 flex max-w-full flex-wrap items-center gap-1.5 px-1", isMe ? "justify-end" : "justify-start")}>
             <span className="text-[10px] text-muted-foreground">
               {timeAgo(msg.created_at)}
             </span>
