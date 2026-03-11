@@ -20,17 +20,17 @@ export const metadata: Metadata = {
   },
   icons: {
     icon: [
-      { url: "/pwa-icon?size=32", sizes: "32x32", type: "image/png" },
-      { url: "/pwa-icon?size=192", sizes: "192x192", type: "image/png" },
-      { url: "/pwa-icon?size=512", sizes: "512x512", type: "image/png" },
+      { url: "/icons/icon-32.png", sizes: "32x32", type: "image/png" },
+      { url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icons/icon-512.png", sizes: "512x512", type: "image/png" },
     ],
     apple: [
-      { url: "/pwa-icon?size=180", sizes: "180x180", type: "image/png" },
+      { url: "/icons/apple-icon-180.png", sizes: "180x180", type: "image/png" },
     ],
   },
   other: {
     "mobile-web-app-capable": "yes",
-    "msapplication-TileImage": "/pwa-icon?size=192",
+    "msapplication-TileImage": "/icons/icon-192.png",
     "msapplication-TileColor": "#3BA5A0",
   },
 };
@@ -54,10 +54,10 @@ export default function RootLayout({
   return (
     <html lang="fr">
       <head>
-        <link rel="icon" type="image/png" sizes="32x32" href="/pwa-icon?size=32" />
-        <link rel="icon" type="image/png" sizes="192x192" href="/pwa-icon?size=192" />
-        <link rel="apple-touch-icon" sizes="180x180" href="/pwa-icon?size=180" />
-        <meta name="msapplication-TileImage" content="/pwa-icon?size=192" />
+        <link rel="icon" type="image/png" sizes="32x32" href="/icons/icon-32.png" />
+        <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png" />
+        <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-icon-180.png" />
+        <meta name="msapplication-TileImage" content="/icons/icon-192.png" />
       </head>
       <body className={`${inter.variable} font-sans antialiased`}>
         {children}
