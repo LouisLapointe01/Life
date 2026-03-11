@@ -7,6 +7,9 @@ import {
   FileText,
   Image,
   File,
+  Search,
+  Grid3X3,
+  List,
   Download,
   Trash2,
   Eye,
@@ -19,6 +22,8 @@ import {
   FolderIcon,
   Home,
   ArrowRight,
+  ChevronDown,
+  Filter,
 } from "lucide-react";
 import {
   Dialog,
@@ -441,22 +446,27 @@ export default function FichiersPage() {
 
       <section className="premium-panel overflow-hidden p-4 sm:p-5 lg:p-6">
         <div className="premium-grid absolute inset-0 opacity-40" />
-        <div className="relative flex items-center justify-between gap-3">
-          <div className="min-w-0">
+        <div className="relative flex flex-col gap-4 sm:gap-5 lg:flex-row lg:items-end lg:justify-between">
+          <div className="min-w-0 space-y-1.5 sm:space-y-2">
             <p className="text-[10px] sm:text-[11px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
               Drive personnel
             </p>
-            <h1 className="mt-1 text-lg font-semibold tracking-tight sm:text-2xl">
+            <h1 className="text-xl font-semibold tracking-tight sm:text-2xl lg:text-3xl">
               Vos fichiers
             </h1>
+            <p className="max-w-2xl text-[13px] sm:text-sm leading-5 sm:leading-6 text-muted-foreground">
+              Navigation, catégories et actions rapides regroupées.
+            </p>
           </div>
-          <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
-            <button onClick={() => setFolderDialogOpen(true)} className="flex h-9 items-center gap-1.5 rounded-xl bg-foreground/[0.06] px-3 sm:px-4 text-[12px] sm:text-[13px] font-medium text-muted-foreground transition-all hover:bg-foreground/[0.1] hover:text-foreground">
-              <FolderPlus className="h-3.5 w-3.5 sm:h-4 sm:w-4" /><span className="hidden sm:inline">Dossier</span>
-            </button>
-            <button onClick={handleImportClick} className="flex h-9 items-center gap-1.5 rounded-xl bg-primary px-3 sm:px-4 text-[12px] sm:text-[13px] font-semibold text-primary-foreground shadow-lg shadow-primary/25 transition-all hover:shadow-xl hover:-translate-y-0.5">
-              <Upload className="h-3.5 w-3.5 sm:h-4 sm:w-4" /><span className="hidden sm:inline">Importer</span>
-            </button>
+          <div className="grid grid-cols-2 gap-2 sm:gap-3 sm:min-w-[260px] lg:min-w-[300px]">
+            <div className="rounded-[1.4rem] border border-white/10 bg-white/55 p-3 sm:p-4 shadow-[0_18px_48px_-30px_rgba(15,23,42,0.45)] backdrop-blur-xl dark:bg-white/[0.04]">
+              <p className="text-[10px] sm:text-[11px] uppercase tracking-[0.18em] text-muted-foreground">Éléments</p>
+              <p className="mt-1 sm:mt-2 text-xl sm:text-2xl font-semibold tracking-tight">{totalItemsInCurrent}</p>
+            </div>
+            <div className="rounded-[1.4rem] border border-white/10 bg-white/55 p-3 sm:p-4 shadow-[0_18px_48px_-30px_rgba(15,23,42,0.45)] backdrop-blur-xl dark:bg-white/[0.04]">
+              <p className="text-[10px] sm:text-[11px] uppercase tracking-[0.18em] text-muted-foreground">Recherche</p>
+              <p className="mt-1 sm:mt-2 text-sm font-medium text-foreground">{drive.search ? "Active" : "Globale"}</p>
+            </div>
           </div>
         </div>
       </section>
@@ -471,6 +481,48 @@ export default function FichiersPage() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Search + Actions */}
+      <div className="premium-panel p-2 sm:p-4 space-y-2 sm:space-y-0 sm:flex sm:items-center sm:justify-between sm:gap-2">
+        <div className="relative w-full sm:flex-1 sm:w-auto min-w-0">
+          <Search className="absolute left-2.5 sm:left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 sm:h-4 sm:w-4 text-muted-foreground" />
+          <input value={drive.search} onChange={(e) => drive.setSearch(e.target.value)} placeholder="Rechercher..." className="glass-input w-full py-2 sm:py-2.5 pl-8 sm:pl-10 pr-3 sm:pr-4 text-[13px] sm:text-[14px]" />
+        </div>
+        <div className="flex items-center gap-1.5 sm:gap-2">
+          <div className="hidden sm:flex rounded-xl bg-foreground/[0.04] p-0.5">
+            <button onClick={() => setView("grid")} className={cn("rounded-lg p-2 transition-all", view === "grid" ? "bg-card shadow-sm text-foreground" : "text-muted-foreground")}><Grid3X3 className="h-4 w-4" /></button>
+            <button onClick={() => setView("list")} className={cn("rounded-lg p-2 transition-all", view === "list" ? "bg-card shadow-sm text-foreground" : "text-muted-foreground")}><List className="h-4 w-4" /></button>
+          </div>
+          <button onClick={() => setFolderDialogOpen(true)} className="flex flex-1 sm:flex-none h-9 sm:h-auto items-center justify-center gap-2 rounded-xl sm:rounded-2xl bg-foreground/[0.06] sm:px-4 sm:py-2.5 text-[12px] sm:text-[13px] font-medium text-muted-foreground transition-all hover:bg-foreground/[0.1] hover:text-foreground">
+            <FolderPlus className="h-4 w-4" /><span className="sm:hidden">Dossier</span><span className="hidden sm:inline">Dossier</span>
+          </button>
+          <button onClick={handleImportClick} className="flex flex-1 sm:flex-none h-9 sm:h-auto items-center justify-center gap-2 rounded-xl sm:rounded-2xl bg-primary sm:px-4 sm:py-2.5 text-[12px] sm:text-[13px] font-semibold text-primary-foreground shadow-lg shadow-primary/25 transition-all hover:shadow-xl hover:-translate-y-0.5">
+            <Upload className="h-4 w-4" /><span className="sm:hidden">Importer</span><span className="hidden sm:inline">Importer</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Categories — dropdown on mobile, pills on desktop */}
+      <div className="sm:hidden">
+        <div className="relative">
+          <select
+            value={drive.category}
+            onChange={(e) => drive.setCategory(e.target.value)}
+            className="glass-input w-full appearance-none rounded-2xl border border-white/10 bg-white/60 py-2 pl-9 pr-9 text-[13px] font-medium backdrop-blur-xl dark:bg-white/[0.04]"
+          >
+            {CATEGORIES.map((cat) => (
+              <option key={cat} value={cat}>{cat}</option>
+            ))}
+          </select>
+          <Filter className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
+          <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
+        </div>
+      </div>
+      <div className="hidden sm:flex gap-2 overflow-x-auto pb-1 no-scrollbar">
+        {CATEGORIES.map((cat) => (
+          <button key={cat} onClick={() => drive.setCategory(cat)} className={cn("shrink-0 rounded-2xl px-4 py-2 text-[13px] font-medium transition-all duration-200", drive.category === cat ? "bg-primary/15 text-primary shadow-sm" : "bg-foreground/[0.04] text-muted-foreground hover:text-foreground hover:bg-foreground/[0.08]")}>{cat}</button>
+        ))}
+      </div>
 
       {/* Breadcrumb */}
       {(drive.currentFolderId !== null || drive.breadcrumb.length > 0) && (
