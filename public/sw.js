@@ -1,34 +1,25 @@
-const CACHE_NAME = "life-v4";
+const CACHE_NAME = "life-v5";
 const OFFLINE_URL = "/dashboard";
 
+// Only cache static assets that are guaranteed to exist and return 200
+// Do NOT cache pages (/, /dashboard) — they may redirect (auth) and break addAll()
 const STATIC_ASSETS = [
-    "/",
-    "/dashboard",
     "/manifest.webmanifest",
     "/favicon.ico",
-    "/icons/icon-16.png",
-    "/icons/icon-32.png",
-    "/icons/icon-48.png",
-    "/icons/icon-72.png",
-    "/icons/icon-96.png",
-    "/icons/icon-128.png",
-    "/icons/icon-144.png",
     "/icons/icon-192.png",
     "/icons/icon-192-maskable.png",
-    "/icons/icon-256.png",
-    "/icons/icon-384.png",
     "/icons/icon-512.png",
     "/icons/icon-512-maskable.png",
-    "/icons/apple-icon-180.png",
-    "/icons/apple-icon-152.png",
-    "/icons/apple-icon-167.png",
-    "/icons/apple-icon-120.png",
-    "/icons/apple-icon-76.png",
 ];
 
 self.addEventListener("install", (event) => {
     event.waitUntil(
-        caches.open(CACHE_NAME).then((cache) => cache.addAll(STATIC_ASSETS))
+        caches.open(CACHE_NAME).then((cache) =>
+            // Use individual cache.add() with catch so one failure doesn't break install
+            Promise.allSettled(
+                STATIC_ASSETS.map((url) => cache.add(url).catch(() => {}))
+            )
+        )
     );
     self.skipWaiting();
 });
@@ -81,7 +72,6 @@ self.addEventListener("fetch", (event) => {
    ═══════════════════════════════════════════ */
 
 self.addEventListener("push", (event) => {
-    console.log("[SW Push] Événement push reçu", event.data ? event.data.text() : "(vide)");
     const data = event.data ? event.data.json() : {};
     const { title, body, conversationId, url } = data;
 
