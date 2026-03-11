@@ -441,31 +441,31 @@ export default function FichiersPage() {
   const totalItemsInCurrent = drive.folders.length + drive.files.length;
 
   return (
-    <div className="mx-auto max-w-6xl space-y-4 overflow-hidden lg:space-y-6">
+    <div className="mx-auto w-full max-w-6xl space-y-4 overflow-x-hidden lg:space-y-6">
       <input ref={fileInputRef} type="file" multiple className="hidden" onChange={handleFilesSelected} accept="*/*" />
 
-      <section className="premium-panel overflow-hidden p-5 sm:p-6">
+      <section className="premium-panel overflow-hidden p-4 sm:p-5 lg:p-6">
         <div className="premium-grid absolute inset-0 opacity-40" />
-        <div className="relative flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
-          <div className="space-y-2">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
+        <div className="relative flex flex-col gap-4 sm:gap-5 lg:flex-row lg:items-end lg:justify-between">
+          <div className="min-w-0 space-y-1.5 sm:space-y-2">
+            <p className="text-[10px] sm:text-[11px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
               Drive personnel
             </p>
-            <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
-              Vos fichiers, rangés dans une interface plus nette.
+            <h1 className="text-xl font-semibold tracking-tight sm:text-2xl lg:text-3xl">
+              Vos fichiers
             </h1>
-            <p className="max-w-2xl text-sm leading-6 text-muted-foreground">
-              Navigation, catégories et actions rapides ont été regroupées dans des surfaces plus lisibles sans alourdir la page.
+            <p className="max-w-2xl text-[13px] sm:text-sm leading-5 sm:leading-6 text-muted-foreground">
+              Navigation, catégories et actions rapides regroupées.
             </p>
           </div>
-          <div className="grid grid-cols-2 gap-3 sm:min-w-[300px]">
-            <div className="rounded-[1.4rem] border border-white/10 bg-white/55 p-4 shadow-[0_18px_48px_-30px_rgba(15,23,42,0.45)] backdrop-blur-xl dark:bg-white/[0.04]">
-              <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">Éléments</p>
-              <p className="mt-2 text-2xl font-semibold tracking-tight">{totalItemsInCurrent}</p>
+          <div className="grid grid-cols-2 gap-2 sm:gap-3 sm:min-w-[260px] lg:min-w-[300px]">
+            <div className="rounded-[1.4rem] border border-white/10 bg-white/55 p-3 sm:p-4 shadow-[0_18px_48px_-30px_rgba(15,23,42,0.45)] backdrop-blur-xl dark:bg-white/[0.04]">
+              <p className="text-[10px] sm:text-[11px] uppercase tracking-[0.18em] text-muted-foreground">Éléments</p>
+              <p className="mt-1 sm:mt-2 text-xl sm:text-2xl font-semibold tracking-tight">{totalItemsInCurrent}</p>
             </div>
-            <div className="rounded-[1.4rem] border border-white/10 bg-white/55 p-4 shadow-[0_18px_48px_-30px_rgba(15,23,42,0.45)] backdrop-blur-xl dark:bg-white/[0.04]">
-              <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">Recherche</p>
-              <p className="mt-2 text-sm font-medium text-foreground">{drive.search ? "Active" : "Globale"}</p>
+            <div className="rounded-[1.4rem] border border-white/10 bg-white/55 p-3 sm:p-4 shadow-[0_18px_48px_-30px_rgba(15,23,42,0.45)] backdrop-blur-xl dark:bg-white/[0.04]">
+              <p className="text-[10px] sm:text-[11px] uppercase tracking-[0.18em] text-muted-foreground">Recherche</p>
+              <p className="mt-1 sm:mt-2 text-sm font-medium text-foreground">{drive.search ? "Active" : "Globale"}</p>
             </div>
           </div>
         </div>
@@ -484,7 +484,7 @@ export default function FichiersPage() {
 
       {/* Search + Actions */}
       <div className="premium-panel p-2 sm:p-4 space-y-2 sm:space-y-0 sm:flex sm:items-center sm:justify-between sm:gap-2">
-        <div className="relative w-2/3 sm:flex-1 sm:w-auto min-w-0">
+        <div className="relative w-full sm:flex-1 sm:w-auto min-w-0">
           <Search className="absolute left-2.5 sm:left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 sm:h-4 sm:w-4 text-muted-foreground" />
           <input value={drive.search} onChange={(e) => drive.setSearch(e.target.value)} placeholder="Rechercher..." className="glass-input w-full py-2 sm:py-2.5 pl-8 sm:pl-10 pr-3 sm:pr-4 text-[13px] sm:text-[14px]" />
         </div>
@@ -584,19 +584,19 @@ export default function FichiersPage() {
             <div>
               <p className="mb-2 px-1 text-[12px] font-semibold uppercase tracking-widest text-muted-foreground">Dossiers ({drive.folders.length})</p>
               {effectiveView === "grid" ? (
-                <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4">
+                <div className="grid gap-2 sm:gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4">
                   {drive.folders.map((folder) => (
-                    <button key={folder.id} onClick={() => drive.navigateToFolder(folder.id)} onContextMenu={(e) => { e.preventDefault(); setContextFolder(folder); }} className="premium-panel-soft group relative flex flex-col items-start gap-3 p-4 text-left transition-all hover:shadow-md hover:-translate-y-0.5">
+                    <button key={folder.id} onClick={() => drive.navigateToFolder(folder.id)} onContextMenu={(e) => { e.preventDefault(); setContextFolder(folder); }} className="premium-panel-soft group relative flex min-w-0 flex-col items-start gap-2 sm:gap-3 p-3 sm:p-4 text-left transition-all hover:shadow-md hover:-translate-y-0.5">
                       <div className="flex w-full items-center justify-between">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-xl" style={{ background: `linear-gradient(135deg, ${folder.color}30, ${folder.color}10)` }}>
-                          <FolderIcon className="h-5 w-5" style={{ color: folder.color }} />
+                        <div className="flex h-8 w-8 sm:h-10 sm:w-10 items-center justify-center rounded-lg sm:rounded-xl" style={{ background: `linear-gradient(135deg, ${folder.color}30, ${folder.color}10)` }}>
+                          <FolderIcon className="h-4 w-4 sm:h-5 sm:w-5" style={{ color: folder.color }} />
                         </div>
-                        <button onClick={(e) => { e.stopPropagation(); setContextFolder(folder); }} className="flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground/50 transition-all hover:bg-foreground/[0.06] hover:text-foreground opacity-0 group-hover:opacity-100">
-                          <MoreHorizontal className="h-4 w-4" />
+                        <button onClick={(e) => { e.stopPropagation(); setContextFolder(folder); }} className="flex h-6 w-6 sm:h-7 sm:w-7 items-center justify-center rounded-lg text-muted-foreground/50 transition-all hover:bg-foreground/[0.06] hover:text-foreground sm:opacity-0 sm:group-hover:opacity-100">
+                          <MoreHorizontal className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                         </button>
                       </div>
                       <div className="min-w-0 w-full">
-                        <p className="text-[13px] sm:text-[14px] font-semibold truncate">{folder.name}</p>
+                        <p className="text-[12px] sm:text-[14px] font-semibold truncate">{folder.name}</p>
                       </div>
                     </button>
                   ))}
@@ -630,24 +630,24 @@ export default function FichiersPage() {
             <div>
               {drive.folders.length > 0 && <p className="mb-2 px-1 text-[12px] font-semibold uppercase tracking-widest text-muted-foreground">Fichiers ({drive.files.length})</p>}
               {effectiveView === "grid" ? (
-                <div className="grid gap-3 grid-cols-2 sm:grid-cols-2 lg:grid-cols-3">
+                <div className="grid gap-2 sm:gap-3 grid-cols-2 lg:grid-cols-3">
                   {drive.files.map((file) => {
                     const Icon = fileIcons[file.file_type] || File;
                     const colorClass = fileColors[file.file_type] || fileColors.other;
                     return (
-                      <div key={file.id} className="premium-panel-soft group relative overflow-hidden p-4 sm:p-5">
+                      <div key={file.id} className="premium-panel-soft group relative min-w-0 overflow-hidden p-3 sm:p-5">
                         <div className="flex items-start justify-between">
-                          <div className={cn("flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-2xl bg-gradient-to-br", colorClass)}><Icon className="h-4 w-4 sm:h-5 sm:w-5" /></div>
-                          <button onClick={() => setContextFile(file)} className="flex h-8 w-8 items-center justify-center rounded-xl text-muted-foreground transition-all hover:bg-foreground/[0.06] hover:text-foreground opacity-0 group-hover:opacity-100"><MoreHorizontal className="h-4 w-4" /></button>
+                          <div className={cn("flex h-8 w-8 sm:h-12 sm:w-12 items-center justify-center rounded-xl sm:rounded-2xl bg-gradient-to-br", colorClass)}><Icon className="h-3.5 w-3.5 sm:h-5 sm:w-5" /></div>
+                          <button onClick={() => setContextFile(file)} className="flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-lg sm:rounded-xl text-muted-foreground transition-all hover:bg-foreground/[0.06] hover:text-foreground sm:opacity-0 sm:group-hover:opacity-100"><MoreHorizontal className="h-3.5 w-3.5 sm:h-4 sm:w-4" /></button>
                         </div>
-                        <div className="mt-3 sm:mt-4">
-                          <p className="text-[13px] sm:text-[14px] font-semibold truncate">{file.name}</p>
-                          <div className="mt-1 flex items-center gap-2 text-[11px] sm:text-[12px] text-muted-foreground"><span>{formatSize(file.size_bytes)}</span><span>·</span><span>{formatDate(file.created_at)}</span></div>
-                          <div className="mt-2"><span className="inline-block rounded-lg bg-foreground/[0.04] px-2 py-0.5 text-[10px] sm:text-[11px] font-medium text-muted-foreground">{file.category}</span></div>
+                        <div className="mt-2 sm:mt-4 min-w-0">
+                          <p className="text-[12px] sm:text-[14px] font-semibold truncate">{file.name}</p>
+                          <div className="mt-0.5 sm:mt-1 flex flex-wrap items-center gap-1 sm:gap-2 text-[10px] sm:text-[12px] text-muted-foreground"><span>{formatSize(file.size_bytes)}</span><span className="hidden sm:inline">·</span><span className="hidden sm:inline">{formatDate(file.created_at)}</span></div>
+                          <div className="mt-1.5 sm:mt-2"><span className="inline-block rounded-lg bg-foreground/[0.04] px-1.5 sm:px-2 py-0.5 text-[9px] sm:text-[11px] font-medium text-muted-foreground">{file.category}</span></div>
                         </div>
-                        <div className="mt-3 sm:mt-4 flex gap-2 sm:opacity-0 sm:group-hover:opacity-100 transition-all">
-                          <button onClick={() => handleView(file)} className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-foreground/[0.04] py-2 text-[12px] font-medium text-muted-foreground transition-all hover:bg-foreground/[0.08] hover:text-foreground"><Eye className="h-3.5 w-3.5" /> Voir</button>
-                          <button onClick={() => handleDownload(file)} className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-foreground/[0.04] py-2 text-[12px] font-medium text-muted-foreground transition-all hover:bg-foreground/[0.08] hover:text-foreground"><Download className="h-3.5 w-3.5" /> Télécharger</button>
+                        <div className="mt-3 sm:mt-4 flex gap-1.5 sm:gap-2 sm:opacity-0 sm:group-hover:opacity-100 transition-all">
+                          <button onClick={() => handleView(file)} className="flex flex-1 items-center justify-center gap-1 sm:gap-1.5 rounded-xl bg-foreground/[0.04] py-1.5 sm:py-2 text-[11px] sm:text-[12px] font-medium text-muted-foreground transition-all hover:bg-foreground/[0.08] hover:text-foreground"><Eye className="h-3 w-3 sm:h-3.5 sm:w-3.5" /><span className="hidden sm:inline">Voir</span></button>
+                          <button onClick={() => handleDownload(file)} className="flex flex-1 items-center justify-center gap-1 sm:gap-1.5 rounded-xl bg-foreground/[0.04] py-1.5 sm:py-2 text-[11px] sm:text-[12px] font-medium text-muted-foreground transition-all hover:bg-foreground/[0.08] hover:text-foreground"><Download className="h-3 w-3 sm:h-3.5 sm:w-3.5" /><span className="hidden sm:inline">Télécharger</span></button>
                         </div>
                       </div>
                     );
