@@ -1,5 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import { syncAppointmentToGoogle } from "@/lib/google-calendar";
 import { NextResponse } from "next/server";
 
 async function getAuthUser() {
@@ -170,6 +171,18 @@ export async function PATCH(request: Request) {
         title: `${myName} ne peut pas participer`,
         body: `Le participant a décliné le RDV "${apt.guest_name}". Vous pouvez proposer un autre horaire.`,
       });
+    }
+
+    // Sync Google Calendar de l'organisateur quand un participant répond
+    // Récupérer les infos complètes du RDV pour la sync
+    const { data: fullApt } = await supabase
+      .from("appointments")
+      .select("id, type_id, guest_name, message, start_at, end_at, google_event_id, google_calendar_id")
+      .eq("id", apt.id)
+      .single();
+    if (fullApt) {
+      syncAppointmentToGoogle(apt.requester_id, apt.id, fullApt)
+        .catch((e) => console.error("[PATCH participants] Google sync:", e));
     }
 
     return NextResponse.json(updated);

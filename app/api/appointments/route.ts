@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAppointmentSchema } from "@/lib/validations";
 import { sendBookingConfirmationToGuest } from "@/lib/mailjet";
 import { sendSMS } from "@/lib/twilio";
+import { syncAppointmentToGoogle, deleteAppointmentFromGoogle } from "@/lib/google-calendar";
 import { NextResponse } from "next/server";
 
 const APPOINTMENT_SELECT = `
@@ -20,6 +21,9 @@ const APPOINTMENT_SELECT = `
   is_close_contact,
   notify_on_event,
   recipient_type_id,
+  google_event_id,
+  google_calendar_id,
+  google_sync_status,
   created_at,
   updated_at,
   creator:profiles!appointments_requester_id_fkey(id, full_name, avatar_url),
@@ -245,6 +249,15 @@ export async function POST(request: Request) {
       outboundTasks.length > 0 ? Promise.allSettled(outboundTasks) : Promise.resolve(),
     ]);
 
+    // Sync vers Google Calendar (fire & forget)
+    syncAppointmentToGoogle(user.id, apt.id, {
+      guest_name: first.name,
+      message: message || null,
+      start_at: startDate.toISOString(),
+      end_at: endDate.toISOString(),
+      type_id: type_id,
+    }).catch((e) => console.error("[POST] Google sync:", e));
+
     return NextResponse.json(apt, { status: 201 });
   } catch (err) {
     console.error("[POST /api/appointments]", err);
@@ -280,8 +293,14 @@ export async function PATCH(request: Request) {
 
     const { data, error } = await supabase
       .from("appointments").update({ status: "cancelled", updated_at: new Date().toISOString() })
-      .eq("id", id).select().single();
+      .eq("id", id).select("*, google_event_id, google_calendar_id").single();
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+    // Supprimer l'événement Google Calendar associé
+    if (data.google_event_id) {
+      deleteAppointmentFromGoogle(user.id, data.google_event_id, data.google_calendar_id)
+        .catch((e) => console.error("[PATCH] Google delete:", e));
+    }
 
     // Notifier tous les participants
     const { data: parts } = await supabase
@@ -338,10 +357,16 @@ export async function DELETE(request: Request) {
 
     const supabase = createAdminClient();
     const profile = await getProfile(supabase, user.id);
-    const { data: apt } = await supabase.from("appointments").select("requester_id").eq("id", id).single();
-    if (!apt) return NextResponse.json({ error: "RDV introuvable" }, { status: 404 });
-    if (apt.requester_id !== user.id && profile?.role !== "admin") {
+    const { data: aptDel } = await supabase.from("appointments").select("requester_id, google_event_id, google_calendar_id").eq("id", id).single();
+    if (!aptDel) return NextResponse.json({ error: "RDV introuvable" }, { status: 404 });
+    if (aptDel.requester_id !== user.id && profile?.role !== "admin") {
       return NextResponse.json({ error: "Non autorisé" }, { status: 403 });
+    }
+
+    // Supprimer de Google Calendar avant de supprimer de la DB
+    if (aptDel.google_event_id) {
+      await deleteAppointmentFromGoogle(user.id, aptDel.google_event_id, aptDel.google_calendar_id)
+        .catch((e) => console.error("[DELETE] Google delete:", e));
     }
 
     const { error } = await supabase.from("appointments").delete().eq("id", id);

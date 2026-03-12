@@ -98,3 +98,25 @@ export const renameFileSchema = z.object({
 export const moveFileSchema = z.object({
   folder_id: z.string().uuid().nullable(),
 });
+
+/* ═══════════════════════════════════════════════════════
+   Plages d'indisponibilité
+   ═══════════════════════════════════════════════════════ */
+export const unavailabilityBlockSchema = z.object({
+  label: z.string().max(100).optional(),
+  day_of_week: z.number().int().min(0).max(6).nullable().optional(),
+  start_time: z.string().regex(/^\d{2}:\d{2}$/, "Format HH:MM attendu"),
+  end_time: z.string().regex(/^\d{2}:\d{2}$/, "Format HH:MM attendu"),
+  is_recurring: z.boolean().optional().default(true),
+  specific_date: z.string().optional(),
+  is_active: z.boolean().optional(),
+});
+
+/* ═══════════════════════════════════════════════════════
+   Google Calendar — Labels
+   ═══════════════════════════════════════════════════════ */
+export const googleLabelMappingSchema = z.object({
+  id: z.string().uuid(),
+  life_type_id: z.string().uuid().nullable(),
+  google_label_name: z.string().max(50).optional(),
+});
