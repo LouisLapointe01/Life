@@ -1272,8 +1272,13 @@ function GoogleCalendarSection({ userId }: { userId: string }) {
     try {
       const res = await fetch("/api/google/auth");
       const data = await res.json();
-      if (data.url) window.location.href = data.url;
-    } catch {
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        toast.error(data.error || "Impossible de générer l'URL Google");
+      }
+    } catch (err) {
+      console.error("Google auth error:", err);
       toast.error("Erreur de connexion Google");
     }
   };
