@@ -19,7 +19,7 @@ export async function GET(request: Request) {
       // Types propres à cet utilisateur
       let userQuery = supabase
         .from("appointment_types")
-        .select("id, name, duration_min, color, is_active, sort_order, user_id")
+        .select("id, name, duration_min, color, is_active, sort_order, user_id, google_calendar_id")
         .eq("user_id", userId)
         .order("sort_order");
       if (!all) userQuery = userQuery.eq("is_active", true);
@@ -34,7 +34,7 @@ export async function GET(request: Request) {
       // Fallback : types globaux (user_id IS NULL)
       let globalQuery = supabase
         .from("appointment_types")
-        .select("id, name, duration_min, color, is_active, sort_order, user_id")
+        .select("id, name, duration_min, color, is_active, sort_order, user_id, google_calendar_id")
         .is("user_id", null)
         .order("sort_order");
       if (!all) globalQuery = globalQuery.eq("is_active", true);
@@ -48,7 +48,7 @@ export async function GET(request: Request) {
     // Pas de user_id → tous les types
     let query = supabase
       .from("appointment_types")
-      .select("id, name, duration_min, color, is_active, sort_order, user_id")
+      .select("id, name, duration_min, color, is_active, sort_order, user_id, google_calendar_id")
       .order("sort_order");
     if (!all) query = query.eq("is_active", true);
 

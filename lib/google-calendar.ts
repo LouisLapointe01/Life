@@ -282,6 +282,22 @@ export async function listGoogleEvents(
   return gcalFetch(accessToken, `/calendars/${encodeURIComponent(calendarId)}/events?${params}`);
 }
 
+/** Lister les calendriers Google de l'utilisateur */
+export async function listGoogleCalendars(accessToken: string): Promise<{
+  id: string;
+  summary: string;
+  backgroundColor: string;
+  accessRole: string;
+}[]> {
+  const result = await gcalFetch(accessToken, "/users/me/calendarList");
+  return (result.items || []).map((cal: { id: string; summary: string; backgroundColor: string; accessRole: string }) => ({
+    id: cal.id,
+    summary: cal.summary,
+    backgroundColor: cal.backgroundColor,
+    accessRole: cal.accessRole,
+  }));
+}
+
 /** Récupérer un événement Google Calendar par ID */
 export async function getGoogleEvent(
   accessToken: string,
@@ -375,34 +391,17 @@ export async function syncAppointmentToGoogle(
   const accessToken = await getValidAccessToken(userId);
   if (!accessToken) return null;
 
-  // Récupérer le calendar_id de l'utilisateur
-  const { data: tokenRow } = await supabase
-    .from("google_calendar_tokens")
-    .select("calendar_id")
-    .eq("user_id", userId)
-    .single();
-  const calendarId = tokenRow?.calendar_id || "primary";
-
-  // Récupérer le type de RDV et le mapping couleur
+  // Récupérer le type de RDV avec son google_calendar_id
   const { data: aptType } = await supabase
     .from("appointment_types")
-    .select("name, color")
+    .select("name, color, google_calendar_id")
     .eq("id", appointment.type_id)
     .single();
 
-  let googleColorId: string | undefined;
-  const { data: labelMapping } = await supabase
-    .from("google_calendar_labels")
-    .select("google_color_id")
-    .eq("user_id", userId)
-    .eq("life_type_id", appointment.type_id)
-    .single();
+  // Utiliser le calendrier du type si lié à Google, sinon "primary"
+  const calendarId = aptType?.google_calendar_id || "primary";
 
-  if (labelMapping) {
-    googleColorId = labelMapping.google_color_id;
-  } else if (aptType?.color) {
-    googleColorId = findClosestGoogleColor(aptType.color);
-  }
+  const googleColorId = aptType?.color ? findClosestGoogleColor(aptType.color) : undefined;
 
   const eventData = lifeAppointmentToGoogleEvent(
     appointment,
@@ -414,15 +413,12 @@ export async function syncAppointmentToGoogle(
     let googleEventId = appointment.google_event_id;
 
     if (googleEventId) {
-      // Update existing
       await updateGoogleEvent(accessToken, calendarId, googleEventId, eventData);
     } else {
-      // Create new
       const created = await createGoogleEvent(accessToken, calendarId, eventData);
       googleEventId = created.id;
     }
 
-    // Mettre à jour le RDV Life avec l'ID Google
     await supabase
       .from("appointments")
       .update({
@@ -461,7 +457,7 @@ export async function deleteAppointmentFromGoogle(
   }
 }
 
-/** Récupérer les événements Google Calendar pour le calcul de disponibilité */
+/** Récupérer les événements Google Calendar pour le calcul de disponibilité (tous les calendriers) */
 export async function getGoogleBusySlots(
   userId: string,
   dateStart: string,
@@ -470,27 +466,32 @@ export async function getGoogleBusySlots(
   const accessToken = await getValidAccessToken(userId);
   if (!accessToken) return [];
 
-  const supabase = createAdminClient();
-  const { data: tokenRow } = await supabase
-    .from("google_calendar_tokens")
-    .select("calendar_id")
-    .eq("user_id", userId)
-    .single();
-  const calendarId = tokenRow?.calendar_id || "primary";
-
   try {
-    const result = await listGoogleEvents(accessToken, calendarId, {
-      timeMin: dateStart,
-      timeMax: dateEnd,
-    });
+    const calendars = await listGoogleCalendars(accessToken);
+    const allBusy: { start: number; end: number }[] = [];
 
-    return (result.items || [])
-      .filter((e: { status?: string }) => e.status !== "cancelled")
-      .map((e: { start?: { dateTime?: string; date?: string }; end?: { dateTime?: string; date?: string } }) => ({
-        start: new Date(e.start?.dateTime || e.start?.date || "").getTime(),
-        end: new Date(e.end?.dateTime || e.end?.date || "").getTime(),
-      }))
-      .filter((s: { start: number; end: number }) => !isNaN(s.start) && !isNaN(s.end));
+    for (const cal of calendars) {
+      try {
+        const result = await listGoogleEvents(accessToken, cal.id, {
+          timeMin: dateStart,
+          timeMax: dateEnd,
+        });
+
+        const events = (result.items || [])
+          .filter((e: { status?: string }) => e.status !== "cancelled")
+          .map((e: { start?: { dateTime?: string; date?: string }; end?: { dateTime?: string; date?: string } }) => ({
+            start: new Date(e.start?.dateTime || e.start?.date || "").getTime(),
+            end: new Date(e.end?.dateTime || e.end?.date || "").getTime(),
+          }))
+          .filter((s: { start: number; end: number }) => !isNaN(s.start) && !isNaN(s.end));
+
+        allBusy.push(...events);
+      } catch {
+        // Skip calendriers en erreur
+      }
+    }
+
+    return allBusy;
   } catch (err) {
     console.error("[Google Calendar] Error fetching busy slots", err);
     return [];

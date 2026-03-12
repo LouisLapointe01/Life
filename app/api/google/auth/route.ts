@@ -32,7 +32,7 @@ export async function GET(request: Request) {
 
 /**
  * DELETE /api/google/auth
- * Déconnecte Google Calendar (supprime les tokens).
+ * Déconnecte Google Calendar : supprime les tokens, désactive les types Google.
  */
 export async function DELETE() {
   try {
@@ -63,8 +63,14 @@ export async function DELETE() {
 
     // Supprimer les tokens
     await admin.from("google_calendar_tokens").delete().eq("user_id", user.id);
-    // Supprimer les labels
-    await admin.from("google_calendar_labels").delete().eq("user_id", user.id);
+
+    // Désactiver les types de RDV Google (garder l'historique)
+    await admin
+      .from("appointment_types")
+      .update({ is_active: false })
+      .eq("user_id", user.id)
+      .not("google_calendar_id", "is", null);
+
     // Reset les appointments sync
     await admin
       .from("appointments")
