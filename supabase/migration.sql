@@ -20,22 +20,11 @@ CREATE TABLE IF NOT EXISTS appointment_types (
 ALTER TABLE appointment_types ADD COLUMN IF NOT EXISTS user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE;
 ALTER TABLE appointment_types ADD COLUMN IF NOT EXISTS is_active BOOLEAN NOT NULL DEFAULT true;
 ALTER TABLE appointment_types ADD COLUMN IF NOT EXISTS sort_order INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE appointment_types ADD COLUMN IF NOT EXISTS google_calendar_id TEXT;
 
--- 2. RÈGLES DE DISPONIBILITÉ
+-- 2. (SUPPRIMÉ) RÈGLES DE DISPONIBILITÉ — remplacé par plage fixe 7h-22h
 -- --------------------------------------------------------
-CREATE TABLE IF NOT EXISTS availability_rules (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
-  day_of_week INTEGER NOT NULL CHECK (day_of_week BETWEEN 0 AND 6),
-  start_time TIME NOT NULL,
-  end_time TIME NOT NULL,
-  is_active BOOLEAN NOT NULL DEFAULT true,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-
--- Colonnes manquantes sur availability_rules
-ALTER TABLE availability_rules ADD COLUMN IF NOT EXISTS user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE;
-ALTER TABLE availability_rules ADD COLUMN IF NOT EXISTS is_active BOOLEAN NOT NULL DEFAULT true;
+DROP TABLE IF EXISTS availability_rules CASCADE;
 
 -- 3. CONTACTS
 -- --------------------------------------------------------
@@ -171,7 +160,6 @@ CREATE INDEX IF NOT EXISTS idx_notif_user ON notifications(user_id);
 CREATE INDEX IF NOT EXISTS idx_notif_read ON notifications(user_id, is_read);
 CREATE INDEX IF NOT EXISTS idx_notif_created ON notifications(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_types_user ON appointment_types(user_id);
-CREATE INDEX IF NOT EXISTS idx_avail_user ON availability_rules(user_id);
 CREATE INDEX IF NOT EXISTS idx_contacts_user ON contacts(user_id);
 CREATE INDEX IF NOT EXISTS idx_contacts_user_close ON contacts(user_id, is_close);
 CREATE INDEX IF NOT EXISTS idx_contacts_user_email ON contacts(user_id, email);
@@ -195,7 +183,6 @@ CREATE INDEX IF NOT EXISTS idx_user_folders_user_parent_name ON user_folders(use
 -- ROW LEVEL SECURITY
 -- ============================================================
 ALTER TABLE appointment_types ENABLE ROW LEVEL SECURITY;
-ALTER TABLE availability_rules ENABLE ROW LEVEL SECURITY;
 ALTER TABLE appointments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE appointment_participants ENABLE ROW LEVEL SECURITY;
 ALTER TABLE notifications ENABLE ROW LEVEL SECURITY;
@@ -210,11 +197,6 @@ DO $$ BEGIN
   DROP POLICY IF EXISTS "types_insert" ON appointment_types;
   DROP POLICY IF EXISTS "types_update" ON appointment_types;
   DROP POLICY IF EXISTS "types_delete" ON appointment_types;
-  -- availability_rules
-  DROP POLICY IF EXISTS "avail_select" ON availability_rules;
-  DROP POLICY IF EXISTS "avail_insert" ON availability_rules;
-  DROP POLICY IF EXISTS "avail_update" ON availability_rules;
-  DROP POLICY IF EXISTS "avail_delete" ON availability_rules;
   -- appointments
   DROP POLICY IF EXISTS "apt_select" ON appointments;
   DROP POLICY IF EXISTS "apt_insert" ON appointments;
@@ -245,12 +227,6 @@ CREATE POLICY "types_select" ON appointment_types FOR SELECT USING (user_id = au
 CREATE POLICY "types_insert" ON appointment_types FOR INSERT WITH CHECK (user_id = auth.uid());
 CREATE POLICY "types_update" ON appointment_types FOR UPDATE USING (user_id = auth.uid());
 CREATE POLICY "types_delete" ON appointment_types FOR DELETE USING (user_id = auth.uid());
-
--- availability_rules : lecture own + global, écriture own
-CREATE POLICY "avail_select" ON availability_rules FOR SELECT USING (user_id = auth.uid() OR user_id IS NULL);
-CREATE POLICY "avail_insert" ON availability_rules FOR INSERT WITH CHECK (user_id = auth.uid());
-CREATE POLICY "avail_update" ON availability_rules FOR UPDATE USING (user_id = auth.uid());
-CREATE POLICY "avail_delete" ON availability_rules FOR DELETE USING (user_id = auth.uid());
 
 -- appointments : lecture si créateur ou participant
 CREATE POLICY "apt_select" ON appointments FOR SELECT USING (
@@ -342,37 +318,13 @@ ALTER TABLE google_calendar_tokens ADD COLUMN IF NOT EXISTS webhook_expiry TIMES
 ALTER TABLE google_calendar_tokens ADD COLUMN IF NOT EXISTS last_sync_token TEXT;
 ALTER TABLE google_calendar_tokens ADD COLUMN IF NOT EXISTS last_synced_at TIMESTAMPTZ;
 
--- 10. GOOGLE CALENDAR — Libellés / Couleurs (Google = maître)
--- Google Calendar offre 11 couleurs fixes pour les événements.
--- Cette table mappe les appointment_types de Life vers les couleurs Google.
+-- 10. (SUPPRIMÉ) GOOGLE CALENDAR LABELS — remplacé par google_calendar_id sur appointment_types
 -- ============================================================
-CREATE TABLE IF NOT EXISTS google_calendar_labels (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-  google_color_id TEXT NOT NULL,
-  google_color_hex TEXT NOT NULL,
-  google_label_name TEXT NOT NULL,
-  life_type_id UUID REFERENCES appointment_types(id) ON DELETE SET NULL,
-  is_default BOOLEAN NOT NULL DEFAULT false,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  UNIQUE(user_id, google_color_id)
-);
+DROP TABLE IF EXISTS google_calendar_labels CASCADE;
 
--- 11. PLAGES D'INDISPONIBILITÉ FIXES (paramètres utilisateur)
--- Ex: nuit (22h-7h), weekends, pause déjeuner
+-- 11. (SUPPRIMÉ) PLAGES D'INDISPONIBILITÉ — remplacé par plage fixe 7h-22h
 -- ============================================================
-CREATE TABLE IF NOT EXISTS unavailability_blocks (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-  label TEXT NOT NULL DEFAULT 'Indisponible',
-  day_of_week INTEGER CHECK (day_of_week BETWEEN 0 AND 6),
-  start_time TIME NOT NULL,
-  end_time TIME NOT NULL,
-  is_recurring BOOLEAN NOT NULL DEFAULT true,
-  specific_date DATE,
-  is_active BOOLEAN NOT NULL DEFAULT true,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
-);
+DROP TABLE IF EXISTS unavailability_blocks CASCADE;
 
 -- 12. COLONNES GOOGLE SYNC sur appointments
 -- ============================================================
@@ -384,33 +336,20 @@ ALTER TABLE appointments ADD COLUMN IF NOT EXISTS google_sync_status TEXT DEFAUL
 -- INDEX — Google Calendar
 -- ============================================================
 CREATE INDEX IF NOT EXISTS idx_gcal_tokens_user ON google_calendar_tokens(user_id);
-CREATE INDEX IF NOT EXISTS idx_gcal_labels_user ON google_calendar_labels(user_id);
-CREATE INDEX IF NOT EXISTS idx_gcal_labels_type ON google_calendar_labels(life_type_id);
-CREATE INDEX IF NOT EXISTS idx_unavail_user ON unavailability_blocks(user_id);
-CREATE INDEX IF NOT EXISTS idx_unavail_user_day ON unavailability_blocks(user_id, day_of_week);
 CREATE INDEX IF NOT EXISTS idx_apt_google_event ON appointments(google_event_id);
 CREATE INDEX IF NOT EXISTS idx_apt_google_sync ON appointments(google_sync_status);
+CREATE INDEX IF NOT EXISTS idx_apt_types_gcal ON appointment_types(google_calendar_id);
 
 -- ============================================================
 -- ROW LEVEL SECURITY — Nouvelles tables
 -- ============================================================
 ALTER TABLE google_calendar_tokens ENABLE ROW LEVEL SECURITY;
-ALTER TABLE google_calendar_labels ENABLE ROW LEVEL SECURITY;
-ALTER TABLE unavailability_blocks ENABLE ROW LEVEL SECURITY;
 
 DO $$ BEGIN
   DROP POLICY IF EXISTS "gcal_tokens_select" ON google_calendar_tokens;
   DROP POLICY IF EXISTS "gcal_tokens_insert" ON google_calendar_tokens;
   DROP POLICY IF EXISTS "gcal_tokens_update" ON google_calendar_tokens;
   DROP POLICY IF EXISTS "gcal_tokens_delete" ON google_calendar_tokens;
-  DROP POLICY IF EXISTS "gcal_labels_select" ON google_calendar_labels;
-  DROP POLICY IF EXISTS "gcal_labels_insert" ON google_calendar_labels;
-  DROP POLICY IF EXISTS "gcal_labels_update" ON google_calendar_labels;
-  DROP POLICY IF EXISTS "gcal_labels_delete" ON google_calendar_labels;
-  DROP POLICY IF EXISTS "unavail_select" ON unavailability_blocks;
-  DROP POLICY IF EXISTS "unavail_insert" ON unavailability_blocks;
-  DROP POLICY IF EXISTS "unavail_update" ON unavailability_blocks;
-  DROP POLICY IF EXISTS "unavail_delete" ON unavailability_blocks;
 END $$;
 
 -- google_calendar_tokens : propres uniquement
@@ -418,18 +357,6 @@ CREATE POLICY "gcal_tokens_select" ON google_calendar_tokens FOR SELECT USING (u
 CREATE POLICY "gcal_tokens_insert" ON google_calendar_tokens FOR INSERT WITH CHECK (user_id = auth.uid());
 CREATE POLICY "gcal_tokens_update" ON google_calendar_tokens FOR UPDATE USING (user_id = auth.uid());
 CREATE POLICY "gcal_tokens_delete" ON google_calendar_tokens FOR DELETE USING (user_id = auth.uid());
-
--- google_calendar_labels : propres uniquement
-CREATE POLICY "gcal_labels_select" ON google_calendar_labels FOR SELECT USING (user_id = auth.uid());
-CREATE POLICY "gcal_labels_insert" ON google_calendar_labels FOR INSERT WITH CHECK (user_id = auth.uid());
-CREATE POLICY "gcal_labels_update" ON google_calendar_labels FOR UPDATE USING (user_id = auth.uid());
-CREATE POLICY "gcal_labels_delete" ON google_calendar_labels FOR DELETE USING (user_id = auth.uid());
-
--- unavailability_blocks : propres uniquement
-CREATE POLICY "unavail_select" ON unavailability_blocks FOR SELECT USING (user_id = auth.uid());
-CREATE POLICY "unavail_insert" ON unavailability_blocks FOR INSERT WITH CHECK (user_id = auth.uid());
-CREATE POLICY "unavail_update" ON unavailability_blocks FOR UPDATE USING (user_id = auth.uid());
-CREATE POLICY "unavail_delete" ON unavailability_blocks FOR DELETE USING (user_id = auth.uid());
 
 -- ============================================================
 -- FONCTION RPC : recherche de profils par email (si pas déjà créée)
