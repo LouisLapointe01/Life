@@ -202,6 +202,23 @@ export default function AgendaPage() {
     return () => { supabase.removeChannel(ch1); supabase.removeChannel(ch2); };
   }, [fetchAppointments]);
 
+  // Auto-sync polling (60s) — silencieux, pause quand l'onglet est invisible
+  useEffect(() => {
+    const silentFetch = async () => {
+      if (document.visibilityState !== "visible") return;
+      try {
+        const res = await fetch("/api/appointments");
+        if (res.ok) {
+          const data = await res.json();
+          setAppointments(data as Appointment[]);
+          clientCache.set("appointments", data as Appointment[]);
+        }
+      } catch { /* silencieux */ }
+    };
+    const interval = setInterval(silentFetch, 60_000);
+    return () => clearInterval(interval);
+  }, []);
+
   // Contacts
   useEffect(() => {
     const cached = clientCache.get<Contact[]>("contacts");

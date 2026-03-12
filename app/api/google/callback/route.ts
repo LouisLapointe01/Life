@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server";
-import { exchangeCodeForTokens, watchCalendar, GOOGLE_EVENT_COLORS } from "@/lib/google-calendar";
+import { exchangeCodeForTokens, watchCalendar, listGoogleCalendars } from "@/lib/google-calendar";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { randomUUID } from "crypto";
 
 /**
  * GET /api/google/callback?code=...&state=...
  * Callback OAuth2 Google Calendar.
- * Stocke les tokens, initialise les labels, et démarre le webhook.
+ * Stocke les tokens, importe les calendriers Google comme types de RDV, et démarre le webhook.
  */
 export async function GET(request: Request) {
   try {
@@ -30,7 +30,7 @@ export async function GET(request: Request) {
       return NextResponse.redirect(`${origin}/dashboard/parametres?gcal_error=invalid_state`);
     }
 
-    // Échanger le code contre des tokens (redirect_uri doit matcher celle envoyée à l'auth)
+    // Échanger le code contre des tokens
     const redirectUri = `${origin}/api/google/callback`;
     const tokens = await exchangeCodeForTokens(code, redirectUri);
     const tokenExpiry = new Date(Date.now() + tokens.expires_in * 1000);
@@ -51,22 +51,40 @@ export async function GET(request: Request) {
       { onConflict: "user_id" }
     );
 
-    // Initialiser les labels Google (11 couleurs)
-    const { data: existingLabels } = await supabase
-      .from("google_calendar_labels")
-      .select("id")
-      .eq("user_id", state.userId);
+    // Importer les calendriers Google comme types de RDV
+    try {
+      const calendars = await listGoogleCalendars(tokens.access_token);
+      for (const cal of calendars) {
+        // Upsert : si un type avec ce google_calendar_id existe déjà, on le met à jour
+        const { data: existing } = await supabase
+          .from("appointment_types")
+          .select("id")
+          .eq("user_id", state.userId)
+          .eq("google_calendar_id", cal.id)
+          .single();
 
-    if (!existingLabels || existingLabels.length === 0) {
-      const labels = Object.entries(GOOGLE_EVENT_COLORS).map(([colorId, { name, hex }]) => ({
-        user_id: state.userId,
-        google_color_id: colorId,
-        google_color_hex: hex,
-        google_label_name: name,
-        life_type_id: null,
-        is_default: colorId === "7", // Paon par défaut
-      }));
-      await supabase.from("google_calendar_labels").insert(labels);
+        if (existing) {
+          await supabase
+            .from("appointment_types")
+            .update({
+              name: cal.summary,
+              color: cal.backgroundColor,
+              is_active: true,
+            })
+            .eq("id", existing.id);
+        } else {
+          await supabase.from("appointment_types").insert({
+            user_id: state.userId,
+            name: cal.summary,
+            color: cal.backgroundColor,
+            google_calendar_id: cal.id,
+            is_active: true,
+            sort_order: 99,
+          });
+        }
+      }
+    } catch (err) {
+      console.error("[Google Callback] Calendar import failed:", err);
     }
 
     // Démarrer le webhook pour la sync Google → Life
@@ -91,7 +109,6 @@ export async function GET(request: Request) {
         .eq("user_id", state.userId);
     } catch (err) {
       console.error("[Google Callback] Webhook setup failed:", err);
-      // Pas critique — on fera du polling en fallback
     }
 
     return NextResponse.redirect(`${origin}/dashboard/parametres?gcal_success=true`);

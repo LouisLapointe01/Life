@@ -7,13 +7,6 @@ import { clientCache } from "@/lib/client-cache";
 import { useProfile } from "@/hooks/use-profile";
 import { Switch } from "@/components/ui/switch";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
   Dialog,
   DialogContent,
   DialogHeader,
@@ -23,18 +16,13 @@ import {
   Plus,
   Trash2,
   Loader2,
-  Clock,
   Users,
   CalendarDays,
   Star,
-  Settings2,
   Palette,
   LayoutGrid,
-  Eye,
-  EyeOff,
   Smartphone,
   Lock,
-  GripVertical,
   ArrowUp,
   ArrowDown,
   Bell,
@@ -43,8 +31,6 @@ import {
   RefreshCw,
   Unlink,
   Link2,
-  Ban,
-  Moon,
 } from "lucide-react";
 import {
   subscribeToPush,
@@ -75,14 +61,6 @@ type AppointmentType = {
   sort_order: number;
 };
 
-type AvailabilityRule = {
-  id: string;
-  day_of_week: number;
-  start_time: string;
-  end_time: string;
-  is_active: boolean;
-};
-
 type Contact = {
   id: string;
   first_name: string;
@@ -92,25 +70,13 @@ type Contact = {
   is_close: boolean;
 };
 
-const DAYS = [
-  "Dimanche",
-  "Lundi",
-  "Mardi",
-  "Mercredi",
-  "Jeudi",
-  "Vendredi",
-  "Samedi",
-];
-
-type Tab = "types" | "availability" | "contacts" | "sections" | "notifications" | "google" | "unavailability";
+type Tab = "types" | "contacts" | "sections" | "notifications" | "google";
 
 const tabs: { key: Tab; label: string; icon: typeof CalendarDays }[] = [
   { key: "sections", label: "Sections", icon: LayoutGrid },
   { key: "notifications", label: "Notifs", icon: Bell },
   { key: "types", label: "Types RDV", icon: CalendarDays },
-  { key: "availability", label: "Dispos", icon: Clock },
   { key: "google", label: "Google", icon: RefreshCw },
-  { key: "unavailability", label: "Blocages", icon: Moon },
   { key: "contacts", label: "Proches", icon: Users },
 ];
 
@@ -177,18 +143,8 @@ export default function ParametresPage() {
               <div className="flex items-center justify-center py-16"><Loader2 className="h-7 w-7 animate-spin text-primary" /></div>
             )
           )}
-          {activeTab === "availability" && (
-            profile?.id ? <AvailabilitySection userId={profile.id} /> : (
-              <div className="flex items-center justify-center py-16"><Loader2 className="h-7 w-7 animate-spin text-primary" /></div>
-            )
-          )}
           {activeTab === "google" && (
             profile?.id ? <GoogleCalendarSection userId={profile.id} /> : (
-              <div className="flex items-center justify-center py-16"><Loader2 className="h-7 w-7 animate-spin text-primary" /></div>
-            )
-          )}
-          {activeTab === "unavailability" && (
-            profile?.id ? <UnavailabilitySection userId={profile.id} /> : (
               <div className="flex items-center justify-center py-16"><Loader2 className="h-7 w-7 animate-spin text-primary" /></div>
             )
           )}
@@ -650,252 +606,6 @@ function AppointmentTypesSection({ userId }: { userId?: string }) {
 }
 
 /* ═══════════════════════════════════════════════════════
-   Disponibilités
-   ═══════════════════════════════════════════════════════ */
-
-function AvailabilitySection({ userId }: { userId?: string }) {
-  const [rules, setRules] = useState<AvailabilityRule[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [form, setForm] = useState({
-    day_of_week: "1",
-    start_time: "09:00",
-    end_time: "17:00",
-  });
-  const [saving, setSaving] = useState(false);
-
-  const fetchRules = useCallback(async () => {
-    const cacheKey = `availability:${userId || ""}`;
-    const cached = clientCache.get<AvailabilityRule[]>(cacheKey);
-    if (cached) { setRules(cached); setLoading(false); }
-    try {
-      const url = userId
-        ? `/api/appointments/availability?user_id=${userId}`
-        : `/api/appointments/availability`;
-      const res = await fetch(url);
-      if (res.ok) {
-        const data = await res.json();
-        setRules(data);
-        clientCache.set(cacheKey, data);
-      }
-    } catch { /* ignore */ }
-    setLoading(false);
-  }, [userId]);
-
-  useEffect(() => {
-    fetchRules();
-  }, [fetchRules]);
-
-  const addRule = async () => {
-    setSaving(true);
-    try {
-      const res = await fetch("/api/appointments/availability", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          day_of_week: parseInt(form.day_of_week),
-          start_time: form.start_time,
-          end_time: form.end_time,
-          user_id: userId || null,
-        }),
-      });
-      if (res.ok) {
-        setDialogOpen(false);
-        await fetchRules();
-      }
-    } catch { /* ignore */ }
-    setSaving(false);
-  };
-
-  const toggleActive = async (id: string, is_active: boolean) => {
-    // Mise à jour optimiste
-    setRules((prev) => prev.map((r) => (r.id === id ? { ...r, is_active: !is_active } : r)));
-    try {
-      await fetch("/api/appointments/availability", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id, is_active: !is_active }),
-      });
-    } catch {
-      setRules((prev) => prev.map((r) => (r.id === id ? { ...r, is_active } : r)));
-    }
-  };
-
-  const deleteRule = async (id: string) => {
-    setRules((prev) => prev.filter((r) => r.id !== id));
-    try {
-      await fetch(`/api/appointments/availability?id=${id}`, { method: "DELETE" });
-    } catch {
-      fetchRules();
-    }
-  };
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-16">
-        <Loader2 className="h-7 w-7 animate-spin text-primary" />
-      </div>
-    );
-  }
-
-  // Group by day
-  const grouped = rules.reduce(
-    (acc, rule) => {
-      const day = rule.day_of_week;
-      if (!acc[day]) acc[day] = [];
-      acc[day].push(rule);
-      return acc;
-    },
-    {} as Record<number, AvailabilityRule[]>
-  );
-
-  return (
-    <div className="space-y-4">
-      {/* Header row */}
-      <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
-        <div className="flex h-9 w-9 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-orange-500/20 to-orange-600/20">
-          <Clock className="h-4 w-4 sm:h-5 sm:w-5 text-orange-500" />
-        </div>
-        <div className="min-w-0">
-          <h3 className="text-[14px] sm:text-[16px] font-semibold truncate">Plages horaires</h3>
-          <p className="text-[11px] sm:text-[12px] text-muted-foreground">
-            {rules.length} plage{rules.length > 1 ? "s" : ""} configurée
-            {rules.length > 1 ? "s" : ""}
-          </p>
-        </div>
-      </div>
-
-      {/* FAB Ajouter plage */}
-      <button
-        onClick={() => setDialogOpen(true)}
-        className="fixed bottom-28 right-4 z-40 flex h-11 w-11 items-center justify-center rounded-full bg-foreground/10 backdrop-blur-xl text-muted-foreground shadow-md transition-all hover:shadow-lg hover:scale-105 active:scale-95 border border-white/10 lg:bottom-14"
-        aria-label="Ajouter une plage"
-        title="Ajouter une plage"
-      >
-        <Plus className="h-5 w-5" />
-      </button>
-
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogContent className="rounded-3xl">
-            <DialogHeader>
-              <DialogTitle>Nouvelle plage horaire</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4 pt-2">
-              <div className="space-y-1.5">
-                <label className="text-[13px] font-medium">Jour</label>
-                <Select
-                  value={form.day_of_week}
-                  onValueChange={(v) =>
-                    setForm((f) => ({ ...f, day_of_week: v }))
-                  }
-                >
-                  <SelectTrigger className="rounded-xl">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {DAYS.map((day, i) => (
-                      <SelectItem key={i} value={String(i)}>
-                        {day}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <label className="text-[13px] font-medium">Début</label>
-                  <input
-                    type="time"
-                    value={form.start_time}
-                    onChange={(e) =>
-                      setForm((f) => ({ ...f, start_time: e.target.value }))
-                    }
-                    className="glass-input w-full py-3 px-4 text-[14px]"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <label className="text-[13px] font-medium">Fin</label>
-                  <input
-                    type="time"
-                    value={form.end_time}
-                    onChange={(e) =>
-                      setForm((f) => ({ ...f, end_time: e.target.value }))
-                    }
-                    className="glass-input w-full py-3 px-4 text-[14px]"
-                  />
-                </div>
-              </div>
-              <button
-                onClick={addRule}
-                disabled={saving}
-                className="w-full rounded-2xl bg-primary py-3 text-[14px] font-semibold text-primary-foreground shadow-lg shadow-primary/25 transition-all hover:shadow-xl disabled:opacity-50"
-              >
-                {saving ? (
-                  <Loader2 className="mx-auto h-4 w-4 animate-spin" />
-                ) : (
-                  "Créer"
-                )}
-              </button>
-            </div>
-          </DialogContent>
-        </Dialog>
-
-      {/* List grouped by day */}
-      {rules.length === 0 ? (
-        <div className="premium-panel flex flex-col items-center gap-3 py-12 sm:py-16 px-4">
-          <Clock className="h-10 w-10 sm:h-12 sm:w-12 text-muted-foreground/40" />
-          <p className="text-[14px] text-muted-foreground">
-            Aucune plage horaire. Ajoutez vos disponibilités.
-          </p>
-        </div>
-      ) : (
-        <div className="space-y-4">
-          {Object.entries(grouped)
-            .sort(([a], [b]) => Number(a) - Number(b))
-            .map(([dayNum, dayRules]) => (
-              <div key={dayNum} className="space-y-2">
-                <p className="text-[12px] font-semibold uppercase tracking-widest text-muted-foreground px-1">
-                  {DAYS[Number(dayNum)]}
-                </p>
-                {dayRules.map((rule) => (
-                  <div
-                    key={rule.id}
-                    className="premium-panel-soft flex items-center gap-2.5 sm:gap-4 p-3 sm:p-4"
-                  >
-                    <div className="flex h-8 w-8 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-lg sm:rounded-xl bg-orange-500/10">
-                      <Clock className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-orange-500" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-[13px] sm:text-[14px] font-semibold">
-                        {rule.start_time.slice(0, 5)} —{" "}
-                        {rule.end_time.slice(0, 5)}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-                      <Switch
-                        checked={rule.is_active}
-                        onCheckedChange={() =>
-                          toggleActive(rule.id, rule.is_active)
-                        }
-                      />
-                      <button
-                        onClick={() => deleteRule(rule.id)}
-                        className="flex h-8 w-8 items-center justify-center rounded-xl text-muted-foreground hover:bg-red-500/10 hover:text-red-500 transition-colors"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-/* ═══════════════════════════════════════════════════════
    Contacts proches
    ═══════════════════════════════════════════════════════ */
 
@@ -1202,7 +912,7 @@ function ContactRow({
 }
 
 /* ═══════════════════════════════════════════════════════
-   Google Calendar — Connexion & Sync & Labels
+   Google Calendar — Connexion & Sync & Calendriers importés
    ═══════════════════════════════════════════════════════ */
 
 type GoogleSyncStatus = {
@@ -1214,49 +924,42 @@ type GoogleSyncStatus = {
   connected_since?: string;
 };
 
-type GoogleLabel = {
+type GoogleCalendarType = {
   id: string;
-  google_color_id: string;
-  google_color_hex: string;
-  google_label_name: string;
-  life_type_id: string | null;
-  is_default: boolean;
-  appointment_type?: { id: string; name: string; color: string; duration_min: number } | null;
+  name: string;
+  color: string;
+  google_calendar_id: string;
+  is_active: boolean;
 };
 
 function GoogleCalendarSection({ userId }: { userId: string }) {
   const [status, setStatus] = useState<GoogleSyncStatus | null>(null);
-  const [labels, setLabels] = useState<GoogleLabel[]>([]);
-  const [types, setTypes] = useState<AppointmentType[]>([]);
+  const [googleTypes, setGoogleTypes] = useState<GoogleCalendarType[]>([]);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [disconnecting, setDisconnecting] = useState(false);
 
   const fetchStatus = useCallback(async () => {
     try {
-      const [syncRes, labelsRes, typesRes] = await Promise.all([
+      const [syncRes, typesRes] = await Promise.all([
         fetch("/api/google/sync"),
-        fetch("/api/google/labels"),
-        fetch("/api/appointments/types"),
+        fetch(`/api/appointments/types?user_id=${userId}&all=true`),
       ]);
       const syncData = await syncRes.json();
       setStatus(syncData);
-      if (syncData.connected) {
-        const labelsData = await labelsRes.json();
-        setLabels(Array.isArray(labelsData) ? labelsData : []);
-      }
       const typesData = await typesRes.json();
-      setTypes(Array.isArray(typesData) ? typesData : []);
+      const gTypes = (Array.isArray(typesData) ? typesData : [])
+        .filter((t: AppointmentType & { google_calendar_id?: string }) => t.google_calendar_id);
+      setGoogleTypes(gTypes);
     } catch {
       toast.error("Erreur de chargement");
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [userId]);
 
   useEffect(() => {
     fetchStatus();
-    // Vérifier les query params pour le retour OAuth
     const params = new URLSearchParams(window.location.search);
     if (params.get("gcal_success") === "true") {
       toast.success("Google Calendar connecté !");
@@ -1289,7 +992,7 @@ function GoogleCalendarSection({ userId }: { userId: string }) {
       await fetch("/api/google/auth", { method: "DELETE" });
       toast.success("Google Calendar déconnecté");
       setStatus({ connected: false });
-      setLabels([]);
+      setGoogleTypes([]);
     } catch {
       toast.error("Erreur de déconnexion");
     } finally {
@@ -1315,20 +1018,6 @@ function GoogleCalendarSection({ userId }: { userId: string }) {
     }
   };
 
-  const handleLabelMapping = async (labelId: string, lifeTypeId: string | null) => {
-    try {
-      await fetch("/api/google/labels", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: labelId, life_type_id: lifeTypeId }),
-      });
-      toast.success("Mapping mis à jour");
-      fetchStatus();
-    } catch {
-      toast.error("Erreur de mise à jour");
-    }
-  };
-
   if (loading) {
     return (
       <div className="flex items-center justify-center py-16">
@@ -1347,7 +1036,7 @@ function GoogleCalendarSection({ userId }: { userId: string }) {
         <div className="min-w-0">
           <h3 className="text-[14px] sm:text-[16px] font-semibold truncate">Google Calendar</h3>
           <p className="text-[11px] sm:text-[12px] text-muted-foreground truncate">
-            Synchronisation bidirectionnelle avec votre agenda Google.
+            Synchronisation bidirectionnelle avec vos agendas Google.
           </p>
         </div>
       </div>
@@ -1406,10 +1095,6 @@ function GoogleCalendarSection({ userId }: { userId: string }) {
         {status?.connected && (
           <div className="mt-3 flex gap-3 text-[11px] text-muted-foreground">
             <span className="flex items-center gap-1">
-              <CalendarDays className="h-3 w-3" />
-              Calendrier : {status.calendar_id || "primary"}
-            </span>
-            <span className="flex items-center gap-1">
               {status.webhook_active ? (
                 <><span className="h-1.5 w-1.5 rounded-full bg-green-500" /> Webhook actif</>
               ) : (
@@ -1420,52 +1105,44 @@ function GoogleCalendarSection({ userId }: { userId: string }) {
         )}
       </div>
 
-      {/* Mapping des libellés — seulement si connecté */}
-      {status?.connected && labels.length > 0 && (
+      {/* Calendriers Google importés */}
+      {status?.connected && googleTypes.length > 0 && (
         <div className="space-y-3">
           <div className="flex items-center gap-2 px-1">
-            <Palette className="h-4 w-4 text-muted-foreground" />
+            <CalendarDays className="h-4 w-4 text-muted-foreground" />
             <p className="text-[11px] sm:text-[12px] font-semibold uppercase tracking-widest text-muted-foreground">
-              Libellés Google → Types de RDV Life
+              Calendriers importés ({googleTypes.length})
             </p>
           </div>
           <p className="text-[11px] sm:text-[12px] text-muted-foreground px-1">
-            Google Calendar impose 11 couleurs fixes. Associez chaque couleur Google à un type de RDV dans Life.
+            Vos calendriers Google sont automatiquement importés comme types de RDV dans Life.
           </p>
           <div className="space-y-1.5">
-            {labels.map((label) => (
+            {googleTypes.map((gType) => (
               <div
-                key={label.id}
+                key={gType.id}
                 className="premium-panel-soft flex items-center gap-3 p-3"
               >
                 <div
                   className="h-6 w-6 rounded-lg shrink-0"
-                  style={{ backgroundColor: label.google_color_hex }}
+                  style={{ backgroundColor: gType.color }}
                 />
                 <div className="flex-1 min-w-0">
                   <p className="text-[12px] sm:text-[13px] font-medium truncate">
-                    {label.google_label_name}
+                    {gType.name}
+                  </p>
+                  <p className="text-[10px] text-muted-foreground truncate">
+                    {gType.google_calendar_id}
                   </p>
                 </div>
-                <Select
-                  value={label.life_type_id || "none"}
-                  onValueChange={(val) => handleLabelMapping(label.id, val === "none" ? null : val)}
-                >
-                  <SelectTrigger className="w-[160px] sm:w-[200px] h-8 text-[12px]">
-                    <SelectValue placeholder="Non associé" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">Non associé</SelectItem>
-                    {types.filter((t) => t.is_active).map((t) => (
-                      <SelectItem key={t.id} value={t.id}>
-                        <span className="flex items-center gap-2">
-                          <span className="h-2.5 w-2.5 rounded-full shrink-0" style={{ backgroundColor: t.color }} />
-                          {t.name}
-                        </span>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <span className={cn(
+                  "rounded-lg px-2 py-0.5 text-[10px] font-medium",
+                  gType.is_active
+                    ? "bg-green-500/10 text-green-600 dark:text-green-400"
+                    : "bg-foreground/[0.06] text-muted-foreground"
+                )}>
+                  {gType.is_active ? "Actif" : "Inactif"}
+                </span>
               </div>
             ))}
           </div>
@@ -1475,241 +1152,3 @@ function GoogleCalendarSection({ userId }: { userId: string }) {
   );
 }
 
-/* ═══════════════════════════════════════════════════════
-   Plages d'indisponibilité
-   ═══════════════════════════════════════════════════════ */
-
-type UnavailabilityBlock = {
-  id: string;
-  label: string;
-  day_of_week: number | null;
-  start_time: string;
-  end_time: string;
-  is_recurring: boolean;
-  specific_date: string | null;
-  is_active: boolean;
-};
-
-function UnavailabilitySection({ userId }: { userId: string }) {
-  const [blocks, setBlocks] = useState<UnavailabilityBlock[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({
-    label: "Indisponible",
-    day_of_week: null as number | null,
-    start_time: "22:00",
-    end_time: "07:00",
-    is_recurring: true,
-  });
-
-  const fetchBlocks = useCallback(async () => {
-    try {
-      const res = await fetch(`/api/unavailability?user_id=${userId}`);
-      const data = await res.json();
-      setBlocks(Array.isArray(data) ? data : []);
-    } catch {
-      toast.error("Erreur de chargement");
-    } finally {
-      setLoading(false);
-    }
-  }, [userId]);
-
-  useEffect(() => { fetchBlocks(); }, [fetchBlocks]);
-
-  const handleAdd = async () => {
-    try {
-      const res = await fetch("/api/unavailability", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
-      });
-      if (res.ok) {
-        toast.success("Plage ajoutée");
-        setShowForm(false);
-        setForm({ label: "Indisponible", day_of_week: null, start_time: "22:00", end_time: "07:00", is_recurring: true });
-        fetchBlocks();
-      }
-    } catch {
-      toast.error("Erreur d'ajout");
-    }
-  };
-
-  const handleDelete = async (id: string) => {
-    try {
-      await fetch(`/api/unavailability?id=${id}`, { method: "DELETE" });
-      toast.success("Plage supprimée");
-      fetchBlocks();
-    } catch {
-      toast.error("Erreur de suppression");
-    }
-  };
-
-  const handleToggle = async (id: string, isActive: boolean) => {
-    try {
-      await fetch("/api/unavailability", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id, is_active: !isActive }),
-      });
-      fetchBlocks();
-    } catch {
-      toast.error("Erreur de mise à jour");
-    }
-  };
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-16">
-        <Loader2 className="h-7 w-7 animate-spin text-primary" />
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-4 sm:space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
-          <div className="flex h-9 w-9 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-purple-500/20 to-purple-600/20">
-            <Moon className="h-4 w-4 sm:h-5 sm:w-5 text-purple-500" />
-          </div>
-          <div className="min-w-0">
-            <h3 className="text-[14px] sm:text-[16px] font-semibold truncate">Plages d&apos;indisponibilit&eacute;</h3>
-            <p className="text-[11px] sm:text-[12px] text-muted-foreground truncate">
-              Bloquez des cr&eacute;neaux fixes (nuit, weekends, pause).
-            </p>
-          </div>
-        </div>
-        <button
-          onClick={() => setShowForm(!showForm)}
-          className="flex items-center gap-1.5 rounded-xl bg-foreground/[0.06] px-3 py-1.5 text-[12px] font-medium transition-colors hover:bg-foreground/[0.1]"
-        >
-          <Plus className="h-3.5 w-3.5" />
-          Ajouter
-        </button>
-      </div>
-
-      {/* Formulaire d'ajout */}
-      {showForm && (
-        <div className="premium-panel-soft space-y-3 p-4">
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="text-[11px] font-medium text-muted-foreground">Libell&eacute;</label>
-              <input
-                type="text"
-                value={form.label}
-                onChange={(e) => setForm({ ...form, label: e.target.value })}
-                className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-1.5 text-[13px]"
-              />
-            </div>
-            <div>
-              <label className="text-[11px] font-medium text-muted-foreground">Jour</label>
-              <Select
-                value={form.day_of_week === null ? "all" : String(form.day_of_week)}
-                onValueChange={(val) => setForm({ ...form, day_of_week: val === "all" ? null : Number(val) })}
-              >
-                <SelectTrigger className="mt-1 h-8 text-[12px]">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Tous les jours</SelectItem>
-                  {DAYS.map((d, i) => (
-                    <SelectItem key={i} value={String(i)}>{d}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="text-[11px] font-medium text-muted-foreground">D&eacute;but</label>
-              <input
-                type="time"
-                value={form.start_time}
-                onChange={(e) => setForm({ ...form, start_time: e.target.value })}
-                className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-1.5 text-[13px]"
-              />
-            </div>
-            <div>
-              <label className="text-[11px] font-medium text-muted-foreground">Fin</label>
-              <input
-                type="time"
-                value={form.end_time}
-                onChange={(e) => setForm({ ...form, end_time: e.target.value })}
-                className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-1.5 text-[13px]"
-              />
-            </div>
-          </div>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Switch
-                checked={form.is_recurring}
-                onCheckedChange={(val) => setForm({ ...form, is_recurring: val })}
-              />
-              <span className="text-[12px]">R&eacute;current</span>
-            </div>
-            <button
-              onClick={handleAdd}
-              className="rounded-xl bg-primary px-4 py-1.5 text-[12px] font-medium text-primary-foreground transition-colors hover:bg-primary/90"
-            >
-              Ajouter
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Liste des plages */}
-      {blocks.length === 0 ? (
-        <div className="premium-panel-soft flex flex-col items-center justify-center py-10 text-center">
-          <Ban className="h-8 w-8 text-muted-foreground/40 mb-2" />
-          <p className="text-[13px] text-muted-foreground">Aucune plage d&apos;indisponibilit&eacute;</p>
-          <p className="text-[11px] text-muted-foreground/70 mt-1">
-            Ajoutez des plages pour bloquer automatiquement des cr&eacute;neaux (nuit, weekends...).
-          </p>
-        </div>
-      ) : (
-        <div className="space-y-1.5">
-          {blocks.map((block) => (
-            <div key={block.id} className="premium-panel-soft flex items-center gap-3 p-3">
-              <div className={cn(
-                "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg",
-                block.is_active ? "bg-purple-500/10" : "bg-foreground/[0.04]"
-              )}>
-                <Moon className={cn(
-                  "h-3.5 w-3.5",
-                  block.is_active ? "text-purple-500" : "text-muted-foreground/50"
-                )} />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className={cn(
-                  "text-[13px] font-medium truncate",
-                  !block.is_active && "text-muted-foreground"
-                )}>
-                  {block.label}
-                </p>
-                <p className="text-[11px] text-muted-foreground">
-                  {block.day_of_week !== null ? DAYS[block.day_of_week] : "Tous les jours"}
-                  {" — "}
-                  {block.start_time.slice(0, 5)} &rarr; {block.end_time.slice(0, 5)}
-                  {block.is_recurring && " (r\u00e9current)"}
-                </p>
-              </div>
-              <div className="flex items-center gap-1.5 shrink-0">
-                <Switch
-                  checked={block.is_active}
-                  onCheckedChange={() => handleToggle(block.id, block.is_active)}
-                />
-                <button
-                  onClick={() => handleDelete(block.id)}
-                  className="flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-red-500/10 hover:text-red-500"
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
