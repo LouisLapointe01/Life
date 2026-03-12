@@ -7,7 +7,7 @@ import { NextResponse } from "next/server";
  * Redirige l'utilisateur vers Google OAuth2 pour autoriser l'accès au Calendar.
  * Le state contient l'user_id pour le callback.
  */
-export async function GET() {
+export async function GET(request: Request) {
   try {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
@@ -15,13 +15,18 @@ export async function GET() {
       return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
     }
 
+    // Dériver le redirect URI de l'URL de la requête (fonctionne en local et en prod)
+    const { origin } = new URL(request.url);
+    const redirectUri = `${origin}/api/google/callback`;
+
     const state = Buffer.from(JSON.stringify({ userId: user.id })).toString("base64url");
-    const authUrl = getGoogleAuthUrl(state);
+    const authUrl = getGoogleAuthUrl(state, redirectUri);
 
     return NextResponse.json({ url: authUrl });
   } catch (err) {
-    console.error("[GET /api/google/auth]", err);
-    return NextResponse.json({ error: "Erreur serveur" }, { status: 500 });
+    const message = err instanceof Error ? err.message : String(err);
+    console.error("[GET /api/google/auth]", message);
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
 
@@ -69,7 +74,8 @@ export async function DELETE() {
 
     return NextResponse.json({ success: true });
   } catch (err) {
-    console.error("[DELETE /api/google/auth]", err);
-    return NextResponse.json({ error: "Erreur serveur" }, { status: 500 });
+    const message = err instanceof Error ? err.message : String(err);
+    console.error("[DELETE /api/google/auth]", message);
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
