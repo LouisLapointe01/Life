@@ -30,8 +30,9 @@ export async function GET(request: Request) {
       return NextResponse.redirect(`${origin}/dashboard/parametres?gcal_error=invalid_state`);
     }
 
-    // Échanger le code contre des tokens
-    const tokens = await exchangeCodeForTokens(code);
+    // Échanger le code contre des tokens (redirect_uri doit matcher celle envoyée à l'auth)
+    const redirectUri = `${origin}/api/google/callback`;
+    const tokens = await exchangeCodeForTokens(code, redirectUri);
     const tokenExpiry = new Date(Date.now() + tokens.expires_in * 1000);
 
     const supabase = createAdminClient();

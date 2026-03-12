@@ -61,19 +61,18 @@ export function findClosestGoogleColor(hex: string): string {
 function getGoogleConfig() {
   const clientId = process.env.GOOGLE_CLIENT_ID;
   const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
-  const redirectUri = process.env.GOOGLE_CALENDAR_REDIRECT_URI;
-  if (!clientId || !clientSecret || !redirectUri) {
-    throw new Error("Variables GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET et GOOGLE_CALENDAR_REDIRECT_URI requises");
+  if (!clientId || !clientSecret) {
+    throw new Error("Variables GOOGLE_CLIENT_ID et GOOGLE_CLIENT_SECRET requises");
   }
-  return { clientId, clientSecret, redirectUri };
+  return { clientId, clientSecret };
 }
 
 /* ═══════════════════════════════════════════════════════
    OAuth2 — Génération URL d'autorisation
    ═══════════════════════════════════════════════════════ */
 
-export function getGoogleAuthUrl(state: string): string {
-  const { clientId, redirectUri } = getGoogleConfig();
+export function getGoogleAuthUrl(state: string, redirectUri: string): string {
+  const { clientId } = getGoogleConfig();
   const params = new URLSearchParams({
     client_id: clientId,
     redirect_uri: redirectUri,
@@ -90,8 +89,8 @@ export function getGoogleAuthUrl(state: string): string {
    OAuth2 — Échange code → tokens
    ═══════════════════════════════════════════════════════ */
 
-export async function exchangeCodeForTokens(code: string) {
-  const { clientId, clientSecret, redirectUri } = getGoogleConfig();
+export async function exchangeCodeForTokens(code: string, redirectUri: string) {
+  const { clientId, clientSecret } = getGoogleConfig();
   const res = await fetch(GOOGLE_TOKEN_URL, {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
