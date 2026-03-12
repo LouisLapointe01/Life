@@ -53,6 +53,8 @@ type Appointment = {
   appointment_types: { id: string; name: string; color: string; duration_min: number };
   appointment_participants: Participant[];
   creator?: { id: string; full_name: string; avatar_url: string | null };
+  google_event_id?: string | null;
+  google_sync_status?: string | null;
 };
 
 type AppointmentType = {
@@ -760,6 +762,20 @@ export default function AgendaPage() {
                                 <AlertTriangle className="h-3 w-3" /> Réponse attendue
                               </span>
                             )}
+                            {/* Indicateur Google Calendar */}
+                            {apt.google_event_id && (
+                              <span className={cn(
+                                "inline-flex items-center gap-1 mt-1 text-[10px] font-medium rounded-lg px-1.5 py-0.5",
+                                apt.google_sync_status === "synced"
+                                  ? "text-blue-600 bg-blue-500/10 dark:text-blue-400"
+                                  : apt.google_sync_status === "error"
+                                  ? "text-red-600 bg-red-500/10 dark:text-red-400"
+                                  : "text-gray-600 bg-gray-500/10 dark:text-gray-400"
+                              )}>
+                                <svg className="h-3 w-3" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.372 0 0 5.373 0 12s5.372 12 12 12c6.627 0 12-5.373 12-12S18.627 0 12 0zm-1.177 18.003l-.07-.003c-.93 0-1.81-.373-2.463-1.036l-3.14-3.203 1.458-1.428 3.14 3.203c.56.571 1.51.577 2.076.013l6.842-6.797 1.42 1.442-6.842 6.797a2.951 2.951 0 01-2.421 1.012z"/></svg>
+                                Google
+                              </span>
+                            )}
                           </div>
                           <div className={cn("flex items-center gap-1.5 rounded-xl px-2 py-1 shrink-0", config.bg)}>
                             <span className={cn("h-1.5 w-1.5 rounded-full", config.dot)} />
@@ -1320,9 +1336,22 @@ function AppointmentDetail({
           {apt.is_close_contact && <Star className="h-3.5 w-3.5 fill-yellow-400 text-yellow-400" />}
         </div>
         <h3 className="text-xl font-bold">{apt.guest_name}</h3>
-        <div className={cn("mt-2 inline-flex items-center gap-1.5 rounded-xl px-2.5 py-1", config.bg)}>
-          <span className={cn("h-1.5 w-1.5 rounded-full", config.dot)} />
-          <span className={cn("text-[12px] font-medium", config.color)}>{config.label}</span>
+        <div className="mt-2 flex items-center gap-2 flex-wrap">
+          <div className={cn("inline-flex items-center gap-1.5 rounded-xl px-2.5 py-1", config.bg)}>
+            <span className={cn("h-1.5 w-1.5 rounded-full", config.dot)} />
+            <span className={cn("text-[12px] font-medium", config.color)}>{config.label}</span>
+          </div>
+          {apt.google_event_id && (
+            <div className={cn(
+              "inline-flex items-center gap-1.5 rounded-xl px-2.5 py-1",
+              apt.google_sync_status === "synced" ? "bg-blue-500/10" : apt.google_sync_status === "error" ? "bg-red-500/10" : "bg-gray-500/10"
+            )}>
+              <svg className={cn("h-3 w-3", apt.google_sync_status === "synced" ? "text-blue-500" : apt.google_sync_status === "error" ? "text-red-500" : "text-gray-500")} viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.372 0 0 5.373 0 12s5.372 12 12 12c6.627 0 12-5.373 12-12S18.627 0 12 0zm-1.177 18.003l-.07-.003c-.93 0-1.81-.373-2.463-1.036l-3.14-3.203 1.458-1.428 3.14 3.203c.56.571 1.51.577 2.076.013l6.842-6.797 1.42 1.442-6.842 6.797a2.951 2.951 0 01-2.421 1.012z"/></svg>
+              <span className={cn("text-[11px] font-medium", apt.google_sync_status === "synced" ? "text-blue-600 dark:text-blue-400" : apt.google_sync_status === "error" ? "text-red-600 dark:text-red-400" : "text-gray-600 dark:text-gray-400")}>
+                {apt.google_sync_status === "synced" ? "Google sync" : apt.google_sync_status === "error" ? "Erreur sync" : "En attente"}
+              </span>
+            </div>
+          )}
         </div>
       </div>
 

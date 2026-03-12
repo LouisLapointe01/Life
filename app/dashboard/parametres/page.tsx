@@ -40,6 +40,11 @@ import {
   Bell,
   BellOff,
   BellRing,
+  RefreshCw,
+  Unlink,
+  Link2,
+  Ban,
+  Moon,
 } from "lucide-react";
 import {
   subscribeToPush,
@@ -97,13 +102,15 @@ const DAYS = [
   "Samedi",
 ];
 
-type Tab = "types" | "availability" | "contacts" | "sections" | "notifications";
+type Tab = "types" | "availability" | "contacts" | "sections" | "notifications" | "google" | "unavailability";
 
 const tabs: { key: Tab; label: string; icon: typeof CalendarDays }[] = [
   { key: "sections", label: "Sections", icon: LayoutGrid },
   { key: "notifications", label: "Notifs", icon: Bell },
   { key: "types", label: "Types RDV", icon: CalendarDays },
   { key: "availability", label: "Dispos", icon: Clock },
+  { key: "google", label: "Google", icon: RefreshCw },
+  { key: "unavailability", label: "Blocages", icon: Moon },
   { key: "contacts", label: "Proches", icon: Users },
 ];
 
@@ -172,6 +179,16 @@ export default function ParametresPage() {
           )}
           {activeTab === "availability" && (
             profile?.id ? <AvailabilitySection userId={profile.id} /> : (
+              <div className="flex items-center justify-center py-16"><Loader2 className="h-7 w-7 animate-spin text-primary" /></div>
+            )
+          )}
+          {activeTab === "google" && (
+            profile?.id ? <GoogleCalendarSection userId={profile.id} /> : (
+              <div className="flex items-center justify-center py-16"><Loader2 className="h-7 w-7 animate-spin text-primary" /></div>
+            )
+          )}
+          {activeTab === "unavailability" && (
+            profile?.id ? <UnavailabilitySection userId={profile.id} /> : (
               <div className="flex items-center justify-center py-16"><Loader2 className="h-7 w-7 animate-spin text-primary" /></div>
             )
           )}
@@ -1180,6 +1197,514 @@ function ContactRow({
           onCheckedChange={onToggle}
         />
       </div>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════
+   Google Calendar — Connexion & Sync & Labels
+   ═══════════════════════════════════════════════════════ */
+
+type GoogleSyncStatus = {
+  connected: boolean;
+  sync_enabled?: boolean;
+  last_synced_at?: string | null;
+  webhook_active?: boolean;
+  calendar_id?: string;
+  connected_since?: string;
+};
+
+type GoogleLabel = {
+  id: string;
+  google_color_id: string;
+  google_color_hex: string;
+  google_label_name: string;
+  life_type_id: string | null;
+  is_default: boolean;
+  appointment_type?: { id: string; name: string; color: string; duration_min: number } | null;
+};
+
+function GoogleCalendarSection({ userId }: { userId: string }) {
+  const [status, setStatus] = useState<GoogleSyncStatus | null>(null);
+  const [labels, setLabels] = useState<GoogleLabel[]>([]);
+  const [types, setTypes] = useState<AppointmentType[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [syncing, setSyncing] = useState(false);
+  const [disconnecting, setDisconnecting] = useState(false);
+
+  const fetchStatus = useCallback(async () => {
+    try {
+      const [syncRes, labelsRes, typesRes] = await Promise.all([
+        fetch("/api/google/sync"),
+        fetch("/api/google/labels"),
+        fetch("/api/appointments/types"),
+      ]);
+      const syncData = await syncRes.json();
+      setStatus(syncData);
+      if (syncData.connected) {
+        const labelsData = await labelsRes.json();
+        setLabels(Array.isArray(labelsData) ? labelsData : []);
+      }
+      const typesData = await typesRes.json();
+      setTypes(Array.isArray(typesData) ? typesData : []);
+    } catch {
+      toast.error("Erreur de chargement");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchStatus();
+    // Vérifier les query params pour le retour OAuth
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("gcal_success") === "true") {
+      toast.success("Google Calendar connecté !");
+      window.history.replaceState({}, "", window.location.pathname);
+      fetchStatus();
+    } else if (params.get("gcal_error")) {
+      toast.error(`Erreur Google Calendar : ${params.get("gcal_error")}`);
+      window.history.replaceState({}, "", window.location.pathname);
+    }
+  }, [fetchStatus]);
+
+  const handleConnect = async () => {
+    try {
+      const res = await fetch("/api/google/auth");
+      const data = await res.json();
+      if (data.url) window.location.href = data.url;
+    } catch {
+      toast.error("Erreur de connexion Google");
+    }
+  };
+
+  const handleDisconnect = async () => {
+    setDisconnecting(true);
+    try {
+      await fetch("/api/google/auth", { method: "DELETE" });
+      toast.success("Google Calendar déconnecté");
+      setStatus({ connected: false });
+      setLabels([]);
+    } catch {
+      toast.error("Erreur de déconnexion");
+    } finally {
+      setDisconnecting(false);
+    }
+  };
+
+  const handleSync = async () => {
+    setSyncing(true);
+    try {
+      const res = await fetch("/api/google/sync", { method: "POST" });
+      const data = await res.json();
+      if (data.success) {
+        toast.success(`Sync terminée — ${data.stats.pushed} envoyés, ${data.stats.pulled} reçus`);
+        fetchStatus();
+      } else {
+        toast.error(data.error || "Erreur de synchronisation");
+      }
+    } catch {
+      toast.error("Erreur de synchronisation");
+    } finally {
+      setSyncing(false);
+    }
+  };
+
+  const handleLabelMapping = async (labelId: string, lifeTypeId: string | null) => {
+    try {
+      await fetch("/api/google/labels", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: labelId, life_type_id: lifeTypeId }),
+      });
+      toast.success("Mapping mis à jour");
+      fetchStatus();
+    } catch {
+      toast.error("Erreur de mise à jour");
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-16">
+        <Loader2 className="h-7 w-7 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4 sm:space-y-6">
+      {/* Header */}
+      <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+        <div className="flex h-9 w-9 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500/20 to-blue-600/20">
+          <RefreshCw className="h-4 w-4 sm:h-5 sm:w-5 text-blue-500" />
+        </div>
+        <div className="min-w-0">
+          <h3 className="text-[14px] sm:text-[16px] font-semibold truncate">Google Calendar</h3>
+          <p className="text-[11px] sm:text-[12px] text-muted-foreground truncate">
+            Synchronisation bidirectionnelle avec votre agenda Google.
+          </p>
+        </div>
+      </div>
+
+      {/* Statut de connexion */}
+      <div className="premium-panel-soft p-4 sm:p-5">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className={cn(
+              "h-3 w-3 rounded-full",
+              status?.connected ? "bg-green-500" : "bg-gray-400"
+            )} />
+            <div>
+              <p className="text-[13px] sm:text-[14px] font-semibold">
+                {status?.connected ? "Connecté" : "Non connecté"}
+              </p>
+              {status?.connected && status.last_synced_at && (
+                <p className="text-[11px] text-muted-foreground">
+                  Dernière sync : {new Date(status.last_synced_at).toLocaleString("fr-FR")}
+                </p>
+              )}
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            {status?.connected ? (
+              <>
+                <button
+                  onClick={handleSync}
+                  disabled={syncing}
+                  className="flex items-center gap-1.5 rounded-xl bg-blue-500/10 px-3 py-1.5 text-[12px] font-medium text-blue-600 transition-colors hover:bg-blue-500/20 disabled:opacity-50 dark:text-blue-400"
+                >
+                  <RefreshCw className={cn("h-3.5 w-3.5", syncing && "animate-spin")} />
+                  Synchroniser
+                </button>
+                <button
+                  onClick={handleDisconnect}
+                  disabled={disconnecting}
+                  className="flex items-center gap-1.5 rounded-xl bg-red-500/10 px-3 py-1.5 text-[12px] font-medium text-red-600 transition-colors hover:bg-red-500/20 disabled:opacity-50 dark:text-red-400"
+                >
+                  <Unlink className="h-3.5 w-3.5" />
+                  Déconnecter
+                </button>
+              </>
+            ) : (
+              <button
+                onClick={handleConnect}
+                className="flex items-center gap-1.5 rounded-xl bg-blue-500/10 px-4 py-2 text-[12px] font-medium text-blue-600 transition-colors hover:bg-blue-500/20 dark:text-blue-400"
+              >
+                <Link2 className="h-3.5 w-3.5" />
+                Connecter Google Calendar
+              </button>
+            )}
+          </div>
+        </div>
+
+        {status?.connected && (
+          <div className="mt-3 flex gap-3 text-[11px] text-muted-foreground">
+            <span className="flex items-center gap-1">
+              <CalendarDays className="h-3 w-3" />
+              Calendrier : {status.calendar_id || "primary"}
+            </span>
+            <span className="flex items-center gap-1">
+              {status.webhook_active ? (
+                <><span className="h-1.5 w-1.5 rounded-full bg-green-500" /> Webhook actif</>
+              ) : (
+                <><span className="h-1.5 w-1.5 rounded-full bg-amber-500" /> Polling</>
+              )}
+            </span>
+          </div>
+        )}
+      </div>
+
+      {/* Mapping des libellés — seulement si connecté */}
+      {status?.connected && labels.length > 0 && (
+        <div className="space-y-3">
+          <div className="flex items-center gap-2 px-1">
+            <Palette className="h-4 w-4 text-muted-foreground" />
+            <p className="text-[11px] sm:text-[12px] font-semibold uppercase tracking-widest text-muted-foreground">
+              Libellés Google → Types de RDV Life
+            </p>
+          </div>
+          <p className="text-[11px] sm:text-[12px] text-muted-foreground px-1">
+            Google Calendar impose 11 couleurs fixes. Associez chaque couleur Google à un type de RDV dans Life.
+          </p>
+          <div className="space-y-1.5">
+            {labels.map((label) => (
+              <div
+                key={label.id}
+                className="premium-panel-soft flex items-center gap-3 p-3"
+              >
+                <div
+                  className="h-6 w-6 rounded-lg shrink-0"
+                  style={{ backgroundColor: label.google_color_hex }}
+                />
+                <div className="flex-1 min-w-0">
+                  <p className="text-[12px] sm:text-[13px] font-medium truncate">
+                    {label.google_label_name}
+                  </p>
+                </div>
+                <Select
+                  value={label.life_type_id || "none"}
+                  onValueChange={(val) => handleLabelMapping(label.id, val === "none" ? null : val)}
+                >
+                  <SelectTrigger className="w-[160px] sm:w-[200px] h-8 text-[12px]">
+                    <SelectValue placeholder="Non associé" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Non associé</SelectItem>
+                    {types.filter((t) => t.is_active).map((t) => (
+                      <SelectItem key={t.id} value={t.id}>
+                        <span className="flex items-center gap-2">
+                          <span className="h-2.5 w-2.5 rounded-full shrink-0" style={{ backgroundColor: t.color }} />
+                          {t.name}
+                        </span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════
+   Plages d'indisponibilité
+   ═══════════════════════════════════════════════════════ */
+
+type UnavailabilityBlock = {
+  id: string;
+  label: string;
+  day_of_week: number | null;
+  start_time: string;
+  end_time: string;
+  is_recurring: boolean;
+  specific_date: string | null;
+  is_active: boolean;
+};
+
+function UnavailabilitySection({ userId }: { userId: string }) {
+  const [blocks, setBlocks] = useState<UnavailabilityBlock[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showForm, setShowForm] = useState(false);
+  const [form, setForm] = useState({
+    label: "Indisponible",
+    day_of_week: null as number | null,
+    start_time: "22:00",
+    end_time: "07:00",
+    is_recurring: true,
+  });
+
+  const fetchBlocks = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/unavailability?user_id=${userId}`);
+      const data = await res.json();
+      setBlocks(Array.isArray(data) ? data : []);
+    } catch {
+      toast.error("Erreur de chargement");
+    } finally {
+      setLoading(false);
+    }
+  }, [userId]);
+
+  useEffect(() => { fetchBlocks(); }, [fetchBlocks]);
+
+  const handleAdd = async () => {
+    try {
+      const res = await fetch("/api/unavailability", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(form),
+      });
+      if (res.ok) {
+        toast.success("Plage ajoutée");
+        setShowForm(false);
+        setForm({ label: "Indisponible", day_of_week: null, start_time: "22:00", end_time: "07:00", is_recurring: true });
+        fetchBlocks();
+      }
+    } catch {
+      toast.error("Erreur d'ajout");
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    try {
+      await fetch(`/api/unavailability?id=${id}`, { method: "DELETE" });
+      toast.success("Plage supprimée");
+      fetchBlocks();
+    } catch {
+      toast.error("Erreur de suppression");
+    }
+  };
+
+  const handleToggle = async (id: string, isActive: boolean) => {
+    try {
+      await fetch("/api/unavailability", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, is_active: !isActive }),
+      });
+      fetchBlocks();
+    } catch {
+      toast.error("Erreur de mise à jour");
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-16">
+        <Loader2 className="h-7 w-7 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4 sm:space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+          <div className="flex h-9 w-9 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-purple-500/20 to-purple-600/20">
+            <Moon className="h-4 w-4 sm:h-5 sm:w-5 text-purple-500" />
+          </div>
+          <div className="min-w-0">
+            <h3 className="text-[14px] sm:text-[16px] font-semibold truncate">Plages d&apos;indisponibilit&eacute;</h3>
+            <p className="text-[11px] sm:text-[12px] text-muted-foreground truncate">
+              Bloquez des cr&eacute;neaux fixes (nuit, weekends, pause).
+            </p>
+          </div>
+        </div>
+        <button
+          onClick={() => setShowForm(!showForm)}
+          className="flex items-center gap-1.5 rounded-xl bg-foreground/[0.06] px-3 py-1.5 text-[12px] font-medium transition-colors hover:bg-foreground/[0.1]"
+        >
+          <Plus className="h-3.5 w-3.5" />
+          Ajouter
+        </button>
+      </div>
+
+      {/* Formulaire d'ajout */}
+      {showForm && (
+        <div className="premium-panel-soft space-y-3 p-4">
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-[11px] font-medium text-muted-foreground">Libell&eacute;</label>
+              <input
+                type="text"
+                value={form.label}
+                onChange={(e) => setForm({ ...form, label: e.target.value })}
+                className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-1.5 text-[13px]"
+              />
+            </div>
+            <div>
+              <label className="text-[11px] font-medium text-muted-foreground">Jour</label>
+              <Select
+                value={form.day_of_week === null ? "all" : String(form.day_of_week)}
+                onValueChange={(val) => setForm({ ...form, day_of_week: val === "all" ? null : Number(val) })}
+              >
+                <SelectTrigger className="mt-1 h-8 text-[12px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Tous les jours</SelectItem>
+                  {DAYS.map((d, i) => (
+                    <SelectItem key={i} value={String(i)}>{d}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-[11px] font-medium text-muted-foreground">D&eacute;but</label>
+              <input
+                type="time"
+                value={form.start_time}
+                onChange={(e) => setForm({ ...form, start_time: e.target.value })}
+                className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-1.5 text-[13px]"
+              />
+            </div>
+            <div>
+              <label className="text-[11px] font-medium text-muted-foreground">Fin</label>
+              <input
+                type="time"
+                value={form.end_time}
+                onChange={(e) => setForm({ ...form, end_time: e.target.value })}
+                className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-1.5 text-[13px]"
+              />
+            </div>
+          </div>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Switch
+                checked={form.is_recurring}
+                onCheckedChange={(val) => setForm({ ...form, is_recurring: val })}
+              />
+              <span className="text-[12px]">R&eacute;current</span>
+            </div>
+            <button
+              onClick={handleAdd}
+              className="rounded-xl bg-primary px-4 py-1.5 text-[12px] font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+            >
+              Ajouter
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Liste des plages */}
+      {blocks.length === 0 ? (
+        <div className="premium-panel-soft flex flex-col items-center justify-center py-10 text-center">
+          <Ban className="h-8 w-8 text-muted-foreground/40 mb-2" />
+          <p className="text-[13px] text-muted-foreground">Aucune plage d&apos;indisponibilit&eacute;</p>
+          <p className="text-[11px] text-muted-foreground/70 mt-1">
+            Ajoutez des plages pour bloquer automatiquement des cr&eacute;neaux (nuit, weekends...).
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-1.5">
+          {blocks.map((block) => (
+            <div key={block.id} className="premium-panel-soft flex items-center gap-3 p-3">
+              <div className={cn(
+                "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg",
+                block.is_active ? "bg-purple-500/10" : "bg-foreground/[0.04]"
+              )}>
+                <Moon className={cn(
+                  "h-3.5 w-3.5",
+                  block.is_active ? "text-purple-500" : "text-muted-foreground/50"
+                )} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className={cn(
+                  "text-[13px] font-medium truncate",
+                  !block.is_active && "text-muted-foreground"
+                )}>
+                  {block.label}
+                </p>
+                <p className="text-[11px] text-muted-foreground">
+                  {block.day_of_week !== null ? DAYS[block.day_of_week] : "Tous les jours"}
+                  {" — "}
+                  {block.start_time.slice(0, 5)} &rarr; {block.end_time.slice(0, 5)}
+                  {block.is_recurring && " (r\u00e9current)"}
+                </p>
+              </div>
+              <div className="flex items-center gap-1.5 shrink-0">
+                <Switch
+                  checked={block.is_active}
+                  onCheckedChange={() => handleToggle(block.id, block.is_active)}
+                />
+                <button
+                  onClick={() => handleDelete(block.id)}
+                  className="flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-red-500/10 hover:text-red-500"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

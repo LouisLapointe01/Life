@@ -1,4 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getGoogleBusySlots } from "@/lib/google-calendar";
 import { NextResponse } from "next/server";
 
 /**
@@ -7,6 +8,9 @@ import { NextResponse } from "next/server";
  *   - available : tous les participants sont disponibles, pas de conflit
  *   - busy : dans les disponibilités mais un participant a déjà un RDV
  *   - unavailable : au moins un participant n'est pas disponible (hors règles)
+ *
+ * Moteur de disponibilité enrichi :
+ * (Temps total) - (Événements Life) - (Événements Google) - (Plages d'indisponibilité paramétrées)
  */
 export async function GET(request: Request) {
   try {
@@ -101,17 +105,19 @@ export async function GET(request: Request) {
       if (rule.end_time > latestEnd) latestEnd = rule.end_time;
     }
 
-    // 2. Récupérer les créneaux occupés par utilisateur
+    // 2. Récupérer les créneaux occupés par utilisateur (Life + Google + Indisponibilités)
     const busyByUser: Record<string, { start: number; end: number }[]> = {};
 
     for (const uid of userIds) {
+      const busy: { start: number; end: number }[] = [];
+
+      // 2a. RDV Life existants
       const { data: participations } = await supabase
         .from("appointment_participants")
         .select("appointment_id, appointments!inner(start_at, end_at, status)")
         .eq("user_id", uid)
         .neq("status", "declined");
 
-      const busy: { start: number; end: number }[] = [];
       for (const p of participations || []) {
         const a = p.appointments as unknown as { start_at: string; end_at: string; status: string };
         if (a.status === "cancelled") continue;
@@ -120,6 +126,52 @@ export async function GET(request: Request) {
         if (s.toISOString() >= dayEnd || e.toISOString() <= dayStart) continue;
         busy.push({ start: s.getTime(), end: e.getTime() });
       }
+
+      // 2b. Événements Google Calendar (seulement pour les events non-Life)
+      const googleBusy = await getGoogleBusySlots(uid, dayStart, dayEnd);
+      // Filtrer pour ne pas compter en double les events Life déjà syncés
+      const { data: syncedEvents } = await supabase
+        .from("appointments")
+        .select("google_event_id, start_at, end_at")
+        .eq("requester_id", uid)
+        .not("google_event_id", "is", null)
+        .gte("start_at", dayStart)
+        .lte("start_at", dayEnd);
+
+      const syncedTimes = new Set(
+        (syncedEvents || []).map((e) => `${new Date(e.start_at).getTime()}-${new Date(e.end_at).getTime()}`)
+      );
+
+      for (const gb of googleBusy) {
+        const key = `${gb.start}-${gb.end}`;
+        if (!syncedTimes.has(key)) {
+          busy.push(gb);
+        }
+      }
+
+      // 2c. Plages d'indisponibilité fixes
+      const { data: unavailBlocks } = await supabase
+        .from("unavailability_blocks")
+        .select("start_time, end_time, day_of_week, specific_date, is_recurring")
+        .eq("user_id", uid)
+        .eq("is_active", true);
+
+      for (const block of unavailBlocks || []) {
+        const isApplicable =
+          (block.is_recurring && (block.day_of_week === null || block.day_of_week === dayOfWeek)) ||
+          (!block.is_recurring && block.specific_date === date);
+
+        if (isApplicable) {
+          const [bSH, bSM] = block.start_time.split(":").map(Number);
+          const [bEH, bEM] = block.end_time.split(":").map(Number);
+          const blockStart = new Date(targetDate);
+          blockStart.setHours(bSH, bSM, 0, 0);
+          const blockEnd = new Date(targetDate);
+          blockEnd.setHours(bEH, bEM, 0, 0);
+          busy.push({ start: blockStart.getTime(), end: blockEnd.getTime() });
+        }
+      }
+
       busyByUser[uid] = busy;
     }
 
@@ -164,7 +216,7 @@ export async function GET(request: Request) {
           if (!isWithinRules(current, slotEnd, rules)) {
             unavailableUsers.push(uid);
           } else {
-            // Vérifier les conflits (RDV existants)
+            // Vérifier les conflits (RDV Life + Google + indisponibilités)
             const userBusy = busyByUser[uid] || [];
             const hasConflict = userBusy.some((b) => current < b.end && slotEnd > b.start);
             if (hasConflict) busyUsers.push(uid);
