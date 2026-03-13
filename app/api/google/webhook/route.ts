@@ -105,7 +105,7 @@ async function performIncrementalSync(channelId: string) {
       "apikey": serviceKey,
     },
     body: JSON.stringify({
-      messages: [{ topic: `realtime:google-sync:${userId}`, event: "update", payload: {} }],
+      messages: [{ topic: `google-sync:${userId}`, event: "update", payload: {} }],
     }),
   }).catch(() => {});
 }
