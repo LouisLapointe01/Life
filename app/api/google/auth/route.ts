@@ -44,6 +44,7 @@ export async function DELETE(request: Request) {
 
     const { searchParams } = new URL(request.url);
     const tokenId = searchParams.get("token_id");
+    const cleanup = searchParams.get("cleanup") === "true";
 
     const { createAdminClient } = await import("@/lib/supabase/admin");
     const admin = createAdminClient();
@@ -65,6 +66,23 @@ export async function DELETE(request: Request) {
       if (tokenRow.webhook_channel_id && tokenRow.webhook_resource_id) {
         const { stopWatchChannel } = await import("@/lib/google-calendar");
         await stopWatchChannel(tokenRow.access_token, tokenRow.webhook_channel_id, tokenRow.webhook_resource_id).catch(() => {});
+      }
+
+      if (cleanup) {
+        // Supprimer tous les appointments importés depuis ce compte Google
+        const { data: linkedTypes } = await admin
+          .from("appointment_types")
+          .select("id")
+          .eq("user_id", user.id)
+          .eq("google_token_id", tokenId);
+        const typeIds = (linkedTypes || []).map((t) => t.id);
+        if (typeIds.length > 0) {
+          await admin
+            .from("appointments")
+            .delete()
+            .eq("user_id", user.id)
+            .in("type_id", typeIds);
+        }
       }
 
       // Désactiver les types liés à ce token
