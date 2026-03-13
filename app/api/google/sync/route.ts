@@ -222,20 +222,13 @@ async function processGoogleEventForSync(
     end?: { dateTime?: string; date?: string };
   }
 ) {
-  const { data: existingApt } = await supabase
-    .from("appointments")
-    .select("id, status")
-    .eq("google_event_id", event.id)
-    .eq("user_id", userId)
-    .maybeSingle();
-
   if (event.status === "cancelled") {
-    if (existingApt && existingApt.status !== "cancelled") {
-      await supabase
-        .from("appointments")
-        .update({ status: "cancelled", google_sync_status: "synced", updated_at: new Date().toISOString() })
-        .eq("id", existingApt.id);
-    }
+    await supabase
+      .from("appointments")
+      .update({ status: "cancelled", google_sync_status: "synced", updated_at: new Date().toISOString() })
+      .eq("google_event_id", event.id)
+      .eq("user_id", userId)
+      .neq("status", "cancelled");
     return;
   }
 
@@ -243,20 +236,8 @@ async function processGoogleEventForSync(
   const endAt = event.end?.dateTime || event.end?.date;
   if (!startAt || !endAt) return;
 
-  if (existingApt) {
-    await supabase
-      .from("appointments")
-      .update({
-        guest_name: event.summary || "Événement Google",
-        message: event.description || null,
-        start_at: new Date(startAt).toISOString(),
-        end_at: new Date(endAt).toISOString(),
-        google_sync_status: "synced",
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", existingApt.id);
-  } else {
-    await supabase.from("appointments").insert({
+  await supabase.from("appointments").upsert(
+    {
       type_id: typeId,
       requester_id: userId,
       user_id: userId,
@@ -269,8 +250,10 @@ async function processGoogleEventForSync(
       google_event_id: event.id,
       google_calendar_id: calendarId,
       google_sync_status: "synced",
-    });
-  }
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: "user_id,google_event_id", ignoreDuplicates: false }
+  );
 }
 
 export { processGoogleEventForSync };
