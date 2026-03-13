@@ -115,26 +115,51 @@ export async function POST() {
         })
         .eq("id", tokenRow.id);
 
-      // 4. Renouveler le webhook si expiré ou absent
+      // 4. Renouveler le webhook token-level si expiré ou absent
+      const webhookUrl = process.env.GOOGLE_WEBHOOK_URL ||
+        `${process.env.NEXT_PUBLIC_APP_URL || "https://life.vercel.app"}/api/google/webhook`;
+
       const webhookExpiry = tokenRow.webhook_expiry ? new Date(tokenRow.webhook_expiry) : null;
       if (!webhookExpiry || webhookExpiry.getTime() < Date.now() + 24 * 60 * 60 * 1000) {
         try {
-          const webhookUrl = process.env.GOOGLE_WEBHOOK_URL ||
-            `${process.env.NEXT_PUBLIC_APP_URL || "https://life.vercel.app"}/api/google/webhook`;
           const channelId = randomUUID();
           const watchResult = await watchCalendar(accessToken, tokenRow.calendar_id, webhookUrl, channelId);
-
-          await admin
-            .from("google_calendar_tokens")
-            .update({
-              webhook_channel_id: channelId,
-              webhook_resource_id: watchResult.resourceId,
-              webhook_expiry: new Date(Number(watchResult.expiration)).toISOString(),
-            })
-            .eq("id", tokenRow.id);
+          await admin.from("google_calendar_tokens").update({
+            webhook_channel_id: channelId,
+            webhook_resource_id: watchResult.resourceId,
+            webhook_expiry: new Date(Number(watchResult.expiration)).toISOString(),
+          }).eq("id", tokenRow.id);
         } catch (err) {
-          console.error("[Manual Sync] Webhook renewal failed for token", tokenRow.id, err);
+          console.error("[Manual Sync] Token webhook renewal failed for token", tokenRow.id, err);
         }
+      }
+
+      // 5. Renouveler les webhooks par calendrier (non-primary)
+      try {
+        const { data: calTypes } = await admin
+          .from("appointment_types")
+          .select("id, google_calendar_id, webhook_expiry")
+          .eq("user_id", user.id)
+          .eq("google_token_id", tokenRow.id)
+          .not("google_calendar_id", "is", null)
+          .neq("google_calendar_id", "primary");
+
+        for (const ct of calTypes || []) {
+          const calExpiry = ct.webhook_expiry ? new Date(ct.webhook_expiry) : null;
+          if (!calExpiry || calExpiry.getTime() < Date.now() + 24 * 60 * 60 * 1000) {
+            try {
+              const calChannelId = randomUUID();
+              const watchResult = await watchCalendar(accessToken, ct.google_calendar_id, webhookUrl, calChannelId);
+              await admin.from("appointment_types").update({
+                webhook_channel_id: calChannelId,
+                webhook_resource_id: watchResult.resourceId,
+                webhook_expiry: new Date(Number(watchResult.expiration)).toISOString(),
+              }).eq("id", ct.id);
+            } catch { /* calendar might not support watch */ }
+          }
+        }
+      } catch (err) {
+        console.error("[Manual Sync] Calendar webhooks renewal failed for token", tokenRow.id, err);
       }
     }
 

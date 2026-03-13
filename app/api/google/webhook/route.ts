@@ -26,19 +26,39 @@ export async function POST(request: Request) {
 
     const supabase = createAdminClient();
 
-    // Trouver le token associé à ce channel
+    // Chercher d'abord dans les tokens (webhook token-level)
+    let userId: string | null = null;
+    let tokenId: string | null = null;
+
     const { data: tokenRow } = await supabase
       .from("google_calendar_tokens")
-      .select("id, user_id, last_sync_token")
+      .select("id, user_id")
       .eq("webhook_channel_id", channelId)
-      .single();
+      .maybeSingle();
 
-    if (!tokenRow) {
+    if (tokenRow) {
+      userId = tokenRow.user_id;
+      tokenId = tokenRow.id;
+    } else {
+      // Fallback : chercher dans les webhooks par calendrier (appointment_types)
+      const { data: calType } = await supabase
+        .from("appointment_types")
+        .select("user_id, google_token_id")
+        .eq("webhook_channel_id", channelId)
+        .maybeSingle();
+
+      if (calType) {
+        userId = calType.user_id;
+        tokenId = calType.google_token_id;
+      }
+    }
+
+    if (!userId || !tokenId) {
       return NextResponse.json({ error: "Unknown channel" }, { status: 404 });
     }
 
     // Lancer la synchronisation pour ce token spécifique
-    await performIncrementalSync(tokenRow.user_id, tokenRow.id);
+    await performIncrementalSync(userId, tokenId);
 
     return NextResponse.json({ ok: true });
   } catch (err) {
