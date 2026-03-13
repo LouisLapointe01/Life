@@ -1197,6 +1197,7 @@ type GoogleCalendarType = {
 function GoogleCalendarSection({ userId }: { userId: string }) {
   const [status, setStatus] = useState<GoogleSyncStatus | null>(null);
   const [googleTypes, setGoogleTypes] = useState<GoogleCalendarType[]>([]);
+  const [confirmDisconnect, setConfirmDisconnect] = useState<{ tokenId: string; email: string } | null>(null);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
 
@@ -1241,10 +1242,11 @@ function GoogleCalendarSection({ userId }: { userId: string }) {
     } catch { toast.error("Erreur de connexion Google"); }
   };
 
-  const handleDisconnect = async (tokenId: string) => {
+  const handleDisconnect = async (tokenId: string, cleanup: boolean) => {
     try {
-      await fetch(`/api/google/auth?token_id=${tokenId}`, { method: "DELETE" });
-      toast.success("Compte déconnecté");
+      await fetch(`/api/google/auth?token_id=${tokenId}${cleanup ? "&cleanup=true" : ""}`, { method: "DELETE" });
+      toast.success(cleanup ? "Compte déconnecté et événements supprimés" : "Compte déconnecté");
+      setConfirmDisconnect(null);
       fetchStatus();
     } catch { toast.error("Erreur de déconnexion"); }
   };
@@ -1348,7 +1350,7 @@ function GoogleCalendarSection({ userId }: { userId: string }) {
                         <BadgeCheck className="h-3.5 w-3.5" />
                       </button>
                     )}
-                    <button onClick={() => handleDisconnect(account.id)} className="flex items-center gap-1 rounded-lg px-2 py-1 text-[11px] font-medium text-red-500 hover:bg-red-500/10 transition-colors">
+                    <button onClick={() => setConfirmDisconnect({ tokenId: account.id, email: account.google_email || "Compte Google" })} className="flex items-center gap-1 rounded-lg px-2 py-1 text-[11px] font-medium text-red-500 hover:bg-red-500/10 transition-colors">
                       <Unlink className="h-3.5 w-3.5" />
                     </button>
                   </div>
@@ -1387,6 +1389,38 @@ function GoogleCalendarSection({ userId }: { userId: string }) {
           </div>
         </div>
       )}
+
+      {/* Dialog confirmation déconnexion */}
+      <Dialog open={!!confirmDisconnect} onOpenChange={(o) => { if (!o) setConfirmDisconnect(null); }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Déconnecter {confirmDisconnect?.email} ?</DialogTitle>
+          </DialogHeader>
+          <p className="text-[13px] text-muted-foreground">
+            Voulez-vous aussi supprimer tous les événements Google importés liés à ce compte ?
+          </p>
+          <div className="flex flex-col gap-2 pt-2">
+            <button
+              onClick={() => handleDisconnect(confirmDisconnect!.tokenId, true)}
+              className="w-full rounded-xl bg-red-500 px-4 py-2.5 text-[13px] font-medium text-white hover:bg-red-600 transition-colors"
+            >
+              Déconnecter + supprimer les événements
+            </button>
+            <button
+              onClick={() => handleDisconnect(confirmDisconnect!.tokenId, false)}
+              className="w-full rounded-xl border border-border px-4 py-2.5 text-[13px] font-medium hover:bg-foreground/[0.04] transition-colors"
+            >
+              Déconnecter seulement
+            </button>
+            <button
+              onClick={() => setConfirmDisconnect(null)}
+              className="w-full rounded-xl px-4 py-2 text-[12px] text-muted-foreground hover:text-foreground transition-colors"
+            >
+              Annuler
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
