@@ -135,6 +135,10 @@ export async function DELETE(request: Request) {
     }
 
     const supabase = createAdminClient();
+
+    // Supprimer les appointments liés (FK sans CASCADE)
+    await supabase.from("appointments").delete().eq("type_id", id);
+
     const { error } = await supabase
       .from("appointment_types")
       .delete()
