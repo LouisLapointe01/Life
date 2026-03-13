@@ -22,12 +22,9 @@ export function MobileBottomNav() {
     window.addEventListener("resize", updateWidth);
     return () => window.removeEventListener("resize", updateWidth);
   }, []);
-
-  const hideLabels = mobileTabs.length > 5;
-
-  if (viewportWidth < 1024) return null;
-
-  return (
+    // Affichage uniquement sur desktop (PC)
+    if (viewportWidth < 1024) return null;
+    return (
       <nav
         className={cn(
           "fixed bottom-0 left-0 right-0 z-50 transition-all duration-250",
@@ -87,5 +84,9 @@ export function MobileBottomNav() {
           })}
         </div>
       </nav>
+    );
+        })}
+      </div>
+    </nav>
   );
 }
