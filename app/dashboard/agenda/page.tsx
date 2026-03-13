@@ -211,6 +211,16 @@ export default function AgendaPage() {
     return () => { supabase.removeChannel(ch1); supabase.removeChannel(ch2); };
   }, [fetchAppointments]);
 
+  // Broadcast Google sync — déclenché par le webhook après chaque sync admin
+  useEffect(() => {
+    if (!profile?.id) return;
+    const supabase = createClient();
+    const ch = supabase.channel(`google-sync:${profile.id}`)
+      .on("broadcast", { event: "update" }, () => fetchAppointments())
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [profile?.id, fetchAppointments]);
+
   // Auto-sync polling (60s) — silencieux, pause quand l'onglet est invisible
   useEffect(() => {
     const silentFetch = async () => {
