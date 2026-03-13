@@ -115,7 +115,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: parsed.error.issues[0].message }, { status: 400 });
     }
 
-    const { type_id, start_at, message, participants, notify_on_event } = parsed.data;
+    const { type_id, start_at, end_at: bodyEndAt, duration_min: bodyDuration, message, participants, notify_on_event } = parsed.data;
     const supabase = createAdminClient();
 
     const user = await getAuthUser();
@@ -139,7 +139,9 @@ export async function POST(request: Request) {
     }
 
     const startDate = new Date(start_at);
-    const endDate = new Date(startDate.getTime() + aptType.duration_min * 60 * 1000);
+    // Priorité : end_at du body > duration_min du body > duration_min du type > défaut 30min
+    const durationMin = bodyDuration || aptType.duration_min || 30;
+    const endDate = bodyEndAt ? new Date(bodyEndAt) : new Date(startDate.getTime() + durationMin * 60 * 1000);
 
     const closeEmails = new Set((closeCts || []).map((c) => c.email?.toLowerCase()).filter(Boolean));
 
@@ -233,7 +235,7 @@ export async function POST(request: Request) {
               typeName: aptType.name,
               startAt: startDate.toISOString(),
               endAt: endDate.toISOString(),
-              durationMin: aptType.duration_min,
+              durationMin: durationMin,
             }).catch((e) => console.error("[POST] Email participant:", e))
           );
         }

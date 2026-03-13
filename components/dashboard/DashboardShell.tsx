@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { usePathname } from "next/navigation";
 import { Sidebar } from "@/components/dashboard/Sidebar";
 import { Header } from "@/components/dashboard/Header";
 import { MobileBottomNav } from "@/components/dashboard/MobileBottomNav";
 import { PageTransition } from "@/components/dashboard/PageTransition";
 import { PushNotificationManager } from "@/components/dashboard/PushNotificationManager";
+import { AppLoadingScreen } from "@/components/dashboard/AppLoadingScreen";
 import { useUnreadMessages } from "@/lib/stores/unread-messages";
 import { useMobileUiStore } from "@/lib/stores/mobile-ui";
 import { createClient } from "@/lib/supabase/client";
@@ -210,6 +211,31 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
   const isMessagesRoute = pathname.startsWith("/dashboard/messages");
   const isMobileNavVisible = useMobileUiStore((state) => state.isMobileNavVisible);
   const shouldShowMobileHeader = !isMessagesRoute || isMobileNavVisible;
+
+  const [appReady, setAppReady] = useState(false);
+  const [userId, setUserId] = useState<string | null>(null);
+  const checkedRef = useRef(false);
+
+  useEffect(() => {
+    if (checkedRef.current) return;
+    checkedRef.current = true;
+    const supabase = createClient();
+    supabase.auth.getUser().then(({ data }) => {
+      if (data.user) {
+        setUserId(data.user.id);
+      } else {
+        setAppReady(true);
+      }
+    });
+  }, []);
+
+  if (!appReady && userId) {
+    return <AppLoadingScreen userId={userId} onReady={() => setAppReady(true)} />;
+  }
+
+  if (!appReady && !userId) {
+    return null; // Waiting for auth check
+  }
 
   return (
     <div className="premium-shell-bg premium-grid relative flex h-dvh overflow-hidden">

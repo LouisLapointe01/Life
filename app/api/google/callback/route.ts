@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { exchangeCodeForTokens, watchCalendar, listGoogleCalendars } from "@/lib/google-calendar";
+import { exchangeCodeForTokens, watchCalendar, listGoogleCalendars, getGoogleUserEmail } from "@/lib/google-calendar";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { randomUUID } from "crypto";
 
@@ -7,6 +7,7 @@ import { randomUUID } from "crypto";
  * GET /api/google/callback?code=...&state=...
  * Callback OAuth2 Google Calendar.
  * Stocke les tokens, importe les calendriers Google comme types de RDV, et démarre le webhook.
+ * Supporte multi-comptes via google_email + google_token_id.
  */
 export async function GET(request: Request) {
   try {
@@ -35,12 +36,24 @@ export async function GET(request: Request) {
     const tokens = await exchangeCodeForTokens(code, redirectUri);
     const tokenExpiry = new Date(Date.now() + tokens.expires_in * 1000);
 
+    // Récupérer l'email du compte Google
+    const googleEmail = await getGoogleUserEmail(tokens.access_token);
+
     const supabase = createAdminClient();
 
-    // Upsert les tokens
-    await supabase.from("google_calendar_tokens").upsert(
+    // Vérifier si c'est le premier compte Google de l'utilisateur
+    const { data: existingTokens } = await supabase
+      .from("google_calendar_tokens")
+      .select("id")
+      .eq("user_id", state.userId);
+    const isFirstAccount = !existingTokens || existingTokens.length === 0;
+
+    // Upsert les tokens (basé sur user_id + google_email)
+    const { data: tokenRow } = await supabase.from("google_calendar_tokens").upsert(
       {
         user_id: state.userId,
+        google_email: googleEmail,
+        is_default: isFirstAccount,
         access_token: tokens.access_token,
         refresh_token: tokens.refresh_token,
         token_expiry: tokenExpiry.toISOString(),
@@ -48,20 +61,23 @@ export async function GET(request: Request) {
         sync_enabled: true,
         updated_at: new Date().toISOString(),
       },
-      { onConflict: "user_id" }
-    );
+      { onConflict: "user_id,google_email" }
+    ).select("id").single();
+
+    const tokenId = tokenRow?.id;
 
     // Importer les calendriers Google comme types de RDV
     try {
       const calendars = await listGoogleCalendars(tokens.access_token);
       for (const cal of calendars) {
-        // Upsert : si un type avec ce google_calendar_id existe déjà, on le met à jour
+        // Dédoublonnage : vérifier existence avec google_calendar_id + google_token_id
         const { data: existing } = await supabase
           .from("appointment_types")
           .select("id")
           .eq("user_id", state.userId)
           .eq("google_calendar_id", cal.id)
-          .single();
+          .eq("google_token_id", tokenId)
+          .maybeSingle();
 
         if (existing) {
           await supabase
@@ -78,6 +94,7 @@ export async function GET(request: Request) {
             name: cal.summary,
             color: cal.backgroundColor,
             google_calendar_id: cal.id,
+            google_token_id: tokenId,
             is_active: true,
             sort_order: 99,
           });
@@ -87,7 +104,7 @@ export async function GET(request: Request) {
       console.error("[Google Callback] Calendar import failed:", err);
     }
 
-    // Démarrer le webhook pour la sync Google → Life
+    // Démarrer le webhook pour la sync Google → Life (channel unique par token)
     const webhookUrl = process.env.GOOGLE_WEBHOOK_URL || `${origin}/api/google/webhook`;
     const channelId = randomUUID();
 
@@ -106,7 +123,7 @@ export async function GET(request: Request) {
           webhook_resource_id: watchResult.resourceId,
           webhook_expiry: new Date(Number(watchResult.expiration)).toISOString(),
         })
-        .eq("user_id", state.userId);
+        .eq("id", tokenId);
     } catch (err) {
       console.error("[Google Callback] Webhook setup failed:", err);
     }

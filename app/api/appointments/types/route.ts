@@ -70,8 +70,8 @@ export async function POST(request: Request) {
     const body = await request.json();
     const { name, duration_min, color, sort_order, user_id } = body;
 
-    if (!name || !duration_min) {
-      return NextResponse.json({ error: "name et duration_min sont requis" }, { status: 400 });
+    if (!name) {
+      return NextResponse.json({ error: "name est requis" }, { status: 400 });
     }
 
     const supabase = createAdminClient();
@@ -79,7 +79,7 @@ export async function POST(request: Request) {
       .from("appointment_types")
       .insert({
         name,
-        duration_min: Number(duration_min),
+        duration_min: duration_min ? Number(duration_min) : null,
         color: color || "#007AFF",
         sort_order: sort_order ?? 0,
         user_id: user_id || null,
