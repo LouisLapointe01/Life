@@ -62,6 +62,8 @@ type AppointmentType = {
   name: string;
   duration_min: number | null;
   color: string;
+  google_token_id?: string | null;
+  google_calendar_id?: string | null;
 };
 
 type Contact = {
@@ -141,6 +143,7 @@ export default function AgendaPage() {
   const [showRdvForm, setShowRdvForm] = useState(false);
   const [rdvStep, setRdvStep] = useState<RdvStep>("recipient");
   const [rdvTypes, setRdvTypes] = useState<AppointmentType[]>([]);
+  const [googleAccountsMap, setGoogleAccountsMap] = useState<Record<string, string>>({}); // tokenId → email
   const [rdvSelectedType, setRdvSelectedType] = useState<AppointmentType | null>(null);
   const [rdvSelectedDate, setRdvSelectedDate] = useState<Date | undefined>();
   const [rdvSlots, setRdvSlots] = useState<SlotInfo[]>([]);
@@ -243,6 +246,20 @@ export default function AgendaPage() {
     } catch { setRdvTypes([]); }
   }, [profile?.id]);
 
+  // Google accounts map (tokenId → email) for display in type picker
+  const fetchGoogleAccounts = useCallback(async () => {
+    try {
+      const res = await fetch("/api/google/sync");
+      if (!res.ok) return;
+      const data = await res.json();
+      if (data.accounts) {
+        const map: Record<string, string> = {};
+        for (const acc of data.accounts) map[acc.id] = acc.google_email;
+        setGoogleAccountsMap(map);
+      }
+    } catch { /* ignore */ }
+  }, []);
+
   // Search recipients (unified: profiles + contacts)
   useEffect(() => {
     if (recipientSearch.length < 2) { setRecipientResults([]); return; }
@@ -320,7 +337,12 @@ export default function AgendaPage() {
       if (userIds) url += `&user_ids=${userIds}`;
       const res = await fetch(url);
       const data = await res.json();
-      setRdvSlots(data.slots || []);
+      const raw = data.slots || [];
+      setRdvSlots(raw.map((s: { time: string; status?: string; busy_users?: string[] }) => ({
+        time: s.time,
+        available: (s.status ?? "available") === "available",
+        busy_users: s.busy_users || [],
+      })));
     } catch { setRdvSlots([]); }
     setRdvLoadingSlots(false);
   }, [rdvParticipants]);
@@ -836,6 +858,8 @@ export default function AgendaPage() {
                   participants={rdvParticipants} recipientSearch={recipientSearch} setRecipientSearch={setRecipientSearch}
                   recipientResults={recipientResults} searchingRecipients={searchingRecipients}
                   onAddParticipant={addParticipant} onRemoveParticipant={removeParticipant}
+                  currentUser={profile ? { id: profile.id, full_name: profile.full_name || "Moi", avatar_url: profile.avatar_url, email: profile.email, has_account: true, user_id: profile.id, source: "profile" as const } : null}
+                  googleAccounts={googleAccountsMap}
                   selectedDuration={rdvSelectedDuration} setSelectedDuration={setRdvSelectedDuration}
                   showCreateType={showCreateType} setShowCreateType={setShowCreateType}
                   newTypeName={newTypeName} setNewTypeName={setNewTypeName}
@@ -849,7 +873,7 @@ export default function AgendaPage() {
                     } catch { /* ignore */ }
                     setCreatingType(false);
                   }}
-                  onNextFromRecipients={() => { fetchMyTypes(); setRdvStep("type"); }}
+                  onNextFromRecipients={() => { fetchMyTypes(); fetchGoogleAccounts(); setRdvStep("type"); }}
                   showExternalForm={showExternalForm} setShowExternalForm={setShowExternalForm}
                   externalDraft={externalDraft} setExternalDraft={setExternalDraft}
                   savedContacts={savedContacts} confirmDuplicate={confirmDuplicate}
@@ -909,6 +933,7 @@ function RdvCreationPanel({
   selectedDuration, setSelectedDuration,
   showCreateType, setShowCreateType, newTypeName, setNewTypeName, newTypeColor, setNewTypeColor,
   creatingType, onCreateType,
+  currentUser, googleAccounts,
 }: {
   step: RdvStep; setStep: (s: RdvStep) => void; stepIndex: number;
   types: AppointmentType[]; selectedType: AppointmentType | null; setSelectedType: (t: AppointmentType) => void;
@@ -937,7 +962,11 @@ function RdvCreationPanel({
   newTypeName: string; setNewTypeName: (s: string) => void;
   newTypeColor: string; setNewTypeColor: (s: string) => void;
   creatingType: boolean; onCreateType: () => void;
+  currentUser: UserProfile | null;
+  googleAccounts: Record<string, string>;
 }) {
+  const [pickedTime, setPickedTime] = useState("");
+
   return (
     <div className="premium-panel overflow-hidden rounded-[2rem]">
       <div className="flex items-center justify-between p-4 sm:p-5 border-b border-foreground/[0.06]">
@@ -969,6 +998,17 @@ function RdvCreationPanel({
         {step === "recipient" && (
           <div className="space-y-3">
             <p className="text-center text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">Ajoutez les participants</p>
+
+            {/* Pour moi seul */}
+            {currentUser && participants.length === 0 && (
+              <button
+                type="button"
+                onClick={() => { onAddParticipant(currentUser); onNextFromRecipients(); }}
+                className="w-full flex items-center justify-center gap-2 rounded-2xl bg-primary/10 border border-primary/20 py-2.5 text-[13px] font-semibold text-primary transition-all hover:bg-primary hover:text-primary-foreground hover:shadow-lg hover:shadow-primary/25"
+              >
+                <User className="h-4 w-4" /> Pour moi seul
+              </button>
+            )}
             
             {/* Added participants */}
             {participants.length > 0 && (
@@ -1113,7 +1153,12 @@ function RdvCreationPanel({
                 {types.map((type) => (
                   <button key={type.id} onClick={() => { setSelectedType(type); setStep("date"); }} className="group w-full flex items-center gap-3 rounded-2xl p-3 text-left transition-all duration-300 hover:bg-foreground/[0.04]">
                     <div className="flex h-9 w-9 items-center justify-center rounded-xl" style={{ background: `linear-gradient(135deg, ${type.color}30, ${type.color}10)` }}><div className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: type.color }} /></div>
-                    <div className="flex-1"><p className="text-[13px] font-semibold">{type.name}</p></div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[13px] font-semibold">{type.name}</p>
+                      {type.google_token_id && googleAccounts[type.google_token_id] && (
+                        <p className="text-[10px] text-muted-foreground truncate">{googleAccounts[type.google_token_id]}</p>
+                      )}
+                    </div>
                     <ChevronRight className="h-4 w-4 text-muted-foreground/50" />
                   </button>
                 ))}
@@ -1177,41 +1222,71 @@ function RdvCreationPanel({
 
         {/* Step: Slot (with busy indicators) */}
         {step === "slot" && (
-          <div className="space-y-3">
-            <p className="text-center text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">Créneaux disponibles</p>
-            {loadingSlots ? (
-              <div className="flex items-center justify-center py-8"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
-            ) : slots.length === 0 ? (
-              <div className="flex flex-col items-center gap-2 py-8"><Clock className="h-8 w-8 text-muted-foreground/40" /><p className="text-[13px] text-muted-foreground">Aucun créneau disponible.</p></div>
-            ) : (
-              <div className="grid grid-cols-3 gap-2">
-                {slots.map((slot) => (
+          <div className="space-y-4">
+            {/* Time picker */}
+            <div>
+              <p className="text-center text-[11px] font-semibold uppercase tracking-widest text-muted-foreground mb-3">Heure de début</p>
+              <div className="flex flex-col items-center gap-1">
+                <input
+                  type="time"
+                  value={pickedTime}
+                  onChange={(e) => setPickedTime(e.target.value)}
+                  className="glass-input text-center text-2xl font-bold py-3 px-6 rounded-2xl w-full max-w-[180px]"
+                />
+                {selectedDate && (
+                  <p className="text-[11px] text-muted-foreground">{format(selectedDate, "EEEE d MMMM", { locale: fr })}</p>
+                )}
+              </div>
+            </div>
+
+            {/* Duration picker */}
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground mb-2">Durée</p>
+              <div className="grid grid-cols-4 gap-2">
+                {[15, 30, 45, 60, 90, 120, 180, 240].map((d) => (
                   <button
-                    key={slot.time}
-                    onClick={() => {
-                      if (!slot.available) {
-                        // Notifier qu'on réserve malgré tout
-                        toast.info("Ce créneau est occupé pour certains participants. Ils seront notifiés.");
-                      }
-                      setSelectedSlot(slot.time);
-                    }}
+                    key={d}
+                    type="button"
+                    onClick={() => setSelectedDuration(d)}
                     className={cn(
-                      "relative rounded-xl px-2 py-2.5 text-[13px] font-semibold transition-all duration-200",
-                      slot.available
-                        ? "bg-foreground/[0.04] hover:bg-primary hover:text-primary-foreground hover:shadow-lg hover:shadow-primary/20"
-                        : "bg-red-500/10 text-red-500/70 hover:bg-red-500/20"
+                      "rounded-xl py-2 text-[12px] font-semibold transition-all",
+                      selectedDuration === d
+                        ? "bg-primary text-primary-foreground shadow-lg shadow-primary/20"
+                        : "bg-foreground/[0.04] hover:bg-foreground/[0.08]"
                     )}
                   >
-                    {format(new Date(slot.time), "HH:mm")}
-                    {!slot.available && (
-                      <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-amber-500 text-[8px] font-bold text-white">
-                        !
-                      </span>
-                    )}
+                    {d < 60 ? `${d}min` : `${Math.floor(d / 60)}h${d % 60 ? d % 60 : ""}`}
                   </button>
                 ))}
               </div>
-            )}
+            </div>
+
+            {/* Conflict indicator */}
+            {pickedTime && slots.length > 0 && (() => {
+              const matched = slots.find((s) => format(new Date(s.time), "HH:mm") === pickedTime);
+              return matched && !matched.available ? (
+                <div className="flex items-center gap-2 rounded-xl bg-amber-500/10 px-3 py-2 text-[12px] font-medium text-amber-600">
+                  <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+                  Un participant pourrait ne pas être disponible à cette heure.
+                </div>
+              ) : null;
+            })()}
+
+            <button
+              type="button"
+              disabled={!pickedTime}
+              onClick={() => {
+                if (!pickedTime || !selectedDate) return;
+                const [h, m] = pickedTime.split(":").map(Number);
+                const dt = new Date(selectedDate);
+                dt.setHours(h, m, 0, 0);
+                setSelectedSlot(dt.toISOString());
+              }}
+              className="w-full flex items-center justify-center gap-2 rounded-2xl bg-primary py-2.5 text-[13px] font-semibold text-primary-foreground shadow-lg shadow-primary/25 transition-all hover:shadow-xl disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              Confirmer <ChevronRight className="h-4 w-4" />
+            </button>
+
             <button onClick={() => setStep("date")} className="flex items-center gap-2 text-[12px] font-medium text-muted-foreground transition-colors hover:text-foreground"><ArrowLeft className="h-3.5 w-3.5" /> Retour</button>
           </div>
         )}
