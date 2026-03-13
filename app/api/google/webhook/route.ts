@@ -93,6 +93,21 @@ async function performIncrementalSync(channelId: string) {
     .from("google_calendar_tokens")
     .update({ last_synced_at: new Date().toISOString(), updated_at: new Date().toISOString() })
     .eq("id", tokenId);
+
+  // Notifier le client en temps réel via broadcast (postgres_changes ne se déclenche pas pour les écritures admin)
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+  await fetch(`${supabaseUrl}/realtime/v1/api/broadcast`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${serviceKey}`,
+      "apikey": serviceKey,
+    },
+    body: JSON.stringify({
+      messages: [{ topic: `realtime:google-sync:${userId}`, event: "update", payload: {} }],
+    }),
+  }).catch(() => {});
 }
 
 /**
