@@ -78,7 +78,8 @@ export function RdvModal() {
   const [error, setError] = useState<string | null>(null);
   const [formData, setFormData] = useState(emptyForm);
 
-  const [selectedDuration, setSelectedDuration] = useState(30);
+  const [selectedDuration, setSelectedDuration] = useState(60);
+  const [pickedTime, setPickedTime] = useState("");
   const [showCreateType, setShowCreateType] = useState(false);
   const [newTypeName, setNewTypeName] = useState("");
   const [newTypeColor, setNewTypeColor] = useState("#007AFF");
@@ -100,7 +101,8 @@ export function RdvModal() {
         setSelectedSlot(null);
         setFormData(emptyForm);
         setError(null);
-        setSelectedDuration(30);
+        setSelectedDuration(60);
+        setPickedTime("");
         setShowCreateType(false);
         setNewTypeName("");
         setNewTypeColor("#007AFF");
@@ -420,54 +422,81 @@ export function RdvModal() {
                     <div className="flex items-center justify-center py-10">
                       <Loader2 className="h-7 w-7 animate-spin text-primary" />
                     </div>
-                  ) : slots.length === 0 ? (
-                    <div className="flex flex-col items-center gap-3 py-10">
-                      <Clock className="h-9 w-9 text-muted-foreground/40" />
-                      <p className="text-[14px] text-muted-foreground">Aucun créneau disponible.</p>
-                    </div>
                   ) : (
-                    <>
-                      <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
-                        {slots.map((slot) => (
-                          <button
-                            key={slot.time}
-                            onClick={() => {
-                              if (slot.status === "available") {
-                                setSelectedSlot(slot.time);
-                                setStep("form");
-                              }
-                            }}
-                            disabled={slot.status !== "available"}
-                            className={cn(
-                              "rounded-2xl px-3 py-3 text-[14px] font-semibold transition-all duration-200 border",
-                              slot.status === "available" &&
-                                "bg-white dark:bg-white/95 text-foreground border-border shadow-sm hover:shadow-lg hover:shadow-primary/20 hover:-translate-y-0.5 hover:border-primary cursor-pointer",
-                              slot.status === "busy" &&
-                                "bg-red-500/10 text-red-500 dark:text-red-400 border-red-500/20 cursor-not-allowed opacity-80",
-                              slot.status === "unavailable" &&
-                                "bg-muted/40 text-muted-foreground/40 border-transparent cursor-not-allowed"
-                            )}
-                          >
-                            {format(new Date(slot.time), "HH:mm")}
-                          </button>
-                        ))}
-                      </div>
-                      {/* Légende */}
-                      <div className="mt-4 flex flex-wrap items-center justify-center gap-4 text-[11px] text-muted-foreground">
-                        <div className="flex items-center gap-1.5">
-                          <div className="h-3 w-3 rounded-md bg-white dark:bg-white/95 border border-border shadow-sm" />
-                          <span>Disponible</span>
-                        </div>
-                        <div className="flex items-center gap-1.5">
-                          <div className="h-3 w-3 rounded-md bg-red-500/15 border border-red-500/20" />
-                          <span>Déjà pris</span>
-                        </div>
-                        <div className="flex items-center gap-1.5">
-                          <div className="h-3 w-3 rounded-md bg-muted/40" />
-                          <span>Non disponible</span>
+                    <div className="space-y-5">
+                      {/* Time picker */}
+                      <div>
+                        <p className="mb-3 text-center text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">Heure de début</p>
+                        <div className="flex flex-col items-center gap-1">
+                          <input
+                            type="time"
+                            value={pickedTime}
+                            onChange={(e) => setPickedTime(e.target.value)}
+                            className="w-full max-w-[200px] rounded-2xl border border-foreground/[0.1] bg-foreground/[0.03] px-6 py-3 text-center text-2xl font-bold focus:outline-none focus:ring-2 focus:ring-primary/30"
+                          />
+                          {selectedDate && (
+                            <p className="text-[11px] text-muted-foreground">{format(selectedDate, "EEEE d MMMM", { locale: fr })}</p>
+                          )}
                         </div>
                       </div>
-                    </>
+
+                      {/* Duration picker */}
+                      <div>
+                        <p className="mb-2 text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">Durée</p>
+                        <div className="grid grid-cols-4 gap-2">
+                          {[15, 30, 45, 60, 90, 120, 180, 240].map((d) => (
+                            <button
+                              key={d}
+                              type="button"
+                              onClick={() => setSelectedDuration(d)}
+                              className={cn(
+                                "rounded-xl py-2.5 text-[12px] font-semibold transition-all",
+                                selectedDuration === d
+                                  ? "bg-primary text-primary-foreground shadow-lg shadow-primary/20"
+                                  : "bg-foreground/[0.04] hover:bg-foreground/[0.08]"
+                              )}
+                            >
+                              {d < 60 ? `${d}min` : `${Math.floor(d / 60)}h${d % 60 ? d % 60 : ""}`}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Conflict / unavailability indicator */}
+                      {pickedTime && slots.length > 0 && (() => {
+                        const matched = slots.find((s) => format(new Date(s.time), "HH:mm") === pickedTime);
+                        if (!matched || matched.status === "available") return null;
+                        return (
+                          <div className={cn(
+                            "flex items-center gap-2 rounded-xl px-3 py-2 text-[12px] font-medium",
+                            matched.status === "busy" ? "bg-amber-500/10 text-amber-600" : "bg-red-500/10 text-red-500"
+                          )}>
+                            <Clock className="h-3.5 w-3.5 shrink-0" />
+                            {matched.status === "busy" ? "Ce créneau est déjà occupé." : "Ce créneau n'est pas disponible."}
+                          </div>
+                        );
+                      })()}
+
+                      {/* Confirm button */}
+                      <button
+                        type="button"
+                        disabled={!pickedTime || (() => {
+                          const matched = slots.find((s) => format(new Date(s.time), "HH:mm") === pickedTime);
+                          return matched?.status === "unavailable";
+                        })()}
+                        onClick={() => {
+                          if (!pickedTime || !selectedDate) return;
+                          const [h, m] = pickedTime.split(":").map(Number);
+                          const dt = new Date(selectedDate);
+                          dt.setHours(h, m, 0, 0);
+                          setSelectedSlot(dt.toISOString());
+                          setStep("form");
+                        }}
+                        className="w-full flex items-center justify-center gap-2 rounded-2xl bg-primary py-3 text-[14px] font-semibold text-primary-foreground shadow-lg shadow-primary/25 transition-all hover:shadow-xl disabled:opacity-40 disabled:cursor-not-allowed"
+                      >
+                        Confirmer <ChevronRight className="h-4 w-4" />
+                      </button>
+                    </div>
                   )}
                 </div>
                 <div className="border-t border-foreground/[0.06] px-5 py-3">
