@@ -211,6 +211,14 @@ export async function getValidAccessToken(userId: string, tokenId?: string): Pro
    Helper — Requête API Google Calendar authentifiée
    ═══════════════════════════════════════════════════════ */
 
+class GoogleApiError extends Error {
+  status: number;
+  constructor(status: number, message: string) {
+    super(message);
+    this.status = status;
+  }
+}
+
 async function gcalFetch(accessToken: string, path: string, options?: RequestInit) {
   const res = await fetch(`${GOOGLE_CALENDAR_API}${path}`, {
     ...options,
@@ -222,7 +230,7 @@ async function gcalFetch(accessToken: string, path: string, options?: RequestIni
   });
   if (!res.ok) {
     const err = await res.text();
-    throw new Error(`Google Calendar API error (${res.status}): ${err}`);
+    throw new GoogleApiError(res.status, `Google Calendar API error (${res.status}): ${err}`);
   }
   if (res.status === 204) return null;
   return res.json();
