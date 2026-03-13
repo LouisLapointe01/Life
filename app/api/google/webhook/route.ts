@@ -3,7 +3,6 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import {
   getValidAccessToken,
   listGoogleEvents,
-  listGoogleCalendars,
 } from "@/lib/google-calendar";
 
 /**
@@ -27,10 +26,10 @@ export async function POST(request: Request) {
 
     const supabase = createAdminClient();
 
-    // Trouver l'utilisateur associé à ce channel
+    // Trouver le token associé à ce channel
     const { data: tokenRow } = await supabase
       .from("google_calendar_tokens")
-      .select("user_id, last_sync_token")
+      .select("id, user_id, last_sync_token")
       .eq("webhook_channel_id", channelId)
       .single();
 
@@ -38,8 +37,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Unknown channel" }, { status: 404 });
     }
 
-    // Lancer la synchronisation multi-calendriers
-    await performIncrementalSync(tokenRow.user_id);
+    // Lancer la synchronisation pour ce token spécifique
+    await performIncrementalSync(tokenRow.user_id, tokenRow.id);
 
     return NextResponse.json({ ok: true });
   } catch (err) {
@@ -49,21 +48,22 @@ export async function POST(request: Request) {
 }
 
 /**
- * Sync incrémentale multi-calendriers : pour chaque calendrier Google lié à un type,
+ * Sync incrémentale pour un token spécifique : pour chaque calendrier Google lié à ce token,
  * récupère les événements récents et met à jour les RDV dans Life.
  */
-async function performIncrementalSync(userId: string) {
-  const accessToken = await getValidAccessToken(userId);
+async function performIncrementalSync(userId: string, tokenId: string) {
+  const accessToken = await getValidAccessToken(userId, tokenId);
   if (!accessToken) return;
 
   const supabase = createAdminClient();
 
   try {
-    // Récupérer les types liés à des calendriers Google
+    // Récupérer les types liés à ce token
     const { data: googleTypes } = await supabase
       .from("appointment_types")
       .select("id, google_calendar_id")
       .eq("user_id", userId)
+      .eq("google_token_id", tokenId)
       .not("google_calendar_id", "is", null);
 
     if (!googleTypes || googleTypes.length === 0) return;
@@ -86,14 +86,14 @@ async function performIncrementalSync(userId: string) {
       }
     }
 
-    // Mettre à jour la date de dernière sync
+    // Mettre à jour la date de dernière sync pour ce token
     await supabase
       .from("google_calendar_tokens")
       .update({
         last_synced_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       })
-      .eq("user_id", userId);
+      .eq("id", tokenId);
   } catch (err) {
     console.error("[Incremental Sync] Error for user", userId, err);
   }
@@ -104,6 +104,7 @@ async function performIncrementalSync(userId: string) {
  * - Si l'événement est lié à un RDV Life (google_event_id match) → mise à jour
  * - Si l'événement est supprimé (status=cancelled) → annuler le RDV Life
  * - Si l'événement est nouveau (pas de match) → créer un RDV Life
+ * Fix dédoublonnage : .maybeSingle() + scope user_id
  */
 async function processGoogleEvent(
   supabase: ReturnType<typeof createAdminClient>,
@@ -123,7 +124,8 @@ async function processGoogleEvent(
     .from("appointments")
     .select("id, status")
     .eq("google_event_id", event.id)
-    .single();
+    .eq("user_id", userId)
+    .maybeSingle();
 
   if (event.status === "cancelled") {
     if (existingApt && existingApt.status !== "cancelled") {

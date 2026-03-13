@@ -16,16 +16,21 @@ export const participantSchema = z.object({
 export const createAppointmentSchema = z.object({
   type_id: z.string().uuid("Type de rendez-vous invalide"),
   start_at: z.string().datetime("Date/heure invalide"),
+  end_at: z.string().datetime("Date/heure invalide").optional(),
+  duration_min: z.number().int().min(5).max(480).optional(),
   message: z.string().max(500).optional(),
   participants: z.array(participantSchema).min(1, "Au moins un participant"),
   notify_on_event: z.boolean().optional().default(true),
-});
+}).refine(
+  (data) => data.end_at || data.duration_min,
+  { message: "end_at ou duration_min est requis", path: ["duration_min"] }
+);
 
 export type CreateAppointmentInput = z.infer<typeof createAppointmentSchema>;
 
 export const appointmentTypeSchema = z.object({
   name: z.string().min(1, "Le nom est requis"),
-  duration_min: z.number().int().min(5).max(480),
+  duration_min: z.number().int().min(5).max(480).optional(),
   color: z.string().regex(/^#[0-9A-Fa-f]{6}$/, "Couleur hexadécimale invalide").optional(),
   is_active: z.boolean().optional(),
   sort_order: z.number().int().optional(),
@@ -100,23 +105,28 @@ export const moveFileSchema = z.object({
 });
 
 /* ═══════════════════════════════════════════════════════
-   Plages d'indisponibilité
+   Indisponibilités
    ═══════════════════════════════════════════════════════ */
-export const unavailabilityBlockSchema = z.object({
+const unavailabilityBaseSchema = z.object({
   label: z.string().max(100).optional(),
-  day_of_week: z.number().int().min(0).max(6).nullable().optional(),
-  start_time: z.string().regex(/^\d{2}:\d{2}$/, "Format HH:MM attendu"),
-  end_time: z.string().regex(/^\d{2}:\d{2}$/, "Format HH:MM attendu"),
-  is_recurring: z.boolean().optional().default(true),
-  specific_date: z.string().optional(),
-  is_active: z.boolean().optional(),
+  is_active: z.boolean().optional().default(true),
 });
 
-/* ═══════════════════════════════════════════════════════
-   Google Calendar — Labels
-   ═══════════════════════════════════════════════════════ */
-export const googleLabelMappingSchema = z.object({
-  id: z.string().uuid(),
-  life_type_id: z.string().uuid().nullable(),
-  google_label_name: z.string().max(50).optional(),
+export const unavailabilityPunctualSchema = unavailabilityBaseSchema.extend({
+  is_recurring: z.literal(false),
+  start_at: z.string().datetime("Date/heure de début invalide"),
+  end_at: z.string().datetime("Date/heure de fin invalide"),
 });
+
+export const unavailabilityRecurringSchema = unavailabilityBaseSchema.extend({
+  is_recurring: z.literal(true),
+  start_time: z.string().regex(/^\d{2}:\d{2}$/, "Format HH:MM attendu"),
+  end_time: z.string().regex(/^\d{2}:\d{2}$/, "Format HH:MM attendu"),
+  recurrence_days: z.array(z.number().int().min(0).max(6)).nullable().optional(),
+});
+
+export const unavailabilitySchema = z.discriminatedUnion("is_recurring", [
+  unavailabilityPunctualSchema,
+  unavailabilityRecurringSchema,
+]);
+

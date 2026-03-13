@@ -14,9 +14,12 @@ import { createAdminClient } from "@/lib/supabase/admin";
 
 const GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token";
 const GOOGLE_CALENDAR_API = "https://www.googleapis.com/calendar/v3";
+const GOOGLE_USERINFO_URL = "https://www.googleapis.com/oauth2/v2/userinfo";
 const SCOPES = [
   "https://www.googleapis.com/auth/calendar.events",
   "https://www.googleapis.com/auth/calendar.readonly",
+  "openid",
+  "email",
 ];
 
 /** Les 11 couleurs d'événement Google Calendar (Google = maître) */
@@ -141,14 +144,41 @@ export async function refreshAccessToken(refreshToken: string): Promise<{ access
    Token Management — Obtenir un access token valide
    ═══════════════════════════════════════════════════════ */
 
-export async function getValidAccessToken(userId: string): Promise<string | null> {
+export async function getValidAccessToken(userId: string, tokenId?: string): Promise<string | null> {
   const supabase = createAdminClient();
-  const { data: tokenRow } = await supabase
-    .from("google_calendar_tokens")
-    .select("*")
-    .eq("user_id", userId)
-    .eq("sync_enabled", true)
-    .single();
+
+  let tokenRow;
+  if (tokenId) {
+    const { data } = await supabase
+      .from("google_calendar_tokens")
+      .select("*")
+      .eq("id", tokenId)
+      .eq("sync_enabled", true)
+      .single();
+    tokenRow = data;
+  } else {
+    // Chercher le token par défaut
+    const { data: defaultToken } = await supabase
+      .from("google_calendar_tokens")
+      .select("*")
+      .eq("user_id", userId)
+      .eq("sync_enabled", true)
+      .eq("is_default", true)
+      .single();
+    if (defaultToken) {
+      tokenRow = defaultToken;
+    } else {
+      // Fallback sur n'importe quel token actif
+      const { data: anyToken } = await supabase
+        .from("google_calendar_tokens")
+        .select("*")
+        .eq("user_id", userId)
+        .eq("sync_enabled", true)
+        .limit(1)
+        .single();
+      tokenRow = anyToken;
+    }
+  }
 
   if (!tokenRow) return null;
 
@@ -166,7 +196,7 @@ export async function getValidAccessToken(userId: string): Promise<string | null
           token_expiry: newExpiry.toISOString(),
           updated_at: new Date().toISOString(),
         })
-        .eq("user_id", userId);
+        .eq("id", tokenRow.id);
       return refreshed.access_token;
     } catch (err) {
       console.error("[Google Calendar] Token refresh failed for user", userId, err);
@@ -388,15 +418,17 @@ export async function syncAppointmentToGoogle(
   }
 ) {
   const supabase = createAdminClient();
-  const accessToken = await getValidAccessToken(userId);
-  if (!accessToken) return null;
 
-  // Récupérer le type de RDV avec son google_calendar_id
+  // Récupérer le type de RDV avec son google_calendar_id et google_token_id
   const { data: aptType } = await supabase
     .from("appointment_types")
-    .select("name, color, google_calendar_id")
+    .select("name, color, google_calendar_id, google_token_id")
     .eq("id", appointment.type_id)
     .single();
+
+  // Utiliser le token du type si lié, sinon token par défaut
+  const accessToken = await getValidAccessToken(userId, aptType?.google_token_id || undefined);
+  if (!accessToken) return null;
 
   // Utiliser le calendrier du type si lié à Google, sinon "primary"
   const calendarId = aptType?.google_calendar_id || "primary";
@@ -457,43 +489,68 @@ export async function deleteAppointmentFromGoogle(
   }
 }
 
-/** Récupérer les événements Google Calendar pour le calcul de disponibilité (tous les calendriers) */
+/** Récupérer l'email du compte Google à partir d'un access token */
+export async function getGoogleUserEmail(accessToken: string): Promise<string | null> {
+  try {
+    const res = await fetch(GOOGLE_USERINFO_URL, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data.email || null;
+  } catch {
+    return null;
+  }
+}
+
+/** Récupérer les événements Google Calendar pour le calcul de disponibilité (tous les comptes, tous les calendriers) */
 export async function getGoogleBusySlots(
   userId: string,
   dateStart: string,
   dateEnd: string
 ): Promise<{ start: number; end: number }[]> {
-  const accessToken = await getValidAccessToken(userId);
-  if (!accessToken) return [];
+  const supabase = createAdminClient();
+  const { data: tokens } = await supabase
+    .from("google_calendar_tokens")
+    .select("id")
+    .eq("user_id", userId)
+    .eq("sync_enabled", true);
 
-  try {
-    const calendars = await listGoogleCalendars(accessToken);
-    const allBusy: { start: number; end: number }[] = [];
+  if (!tokens || tokens.length === 0) return [];
 
-    for (const cal of calendars) {
-      try {
-        const result = await listGoogleEvents(accessToken, cal.id, {
-          timeMin: dateStart,
-          timeMax: dateEnd,
-        });
+  const allBusy: { start: number; end: number }[] = [];
 
-        const events = (result.items || [])
-          .filter((e: { status?: string }) => e.status !== "cancelled")
-          .map((e: { start?: { dateTime?: string; date?: string }; end?: { dateTime?: string; date?: string } }) => ({
-            start: new Date(e.start?.dateTime || e.start?.date || "").getTime(),
-            end: new Date(e.end?.dateTime || e.end?.date || "").getTime(),
-          }))
-          .filter((s: { start: number; end: number }) => !isNaN(s.start) && !isNaN(s.end));
+  for (const token of tokens) {
+    const accessToken = await getValidAccessToken(userId, token.id);
+    if (!accessToken) continue;
 
-        allBusy.push(...events);
-      } catch {
-        // Skip calendriers en erreur
+    try {
+      const calendars = await listGoogleCalendars(accessToken);
+
+      for (const cal of calendars) {
+        try {
+          const result = await listGoogleEvents(accessToken, cal.id, {
+            timeMin: dateStart,
+            timeMax: dateEnd,
+          });
+
+          const events = (result.items || [])
+            .filter((e: { status?: string }) => e.status !== "cancelled")
+            .map((e: { start?: { dateTime?: string; date?: string }; end?: { dateTime?: string; date?: string } }) => ({
+              start: new Date(e.start?.dateTime || e.start?.date || "").getTime(),
+              end: new Date(e.end?.dateTime || e.end?.date || "").getTime(),
+            }))
+            .filter((s: { start: number; end: number }) => !isNaN(s.start) && !isNaN(s.end));
+
+          allBusy.push(...events);
+        } catch {
+          // Skip calendriers en erreur
+        }
       }
+    } catch (err) {
+      console.error("[Google Calendar] Error fetching busy slots for token", token.id, err);
     }
-
-    return allBusy;
-  } catch (err) {
-    console.error("[Google Calendar] Error fetching busy slots", err);
-    return [];
   }
+
+  return allBusy;
 }

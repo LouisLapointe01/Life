@@ -21,6 +21,9 @@ ALTER TABLE appointment_types ADD COLUMN IF NOT EXISTS user_id UUID REFERENCES a
 ALTER TABLE appointment_types ADD COLUMN IF NOT EXISTS is_active BOOLEAN NOT NULL DEFAULT true;
 ALTER TABLE appointment_types ADD COLUMN IF NOT EXISTS sort_order INTEGER NOT NULL DEFAULT 0;
 ALTER TABLE appointment_types ADD COLUMN IF NOT EXISTS google_calendar_id TEXT;
+ALTER TABLE appointment_types ADD COLUMN IF NOT EXISTS google_token_id UUID REFERENCES google_calendar_tokens(id) ON DELETE SET NULL;
+ALTER TABLE appointment_types ALTER COLUMN duration_min DROP NOT NULL;
+ALTER TABLE appointment_types ALTER COLUMN duration_min SET DEFAULT NULL;
 
 -- 2. (SUPPRIMÉ) RÈGLES DE DISPONIBILITÉ — remplacé par plage fixe 7h-22h
 -- --------------------------------------------------------
@@ -295,7 +298,9 @@ END $$;
 -- ============================================================
 CREATE TABLE IF NOT EXISTS google_calendar_tokens (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE UNIQUE,
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  google_email TEXT,
+  is_default BOOLEAN NOT NULL DEFAULT false,
   access_token TEXT NOT NULL,
   refresh_token TEXT NOT NULL,
   token_expiry TIMESTAMPTZ NOT NULL,
@@ -307,10 +312,13 @@ CREATE TABLE IF NOT EXISTS google_calendar_tokens (
   last_sync_token TEXT,
   last_synced_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE(user_id, google_email)
 );
 
 ALTER TABLE google_calendar_tokens ADD COLUMN IF NOT EXISTS user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE;
+ALTER TABLE google_calendar_tokens ADD COLUMN IF NOT EXISTS google_email TEXT;
+ALTER TABLE google_calendar_tokens ADD COLUMN IF NOT EXISTS is_default BOOLEAN NOT NULL DEFAULT false;
 ALTER TABLE google_calendar_tokens ADD COLUMN IF NOT EXISTS sync_enabled BOOLEAN NOT NULL DEFAULT true;
 ALTER TABLE google_calendar_tokens ADD COLUMN IF NOT EXISTS webhook_channel_id TEXT;
 ALTER TABLE google_calendar_tokens ADD COLUMN IF NOT EXISTS webhook_resource_id TEXT;
@@ -326,7 +334,25 @@ DROP TABLE IF EXISTS google_calendar_labels CASCADE;
 -- ============================================================
 DROP TABLE IF EXISTS unavailability_blocks CASCADE;
 
--- 12. COLONNES GOOGLE SYNC sur appointments
+-- 12. INDISPONIBILITÉS
+-- ============================================================
+CREATE TABLE IF NOT EXISTS unavailabilities (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  label TEXT,
+  is_recurring BOOLEAN NOT NULL DEFAULT false,
+  -- Ponctuel
+  start_at TIMESTAMPTZ,
+  end_at TIMESTAMPTZ,
+  -- Récurrent
+  start_time TIME,
+  end_time TIME,
+  recurrence_days INTEGER[],  -- 0=dim..6=sam, NULL=tous les jours
+  is_active BOOLEAN NOT NULL DEFAULT true,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- 13. COLONNES GOOGLE SYNC sur appointments
 -- ============================================================
 ALTER TABLE appointments ADD COLUMN IF NOT EXISTS google_event_id TEXT;
 ALTER TABLE appointments ADD COLUMN IF NOT EXISTS google_calendar_id TEXT;
@@ -339,6 +365,10 @@ CREATE INDEX IF NOT EXISTS idx_gcal_tokens_user ON google_calendar_tokens(user_i
 CREATE INDEX IF NOT EXISTS idx_apt_google_event ON appointments(google_event_id);
 CREATE INDEX IF NOT EXISTS idx_apt_google_sync ON appointments(google_sync_status);
 CREATE INDEX IF NOT EXISTS idx_apt_types_gcal ON appointment_types(google_calendar_id);
+CREATE INDEX IF NOT EXISTS idx_apt_types_gtoken ON appointment_types(google_token_id);
+CREATE INDEX IF NOT EXISTS idx_gcal_tokens_user_email ON google_calendar_tokens(user_id, google_email);
+CREATE INDEX IF NOT EXISTS idx_gcal_tokens_user_default ON google_calendar_tokens(user_id, is_default);
+CREATE INDEX IF NOT EXISTS idx_unavailabilities_user_active ON unavailabilities(user_id, is_active);
 
 -- ============================================================
 -- ROW LEVEL SECURITY — Nouvelles tables
@@ -357,6 +387,21 @@ CREATE POLICY "gcal_tokens_select" ON google_calendar_tokens FOR SELECT USING (u
 CREATE POLICY "gcal_tokens_insert" ON google_calendar_tokens FOR INSERT WITH CHECK (user_id = auth.uid());
 CREATE POLICY "gcal_tokens_update" ON google_calendar_tokens FOR UPDATE USING (user_id = auth.uid());
 CREATE POLICY "gcal_tokens_delete" ON google_calendar_tokens FOR DELETE USING (user_id = auth.uid());
+
+-- unavailabilities : propres uniquement
+ALTER TABLE unavailabilities ENABLE ROW LEVEL SECURITY;
+
+DO $$ BEGIN
+  DROP POLICY IF EXISTS "unavail_select" ON unavailabilities;
+  DROP POLICY IF EXISTS "unavail_insert" ON unavailabilities;
+  DROP POLICY IF EXISTS "unavail_update" ON unavailabilities;
+  DROP POLICY IF EXISTS "unavail_delete" ON unavailabilities;
+END $$;
+
+CREATE POLICY "unavail_select" ON unavailabilities FOR SELECT USING (user_id = auth.uid());
+CREATE POLICY "unavail_insert" ON unavailabilities FOR INSERT WITH CHECK (user_id = auth.uid());
+CREATE POLICY "unavail_update" ON unavailabilities FOR UPDATE USING (user_id = auth.uid());
+CREATE POLICY "unavail_delete" ON unavailabilities FOR DELETE USING (user_id = auth.uid());
 
 -- ============================================================
 -- FONCTION RPC : recherche de profils par email (si pas déjà créée)

@@ -25,6 +25,8 @@ import {
   Users,
   Search,
   X,
+  Plus,
+  Palette,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { LeafLogo } from "@/components/LeafLogo";
@@ -42,7 +44,7 @@ type Contact = {
 type AppointmentType = {
   id: string;
   name: string;
-  duration_min: number;
+  duration_min: number | null;
   color: string;
 };
 
@@ -76,6 +78,12 @@ export function RdvModal() {
   const [error, setError] = useState<string | null>(null);
   const [formData, setFormData] = useState(emptyForm);
 
+  const [selectedDuration, setSelectedDuration] = useState(30);
+  const [showCreateType, setShowCreateType] = useState(false);
+  const [newTypeName, setNewTypeName] = useState("");
+  const [newTypeColor, setNewTypeColor] = useState("#007AFF");
+  const [creatingType, setCreatingType] = useState(false);
+
   const [isAdmin, setIsAdmin] = useState(false);
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [contactSearch, setContactSearch] = useState("");
@@ -92,6 +100,10 @@ export function RdvModal() {
         setSelectedSlot(null);
         setFormData(emptyForm);
         setError(null);
+        setSelectedDuration(30);
+        setShowCreateType(false);
+        setNewTypeName("");
+        setNewTypeColor("#007AFF");
         setShowContactPicker(false);
         setContactSearch("");
       }, 300); // after close animation
@@ -128,13 +140,14 @@ export function RdvModal() {
     loadAdminData();
   }, []);
 
-  const fetchSlots = useCallback(async (date: Date, typeId: string) => {
+  const fetchSlots = useCallback(async (date: Date, typeId: string, duration?: number) => {
     setLoadingSlots(true);
     setSlots([]);
     setSelectedSlot(null);
     try {
       const dateStr = format(date, "yyyy-MM-dd");
-      const res = await fetch(`/api/appointments/available?date=${dateStr}&type_id=${typeId}`);
+      const dur = duration || selectedDuration;
+      const res = await fetch(`/api/appointments/available?date=${dateStr}&type_id=${typeId}&duration_min=${dur}`);
       const data = await res.json();
       const raw = data.slots || [];
       setSlots(raw.map((s: { time: string; status?: string }) => ({
@@ -164,7 +177,7 @@ export function RdvModal() {
       const res = await fetch("/api/appointments", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ type_id: selectedType.id, start_at: selectedSlot, ...formData }),
+        body: JSON.stringify({ type_id: selectedType.id, start_at: selectedSlot, duration_min: selectedDuration, ...formData }),
       });
       if (!res.ok) {
         const data = await res.json();
@@ -230,7 +243,7 @@ export function RdvModal() {
             </div>
           )}
 
-          {/* ─── Step 1: Type ─── */}
+          {/* ─── Step 1: Type + Durée ─── */}
           {step === "type" && (
             <div className="space-y-3 animate-slide-up">
               <p className="text-center text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
@@ -257,13 +270,89 @@ export function RdvModal() {
                       </div>
                       <div className="flex-1">
                         <p className="text-[14px] font-semibold">{type.name}</p>
-                        <p className="text-[12px] text-muted-foreground">{type.duration_min} minutes</p>
                       </div>
                       <ChevronRight className="h-4 w-4 text-muted-foreground/50 transition-transform group-hover:translate-x-0.5" />
                     </button>
                   ))}
                 </div>
               )}
+
+              {/* Créer un type inline */}
+              {!showCreateType ? (
+                <button
+                  onClick={() => setShowCreateType(true)}
+                  className="flex w-full items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-foreground/10 py-3 text-[13px] font-medium text-muted-foreground transition-all hover:border-primary/30 hover:text-primary"
+                >
+                  <Plus className="h-4 w-4" />
+                  Créer un type
+                </button>
+              ) : (
+                <div className="premium-panel p-4 space-y-3 animate-slide-up">
+                  <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">Nouveau type</p>
+                  <input
+                    value={newTypeName}
+                    onChange={(e) => setNewTypeName(e.target.value)}
+                    placeholder="Nom du type"
+                    className="glass-input w-full py-2.5 px-4 text-[14px]"
+                  />
+                  <div className="flex items-center gap-3">
+                    <input type="color" value={newTypeColor} onChange={(e) => setNewTypeColor(e.target.value)} className="h-9 w-9 cursor-pointer rounded-xl border-0 bg-transparent" />
+                    <input value={newTypeColor} onChange={(e) => setNewTypeColor(e.target.value)} className="glass-input flex-1 py-2.5 px-4 text-[13px] font-mono" />
+                  </div>
+                  <div className="flex gap-2">
+                    <button onClick={() => { setShowCreateType(false); setNewTypeName(""); setNewTypeColor("#007AFF"); }} className="flex-1 rounded-xl bg-foreground/[0.06] py-2.5 text-[13px] font-medium text-muted-foreground">Annuler</button>
+                    <button
+                      disabled={!newTypeName.trim() || creatingType}
+                      onClick={async () => {
+                        setCreatingType(true);
+                        try {
+                          const res = await fetch("/api/appointments/types", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ name: newTypeName.trim(), color: newTypeColor }),
+                          });
+                          if (res.ok) {
+                            const newType = await res.json();
+                            setTypes((prev) => [...prev, newType]);
+                            setSelectedType(newType);
+                            setShowCreateType(false);
+                            setNewTypeName("");
+                            setNewTypeColor("#007AFF");
+                            setStep("date");
+                          }
+                        } catch { /* ignore */ }
+                        setCreatingType(false);
+                      }}
+                      className="flex-1 rounded-xl bg-primary py-2.5 text-[13px] font-semibold text-primary-foreground disabled:opacity-50"
+                    >
+                      {creatingType ? <Loader2 className="mx-auto h-4 w-4 animate-spin" /> : "Créer"}
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Sélecteur de durée */}
+              <div className="space-y-2 pt-2">
+                <p className="text-center text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
+                  Durée du rendez-vous
+                </p>
+                <div className="flex flex-wrap items-center justify-center gap-1.5">
+                  {[15, 30, 45, 60, 90, 120].map((d) => (
+                    <button
+                      key={d}
+                      onClick={() => setSelectedDuration(d)}
+                      className={cn(
+                        "rounded-xl px-3 py-2 text-[13px] font-medium transition-all",
+                        selectedDuration === d
+                          ? "bg-primary text-primary-foreground shadow-sm"
+                          : "bg-foreground/[0.04] text-muted-foreground hover:bg-foreground/[0.08]"
+                      )}
+                    >
+                      {d >= 60 ? `${d / 60}h${d % 60 > 0 ? (d % 60).toString().padStart(2, "0") : ""}` : `${d} min`}
+                    </button>
+                  ))}
+                </div>
+              </div>
             </div>
           )}
 
@@ -274,7 +363,7 @@ export function RdvModal() {
                 <div className="flex w-fit mx-auto items-center gap-2 rounded-2xl bg-foreground/[0.04] px-4 py-2">
                   <div className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: selectedType.color }} />
                   <span className="text-[13px] font-medium">{selectedType.name}</span>
-                  <span className="text-[12px] text-muted-foreground">· {selectedType.duration_min} min</span>
+                  <span className="text-[12px] text-muted-foreground">· {selectedDuration} min</span>
                 </div>
               )}
               <div className="premium-panel overflow-hidden">

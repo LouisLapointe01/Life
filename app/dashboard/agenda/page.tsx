@@ -32,7 +32,7 @@ type Participant = {
   is_organizer: boolean;
   is_close_contact: boolean;
   responded_at: string | null;
-  participant_type: { id: string; name: string; color: string; duration_min: number } | null;
+  participant_type: { id: string; name: string; color: string; duration_min: number | null } | null;
 };
 
 type Appointment = {
@@ -50,7 +50,7 @@ type Appointment = {
   is_close_contact: boolean;
   notify_on_event: boolean;
   created_at: string;
-  appointment_types: { id: string; name: string; color: string; duration_min: number };
+  appointment_types: { id: string; name: string; color: string; duration_min: number | null };
   appointment_participants: Participant[];
   creator?: { id: string; full_name: string; avatar_url: string | null };
   google_event_id?: string | null;
@@ -60,7 +60,7 @@ type Appointment = {
 type AppointmentType = {
   id: string;
   name: string;
-  duration_min: number;
+  duration_min: number | null;
   color: string;
 };
 
@@ -109,7 +109,7 @@ const emptyForm = { guest_name: "", guest_email: "", guest_phone: "", message: "
  * Si je suis participant et j'ai un type_id → mon type
  * Sinon → type du créateur (appointment_types)
  */
-function getMyType(apt: Appointment, currentUserId?: string): { name: string; color: string; duration_min: number } {
+function getMyType(apt: Appointment, currentUserId?: string): { name: string; color: string; duration_min: number | null } {
   if (currentUserId && apt.appointment_participants) {
     const myPart = apt.appointment_participants.find((p) => p.user_id === currentUserId);
     if (myPart?.participant_type) return myPart.participant_type;
@@ -152,6 +152,12 @@ export default function AgendaPage() {
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [contactSearch, setContactSearch] = useState("");
   const [showContactPicker, setShowContactPicker] = useState(false);
+
+  const [rdvSelectedDuration, setRdvSelectedDuration] = useState(30);
+  const [showCreateType, setShowCreateType] = useState(false);
+  const [newTypeName, setNewTypeName] = useState("");
+  const [newTypeColor, setNewTypeColor] = useState("#007AFF");
+  const [creatingType, setCreatingType] = useState(false);
 
   // Participants for RDV creation (multi)
   const [rdvParticipants, setRdvParticipants] = useState<UserProfile[]>([]);
@@ -301,15 +307,16 @@ export default function AgendaPage() {
   };
 
   // ─── RDV Creation ───
-  const fetchSlots = useCallback(async (date: Date, typeId: string) => {
+  const fetchSlots = useCallback(async (date: Date, typeId: string, duration?: number) => {
     setRdvLoadingSlots(true);
     setRdvSlots([]);
     setRdvSelectedSlot(null);
     try {
       const dateStr = format(date, "yyyy-MM-dd");
+      const dur = duration || rdvSelectedDuration;
       // Ne passer que les participants avec un compte pour checker la dispo
       const userIds = rdvParticipants.filter((p) => p.has_account && p.user_id).map((p) => p.user_id || p.id).join(",");
-      let url = `/api/appointments/available?date=${dateStr}&type_id=${typeId}`;
+      let url = `/api/appointments/available?date=${dateStr}&type_id=${typeId}&duration_min=${dur}`;
       if (userIds) url += `&user_ids=${userIds}`;
       const res = await fetch(url);
       const data = await res.json();
@@ -359,6 +366,7 @@ export default function AgendaPage() {
         body: JSON.stringify({
           type_id: rdvSelectedType.id,
           start_at: rdvSelectedSlot,
+          duration_min: rdvSelectedDuration,
           message: rdvFormData.message || undefined,
           notify_on_event: rdvFormData.notify_on_event,
           participants,
@@ -707,7 +715,7 @@ export default function AgendaPage() {
                         <div className="flex items-start gap-3 sm:gap-4">
                           <div className="flex flex-col items-center text-center min-w-[48px] sm:min-w-[56px]">
                             <span className="text-base sm:text-lg font-bold line-through text-muted-foreground">{format(new Date(apt.start_at), "HH:mm")}</span>
-                            <span className="text-[10px] sm:text-[11px] text-muted-foreground">{myType.duration_min} min</span>
+                            <span className="text-[10px] sm:text-[11px] text-muted-foreground">{Math.round((new Date(apt.end_at).getTime() - new Date(apt.start_at).getTime()) / 60000)} min</span>
                           </div>
                           <div className="mt-1 h-10 sm:h-12 w-1 rounded-full shrink-0 bg-red-500/40" />
                           <div className="flex-1 min-w-0">
@@ -757,7 +765,7 @@ export default function AgendaPage() {
                         <div className="flex items-start gap-3 sm:gap-4">
                           <div className="flex flex-col items-center text-center min-w-[48px] sm:min-w-[56px]">
                             <span className="text-base sm:text-lg font-bold">{format(new Date(apt.start_at), "HH:mm")}</span>
-                            <span className="text-[10px] sm:text-[11px] text-muted-foreground">{myType.duration_min} min</span>
+                            <span className="text-[10px] sm:text-[11px] text-muted-foreground">{Math.round((new Date(apt.end_at).getTime() - new Date(apt.start_at).getTime()) / 60000)} min</span>
                           </div>
                           <div className="mt-1 h-10 sm:h-12 w-1 rounded-full shrink-0" style={{ backgroundColor: myType.color }} />
                           <div className="flex-1 min-w-0">
@@ -828,6 +836,19 @@ export default function AgendaPage() {
                   participants={rdvParticipants} recipientSearch={recipientSearch} setRecipientSearch={setRecipientSearch}
                   recipientResults={recipientResults} searchingRecipients={searchingRecipients}
                   onAddParticipant={addParticipant} onRemoveParticipant={removeParticipant}
+                  selectedDuration={rdvSelectedDuration} setSelectedDuration={setRdvSelectedDuration}
+                  showCreateType={showCreateType} setShowCreateType={setShowCreateType}
+                  newTypeName={newTypeName} setNewTypeName={setNewTypeName}
+                  newTypeColor={newTypeColor} setNewTypeColor={setNewTypeColor}
+                  creatingType={creatingType}
+                  onCreateType={async () => {
+                    setCreatingType(true);
+                    try {
+                      const res = await fetch("/api/appointments/types", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: newTypeName.trim(), color: newTypeColor, user_id: profile?.id }) });
+                      if (res.ok) { const newType = await res.json(); setRdvTypes((prev) => [...prev, newType]); setRdvSelectedType(newType); setShowCreateType(false); setNewTypeName(""); setNewTypeColor("#007AFF"); setRdvStep("date"); }
+                    } catch { /* ignore */ }
+                    setCreatingType(false);
+                  }}
                   onNextFromRecipients={() => { fetchMyTypes(); setRdvStep("type"); }}
                   showExternalForm={showExternalForm} setShowExternalForm={setShowExternalForm}
                   externalDraft={externalDraft} setExternalDraft={setExternalDraft}
@@ -885,6 +906,9 @@ function RdvCreationPanel({
   searchingRecipients, onAddParticipant, onRemoveParticipant, onNextFromRecipients,
   showExternalForm, setShowExternalForm, externalDraft, setExternalDraft,
   savedContacts, confirmDuplicate, onSaveParticipant, onConfirmDuplicate, onCancelDuplicate,
+  selectedDuration, setSelectedDuration,
+  showCreateType, setShowCreateType, newTypeName, setNewTypeName, newTypeColor, setNewTypeColor,
+  creatingType, onCreateType,
 }: {
   step: RdvStep; setStep: (s: RdvStep) => void; stepIndex: number;
   types: AppointmentType[]; selectedType: AppointmentType | null; setSelectedType: (t: AppointmentType) => void;
@@ -908,6 +932,11 @@ function RdvCreationPanel({
   onSaveParticipant: (p: UserProfile) => void;
   onConfirmDuplicate: () => void;
   onCancelDuplicate: () => void;
+  selectedDuration: number; setSelectedDuration: (d: number) => void;
+  showCreateType: boolean; setShowCreateType: (b: boolean) => void;
+  newTypeName: string; setNewTypeName: (s: string) => void;
+  newTypeColor: string; setNewTypeColor: (s: string) => void;
+  creatingType: boolean; onCreateType: () => void;
 }) {
   return (
     <div className="premium-panel overflow-hidden rounded-[2rem]">
@@ -1077,19 +1106,56 @@ function RdvCreationPanel({
               </div>
             )}
             <p className="text-center text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">Choisissez un type</p>
-            {types.length === 0 ? (
-              <div className="flex flex-col items-center gap-3 py-10"><CalendarDays className="h-9 w-9 text-muted-foreground/40" /><p className="text-[13px] text-muted-foreground">Aucun type disponible. Créez-en dans les Paramètres.</p></div>
-            ) : (
+            {types.length === 0 && !showCreateType ? (
+              <div className="flex flex-col items-center gap-3 py-10"><CalendarDays className="h-9 w-9 text-muted-foreground/40" /><p className="text-[13px] text-muted-foreground">Aucun type disponible.</p></div>
+            ) : !showCreateType ? (
               <div className="space-y-2">
                 {types.map((type) => (
                   <button key={type.id} onClick={() => { setSelectedType(type); setStep("date"); }} className="group w-full flex items-center gap-3 rounded-2xl p-3 text-left transition-all duration-300 hover:bg-foreground/[0.04]">
                     <div className="flex h-9 w-9 items-center justify-center rounded-xl" style={{ background: `linear-gradient(135deg, ${type.color}30, ${type.color}10)` }}><div className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: type.color }} /></div>
-                    <div className="flex-1"><p className="text-[13px] font-semibold">{type.name}</p><p className="text-[11px] text-muted-foreground">{type.duration_min} min</p></div>
+                    <div className="flex-1"><p className="text-[13px] font-semibold">{type.name}</p></div>
                     <ChevronRight className="h-4 w-4 text-muted-foreground/50" />
                   </button>
                 ))}
               </div>
+            ) : null}
+
+            {/* Inline create type */}
+            {showCreateType ? (
+              <div className="space-y-3 rounded-2xl bg-foreground/[0.03] p-4">
+                <p className="text-[12px] font-semibold text-center">Nouveau type</p>
+                <input value={newTypeName} onChange={(e) => setNewTypeName(e.target.value)} placeholder="Nom du type" className="w-full rounded-xl border border-foreground/10 bg-background px-3 py-2 text-[13px] focus:outline-none focus:ring-2 focus:ring-primary/30" />
+                <div className="flex items-center gap-2">
+                  <span className="text-[12px] text-muted-foreground">Couleur</span>
+                  <input type="color" value={newTypeColor} onChange={(e) => setNewTypeColor(e.target.value)} className="h-7 w-7 rounded-lg border-0 cursor-pointer" />
+                </div>
+                <div className="flex gap-2">
+                  <button onClick={() => setShowCreateType(false)} className="flex-1 rounded-xl bg-foreground/[0.06] py-2 text-[12px] font-medium text-muted-foreground hover:bg-foreground/[0.1]">Annuler</button>
+                  <button onClick={onCreateType} disabled={!newTypeName.trim() || creatingType} className="flex-1 flex items-center justify-center gap-1.5 rounded-xl bg-primary py-2 text-[12px] font-semibold text-primary-foreground disabled:opacity-50">
+                    {creatingType ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />} Créer
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <button onClick={() => setShowCreateType(true)} className="w-full flex items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-foreground/10 py-3 text-[12px] font-medium text-muted-foreground transition-colors hover:border-primary/30 hover:text-primary">
+                <Plus className="h-4 w-4" /> Créer un type
+              </button>
             )}
+
+            {/* Duration selector */}
+            {selectedType && (
+              <div className="space-y-2 pt-2">
+                <p className="text-center text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">Durée</p>
+                <div className="flex flex-wrap justify-center gap-2">
+                  {[15, 30, 45, 60, 90, 120].map((d) => (
+                    <button key={d} onClick={() => setSelectedDuration(d)} className={cn("rounded-xl px-3 py-1.5 text-[12px] font-medium transition-all", selectedDuration === d ? "bg-primary text-primary-foreground shadow-sm" : "bg-foreground/[0.05] text-muted-foreground hover:bg-foreground/[0.1]")}>
+                      {d < 60 ? `${d} min` : `${d / 60}h${d % 60 ? (d % 60).toString().padStart(2, "0") : ""}`}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <button onClick={() => setStep("recipient")} className="flex items-center gap-2 text-[12px] font-medium text-muted-foreground transition-colors hover:text-foreground"><ArrowLeft className="h-3.5 w-3.5" /> Retour</button>
           </div>
         )}
@@ -1378,7 +1444,7 @@ function AppointmentDetail({
           <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-500/10"><CalendarDays className="h-4 w-4 text-blue-500" /></div>
           <div>
             <p className="text-[13px] font-medium">{format(new Date(apt.start_at), "EEEE d MMMM yyyy", { locale: fr })}</p>
-            <p className="text-[12px] text-muted-foreground">{format(new Date(apt.start_at), "HH:mm")} — {format(new Date(apt.end_at), "HH:mm")} · {myType.duration_min} min</p>
+            <p className="text-[12px] text-muted-foreground">{format(new Date(apt.start_at), "HH:mm")} — {format(new Date(apt.end_at), "HH:mm")} · {Math.round((new Date(apt.end_at).getTime() - new Date(apt.start_at).getTime()) / 60000)} min</p>
           </div>
         </div>
 
@@ -1484,7 +1550,7 @@ function AppointmentDetail({
                       <div className="flex h-8 w-8 items-center justify-center rounded-lg" style={{ background: `linear-gradient(135deg, ${type.color}30, ${type.color}10)` }}>
                         <div className="h-2 w-2 rounded-full" style={{ backgroundColor: type.color }} />
                       </div>
-                      <div className="flex-1 text-left"><p className="text-[13px] font-semibold">{type.name}</p><p className="text-[11px] text-muted-foreground">{type.duration_min} min</p></div>
+                      <div className="flex-1 text-left"><p className="text-[13px] font-semibold">{type.name}</p></div>
                       {selectedTypeId === type.id && <CheckCircle2 className="h-4 w-4 text-primary shrink-0" />}
                     </button>
                   ))}

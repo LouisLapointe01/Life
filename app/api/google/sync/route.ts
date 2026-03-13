@@ -12,11 +12,8 @@ import { randomUUID } from "crypto";
 
 /**
  * POST /api/google/sync
- * Lance une synchronisation manuelle complète (bidirectionnelle, multi-calendriers).
- * 1. Re-sync les calendriers Google (noms/couleurs) → appointment_types
- * 2. Push tous les RDV Life non-syncés vers Google
- * 3. Pull tous les événements Google (tous calendriers) vers Life
- * 4. Renouvelle le webhook si expiré
+ * Lance une synchronisation manuelle complète (bidirectionnelle, multi-comptes).
+ * Pour chaque token : re-sync calendriers, push, pull, renouvelle webhook.
  */
 export async function POST() {
   try {
@@ -25,54 +22,123 @@ export async function POST() {
     if (!user) return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
 
     const admin = createAdminClient();
-    const accessToken = await getValidAccessToken(user.id);
-    if (!accessToken) {
-      return NextResponse.json({ error: "Google Calendar non connecté" }, { status: 400 });
-    }
 
-    const { data: tokenRow } = await admin
+    // Récupérer tous les tokens
+    const { data: allTokens } = await admin
       .from("google_calendar_tokens")
       .select("*")
       .eq("user_id", user.id)
-      .single();
-    if (!tokenRow) {
-      return NextResponse.json({ error: "Tokens introuvables" }, { status: 400 });
+      .eq("sync_enabled", true);
+
+    if (!allTokens || allTokens.length === 0) {
+      return NextResponse.json({ error: "Google Calendar non connecté" }, { status: 400 });
     }
 
     const stats = { pushed: 0, pulled: 0, errors: 0 };
 
-    // 1. Re-sync des calendriers Google → appointment_types
-    try {
-      const calendars = await listGoogleCalendars(accessToken);
-      for (const cal of calendars) {
-        const { data: existing } = await admin
-          .from("appointment_types")
-          .select("id")
-          .eq("user_id", user.id)
-          .eq("google_calendar_id", cal.id)
-          .single();
+    for (const tokenRow of allTokens) {
+      const accessToken = await getValidAccessToken(user.id, tokenRow.id);
+      if (!accessToken) { stats.errors++; continue; }
 
-        if (existing) {
-          await admin
+      // 1. Re-sync des calendriers Google → appointment_types
+      try {
+        const calendars = await listGoogleCalendars(accessToken);
+        for (const cal of calendars) {
+          const { data: existing } = await admin
             .from("appointment_types")
-            .update({ name: cal.summary, color: cal.backgroundColor, is_active: true })
-            .eq("id", existing.id);
-        } else {
-          await admin.from("appointment_types").insert({
-            user_id: user.id,
-            name: cal.summary,
-            color: cal.backgroundColor,
-            google_calendar_id: cal.id,
-            is_active: true,
-            sort_order: 99,
-          });
+            .select("id")
+            .eq("user_id", user.id)
+            .eq("google_calendar_id", cal.id)
+            .eq("google_token_id", tokenRow.id)
+            .maybeSingle();
+
+          if (existing) {
+            await admin
+              .from("appointment_types")
+              .update({ name: cal.summary, color: cal.backgroundColor, is_active: true })
+              .eq("id", existing.id);
+          } else {
+            await admin.from("appointment_types").insert({
+              user_id: user.id,
+              name: cal.summary,
+              color: cal.backgroundColor,
+              google_calendar_id: cal.id,
+              google_token_id: tokenRow.id,
+              is_active: true,
+              sort_order: 99,
+            });
+          }
+        }
+      } catch (err) {
+        console.error("[Manual Sync] Calendar re-sync error for token", tokenRow.id, err);
+      }
+
+      // 2. Pull : événements Google → Life (multi-calendriers pour ce token)
+      try {
+        const { data: googleTypes } = await admin
+          .from("appointment_types")
+          .select("id, google_calendar_id")
+          .eq("user_id", user.id)
+          .eq("google_token_id", tokenRow.id)
+          .not("google_calendar_id", "is", null);
+
+        const timeMin = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+        const timeMax = new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString();
+
+        for (const gType of googleTypes || []) {
+          try {
+            const result = await listGoogleEvents(accessToken, gType.google_calendar_id, {
+              timeMin,
+              timeMax,
+            });
+
+            for (const event of result.items || []) {
+              await processGoogleEventForSync(admin, user.id, gType.google_calendar_id, gType.id, event);
+              stats.pulled++;
+            }
+          } catch (err) {
+            console.error(`[Manual Sync] Pull error for calendar ${gType.google_calendar_id}:`, err);
+            stats.errors++;
+          }
+        }
+      } catch (err) {
+        console.error("[Manual Sync] Pull error for token", tokenRow.id, err);
+        stats.errors++;
+      }
+
+      // 3. Mettre à jour la date de dernière sync
+      await admin
+        .from("google_calendar_tokens")
+        .update({
+          last_synced_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", tokenRow.id);
+
+      // 4. Renouveler le webhook si expiré ou absent
+      const webhookExpiry = tokenRow.webhook_expiry ? new Date(tokenRow.webhook_expiry) : null;
+      if (!webhookExpiry || webhookExpiry.getTime() < Date.now() + 24 * 60 * 60 * 1000) {
+        try {
+          const webhookUrl = process.env.GOOGLE_WEBHOOK_URL ||
+            `${process.env.NEXT_PUBLIC_APP_URL || "https://life.vercel.app"}/api/google/webhook`;
+          const channelId = randomUUID();
+          const watchResult = await watchCalendar(accessToken, tokenRow.calendar_id, webhookUrl, channelId);
+
+          await admin
+            .from("google_calendar_tokens")
+            .update({
+              webhook_channel_id: channelId,
+              webhook_resource_id: watchResult.resourceId,
+              webhook_expiry: new Date(Number(watchResult.expiration)).toISOString(),
+            })
+            .eq("id", tokenRow.id);
+        } catch (err) {
+          console.error("[Manual Sync] Webhook renewal failed for token", tokenRow.id, err);
         }
       }
-    } catch (err) {
-      console.error("[Manual Sync] Calendar re-sync error:", err);
     }
 
-    // 2. Push : RDV Life sans google_event_id → créer sur Google
+    // Push : RDV Life sans google_event_id → créer sur Google
     const { data: unsyncedApts } = await admin
       .from("appointments")
       .select("id, type_id, guest_name, message, start_at, end_at, google_event_id, google_calendar_id")
@@ -89,69 +155,6 @@ export async function POST() {
       }
     }
 
-    // 3. Pull : événements Google → Life (multi-calendriers)
-    try {
-      const { data: googleTypes } = await admin
-        .from("appointment_types")
-        .select("id, google_calendar_id")
-        .eq("user_id", user.id)
-        .not("google_calendar_id", "is", null);
-
-      const timeMin = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
-      const timeMax = new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString();
-
-      for (const gType of googleTypes || []) {
-        try {
-          const result = await listGoogleEvents(accessToken, gType.google_calendar_id, {
-            timeMin,
-            timeMax,
-          });
-
-          for (const event of result.items || []) {
-            await processGoogleEventForSync(admin, user.id, gType.google_calendar_id, gType.id, event);
-            stats.pulled++;
-          }
-        } catch (err) {
-          console.error(`[Manual Sync] Pull error for calendar ${gType.google_calendar_id}:`, err);
-          stats.errors++;
-        }
-      }
-
-      // Sauvegarder la date de dernière sync
-      await admin
-        .from("google_calendar_tokens")
-        .update({
-          last_synced_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        })
-        .eq("user_id", user.id);
-    } catch (err) {
-      console.error("[Manual Sync] Pull error:", err);
-      stats.errors++;
-    }
-
-    // 4. Renouveler le webhook si expiré ou absent
-    const webhookExpiry = tokenRow.webhook_expiry ? new Date(tokenRow.webhook_expiry) : null;
-    if (!webhookExpiry || webhookExpiry.getTime() < Date.now() + 24 * 60 * 60 * 1000) {
-      try {
-        const webhookUrl = process.env.GOOGLE_WEBHOOK_URL ||
-          `${process.env.NEXT_PUBLIC_APP_URL || "https://life.vercel.app"}/api/google/webhook`;
-        const channelId = randomUUID();
-        const watchResult = await watchCalendar(accessToken, tokenRow.calendar_id, webhookUrl, channelId);
-
-        await admin
-          .from("google_calendar_tokens")
-          .update({
-            webhook_channel_id: channelId,
-            webhook_resource_id: watchResult.resourceId,
-            webhook_expiry: new Date(Number(watchResult.expiration)).toISOString(),
-          })
-          .eq("user_id", user.id);
-      } catch (err) {
-        console.error("[Manual Sync] Webhook renewal failed:", err);
-      }
-    }
-
     return NextResponse.json({
       success: true,
       stats,
@@ -165,7 +168,7 @@ export async function POST() {
 
 /**
  * GET /api/google/sync
- * Retourne le statut de synchronisation Google Calendar.
+ * Retourne le statut de synchronisation Google Calendar (multi-comptes).
  */
 export async function GET() {
   try {
@@ -174,23 +177,29 @@ export async function GET() {
     if (!user) return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
 
     const admin = createAdminClient();
-    const { data: tokenRow } = await admin
+    const { data: tokens } = await admin
       .from("google_calendar_tokens")
-      .select("sync_enabled, last_synced_at, webhook_expiry, calendar_id, created_at")
-      .eq("user_id", user.id)
-      .single();
+      .select("id, google_email, is_default, sync_enabled, last_synced_at, webhook_expiry, calendar_id, created_at")
+      .eq("user_id", user.id);
 
-    if (!tokenRow) {
-      return NextResponse.json({ connected: false });
+    if (!tokens || tokens.length === 0) {
+      return NextResponse.json({ connected: false, accounts: [] });
     }
+
+    const accounts = tokens.map((t) => ({
+      id: t.id,
+      google_email: t.google_email,
+      is_default: t.is_default,
+      sync_enabled: t.sync_enabled,
+      last_synced_at: t.last_synced_at,
+      webhook_active: t.webhook_expiry ? new Date(t.webhook_expiry) > new Date() : false,
+      calendar_id: t.calendar_id,
+      connected_since: t.created_at,
+    }));
 
     return NextResponse.json({
       connected: true,
-      sync_enabled: tokenRow.sync_enabled,
-      last_synced_at: tokenRow.last_synced_at,
-      webhook_active: tokenRow.webhook_expiry ? new Date(tokenRow.webhook_expiry) > new Date() : false,
-      calendar_id: tokenRow.calendar_id,
-      connected_since: tokenRow.created_at,
+      accounts,
     });
   } catch (err) {
     console.error("[GET /api/google/sync]", err);
@@ -198,7 +207,7 @@ export async function GET() {
   }
 }
 
-/** Traite un événement Google et l'upsert dans Life */
+/** Traite un événement Google et l'upsert dans Life — avec fix dédoublonnage */
 async function processGoogleEventForSync(
   supabase: ReturnType<typeof createAdminClient>,
   userId: string,
@@ -217,7 +226,8 @@ async function processGoogleEventForSync(
     .from("appointments")
     .select("id, status")
     .eq("google_event_id", event.id)
-    .single();
+    .eq("user_id", userId)
+    .maybeSingle();
 
   if (event.status === "cancelled") {
     if (existingApt && existingApt.status !== "cancelled") {

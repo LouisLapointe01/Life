@@ -20,6 +20,7 @@ import {
     Search,
     X,
     UserCheck,
+    Plus,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { LeafLogo } from "@/components/LeafLogo";
@@ -42,7 +43,7 @@ type Contact = {
 type AppointmentType = {
     id: string;
     name: string;
-    duration_min: number;
+    duration_min: number | null;
     color: string;
 };
 
@@ -82,6 +83,13 @@ export default function RdvPage() {
     const [recipientResults, setRecipientResults] = useState<UserProfile[]>([]);
     const [searchingRecipients, setSearchingRecipients] = useState(false);
     const [emailSearch, setEmailSearch] = useState("");
+
+    // Duration & inline type creation
+    const [selectedDuration, setSelectedDuration] = useState(30);
+    const [showCreateType, setShowCreateType] = useState(false);
+    const [newTypeName, setNewTypeName] = useState("");
+    const [newTypeColor, setNewTypeColor] = useState("#007AFF");
+    const [creatingType, setCreatingType] = useState(false);
 
     // Contact picker (admin)
     const [contacts, setContacts] = useState<Contact[]>([]);
@@ -177,14 +185,15 @@ export default function RdvPage() {
         return () => clearTimeout(timer);
     }, [recipientSearch, emailSearch, isLoggedIn, searchByName, searchByEmail]);
 
-    const fetchSlots = useCallback(async (date: Date, typeId: string) => {
+    const fetchSlots = useCallback(async (date: Date, typeId: string, duration?: number) => {
         setLoadingSlots(true);
         setSlots([]);
         setSelectedSlot(null);
         try {
             const dateStr = format(date, "yyyy-MM-dd");
+            const dur = duration || selectedDuration;
             const ids = [selectedRecipient?.id, currentUserId].filter(Boolean);
-            let url = `/api/appointments/available?date=${dateStr}&type_id=${typeId}`;
+            let url = `/api/appointments/available?date=${dateStr}&type_id=${typeId}&duration_min=${dur}`;
             if (ids.length > 0) url += `&user_ids=${ids.join(",")}`;
             const res = await fetch(url);
             const data = await res.json();
@@ -221,6 +230,7 @@ export default function RdvPage() {
                 body: JSON.stringify({
                     type_id: selectedType.id,
                     start_at: selectedSlot,
+                    duration_min: selectedDuration,
                     recipient_id: selectedRecipient?.id,
                     ...formData,
                 }),
@@ -449,13 +459,72 @@ export default function RdvPage() {
                                     </div>
                                     <div className="flex-1">
                                         <p className="text-[14px] sm:text-[15px] font-semibold text-white">{type.name}</p>
-                                        <p className="text-[12px] text-white/50">{type.duration_min} minutes</p>
                                     </div>
                                     <ChevronRight className="h-5 w-5 text-white/30 transition-transform group-hover:translate-x-0.5" />
                                 </button>
                             ))}
                         </div>
                     )}
+
+                    {/* Créer un type inline */}
+                    {!showCreateType ? (
+                        <button
+                            onClick={() => setShowCreateType(true)}
+                            className="flex w-full items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-white/20 py-3 text-[13px] font-medium text-white/50 transition-all hover:border-white/40 hover:text-white/80"
+                        >
+                            <Plus className="h-4 w-4" />
+                            Créer un type
+                        </button>
+                    ) : (
+                        <div className="rounded-[1.7rem] border border-white/14 bg-white/10 p-4 space-y-3 backdrop-blur-2xl animate-slide-up">
+                            <p className="text-[11px] font-semibold uppercase tracking-widest text-white/50">Nouveau type</p>
+                            <input value={newTypeName} onChange={(e) => setNewTypeName(e.target.value)} placeholder="Nom du type" className="w-full rounded-xl bg-white/10 border border-white/20 py-2.5 px-4 text-[14px] text-white placeholder:text-white/30" />
+                            <div className="flex items-center gap-3">
+                                <input type="color" value={newTypeColor} onChange={(e) => setNewTypeColor(e.target.value)} className="h-9 w-9 cursor-pointer rounded-xl border-0 bg-transparent" />
+                                <input value={newTypeColor} onChange={(e) => setNewTypeColor(e.target.value)} className="flex-1 rounded-xl bg-white/10 border border-white/20 py-2.5 px-4 text-[13px] text-white font-mono" />
+                            </div>
+                            <div className="flex gap-2">
+                                <button onClick={() => { setShowCreateType(false); setNewTypeName(""); setNewTypeColor("#007AFF"); }} className="flex-1 rounded-xl bg-white/10 py-2.5 text-[13px] font-medium text-white/60">Annuler</button>
+                                <button
+                                    disabled={!newTypeName.trim() || creatingType}
+                                    onClick={async () => {
+                                        setCreatingType(true);
+                                        try {
+                                            const res = await fetch("/api/appointments/types", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: newTypeName.trim(), color: newTypeColor }) });
+                                            if (res.ok) { const newType = await res.json(); setTypes((prev) => [...prev, newType]); setSelectedType(newType); setShowCreateType(false); setNewTypeName(""); setNewTypeColor("#007AFF"); setStep("date"); }
+                                        } catch { /* ignore */ }
+                                        setCreatingType(false);
+                                    }}
+                                    className="flex-1 rounded-xl bg-white/20 py-2.5 text-[13px] font-semibold text-white disabled:opacity-50"
+                                >
+                                    {creatingType ? <Loader2 className="mx-auto h-4 w-4 animate-spin" /> : "Créer"}
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Sélecteur de durée */}
+                    <div className="space-y-2 pt-2">
+                        <p className="text-center text-[12px] font-semibold uppercase tracking-widest text-white/60">
+                            Durée du rendez-vous
+                        </p>
+                        <div className="flex flex-wrap items-center justify-center gap-1.5">
+                            {[15, 30, 45, 60, 90, 120].map((d) => (
+                                <button
+                                    key={d}
+                                    onClick={() => setSelectedDuration(d)}
+                                    className={cn(
+                                        "rounded-xl px-3 py-2 text-[13px] font-medium transition-all",
+                                        selectedDuration === d
+                                            ? "bg-white text-[#185A9D] shadow-sm"
+                                            : "bg-white/10 text-white/60 hover:bg-white/20"
+                                    )}
+                                >
+                                    {d >= 60 ? `${d / 60}h${d % 60 > 0 ? (d % 60).toString().padStart(2, "0") : ""}` : `${d} min`}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
 
                     <button
                         onClick={() => { setStep("recipient"); setSelectedType(null); }}
@@ -480,7 +549,7 @@ export default function RdvPage() {
                             <div className="flex items-center gap-2 rounded-2xl bg-white/10 border border-white/15 px-4 py-2">
                                 <div className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: selectedType.color }} />
                                 <span className="text-[13px] font-medium text-white">{selectedType.name}</span>
-                                <span className="text-[12px] text-white/50">· {selectedType.duration_min} min</span>
+                                <span className="text-[12px] text-white/50">· {selectedDuration} min</span>
                             </div>
                         )}
                     </div>
