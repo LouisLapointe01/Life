@@ -49,7 +49,7 @@ export async function GET(request: Request) {
     const isFirstAccount = !existingTokens || existingTokens.length === 0;
 
     // Upsert les tokens (basé sur user_id + google_email)
-    const { data: tokenRow } = await supabase.from("google_calendar_tokens").upsert(
+    const { data: tokenRow, error: tokenError } = await supabase.from("google_calendar_tokens").upsert(
       {
         user_id: state.userId,
         google_email: googleEmail,
@@ -64,19 +64,23 @@ export async function GET(request: Request) {
       { onConflict: "user_id,google_email" }
     ).select("id").single();
 
-    const tokenId = tokenRow?.id;
+    if (tokenError || !tokenRow?.id) {
+      console.error("[Google Callback] Token upsert failed:", tokenError);
+      return NextResponse.redirect(`${origin}/dashboard/parametres?gcal_error=token_save_failed`);
+    }
+
+    const tokenId = tokenRow.id;
 
     // Importer les calendriers Google comme types de RDV
     try {
       const calendars = await listGoogleCalendars(tokens.access_token);
       for (const cal of calendars) {
-        // Dédoublonnage : vérifier existence avec google_calendar_id + google_token_id
+        // Dédoublonnage : chercher par google_calendar_id seul (couvre reconnexion après déco)
         const { data: existing } = await supabase
           .from("appointment_types")
           .select("id")
           .eq("user_id", state.userId)
           .eq("google_calendar_id", cal.id)
-          .eq("google_token_id", tokenId)
           .maybeSingle();
 
         if (existing) {
@@ -86,12 +90,14 @@ export async function GET(request: Request) {
               name: cal.summary,
               color: cal.backgroundColor,
               is_active: true,
+              google_token_id: tokenId,
             })
             .eq("id", existing.id);
         } else {
           await supabase.from("appointment_types").insert({
             user_id: state.userId,
             name: cal.summary,
+            duration_min: 60,
             color: cal.backgroundColor,
             google_calendar_id: cal.id,
             google_token_id: tokenId,

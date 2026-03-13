@@ -49,18 +49,18 @@ export async function POST() {
             .select("id")
             .eq("user_id", user.id)
             .eq("google_calendar_id", cal.id)
-            .eq("google_token_id", tokenRow.id)
             .maybeSingle();
 
           if (existing) {
             await admin
               .from("appointment_types")
-              .update({ name: cal.summary, color: cal.backgroundColor, is_active: true })
+              .update({ name: cal.summary, color: cal.backgroundColor, is_active: true, google_token_id: tokenRow.id })
               .eq("id", existing.id);
           } else {
             await admin.from("appointment_types").insert({
               user_id: user.id,
               name: cal.summary,
+              duration_min: 60,
               color: cal.backgroundColor,
               google_calendar_id: cal.id,
               google_token_id: tokenRow.id,
