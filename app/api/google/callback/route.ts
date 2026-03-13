@@ -110,28 +110,45 @@ export async function GET(request: Request) {
       console.error("[Google Callback] Calendar import failed:", err);
     }
 
-    // Démarrer le webhook pour la sync Google → Life (channel unique par token)
+    // Démarrer un webhook par calendrier (pour catcher les changements dans tous les calendriers)
     const webhookUrl = process.env.GOOGLE_WEBHOOK_URL || `${origin}/api/google/webhook`;
-    const channelId = randomUUID();
 
+    // Webhook token-level (fallback sur "primary")
     try {
-      const watchResult = await watchCalendar(
-        tokens.access_token,
-        "primary",
-        webhookUrl,
-        channelId
-      );
-
-      await supabase
-        .from("google_calendar_tokens")
-        .update({
-          webhook_channel_id: channelId,
-          webhook_resource_id: watchResult.resourceId,
-          webhook_expiry: new Date(Number(watchResult.expiration)).toISOString(),
-        })
-        .eq("id", tokenId);
+      const channelId = randomUUID();
+      const watchResult = await watchCalendar(tokens.access_token, "primary", webhookUrl, channelId);
+      await supabase.from("google_calendar_tokens").update({
+        webhook_channel_id: channelId,
+        webhook_resource_id: watchResult.resourceId,
+        webhook_expiry: new Date(Number(watchResult.expiration)).toISOString(),
+      }).eq("id", tokenId);
     } catch (err) {
-      console.error("[Google Callback] Webhook setup failed:", err);
+      console.error("[Google Callback] Token webhook setup failed:", err);
+    }
+
+    // Webhook par calendrier importé (pour catcher les changements dans chaque calendrier)
+    try {
+      const { data: calTypes } = await supabase
+        .from("appointment_types")
+        .select("id, google_calendar_id")
+        .eq("user_id", state.userId)
+        .eq("google_token_id", tokenId)
+        .not("google_calendar_id", "is", null)
+        .neq("google_calendar_id", "primary");
+
+      for (const ct of calTypes || []) {
+        try {
+          const calChannelId = randomUUID();
+          const watchResult = await watchCalendar(tokens.access_token, ct.google_calendar_id, webhookUrl, calChannelId);
+          await supabase.from("appointment_types").update({
+            webhook_channel_id: calChannelId,
+            webhook_resource_id: watchResult.resourceId,
+            webhook_expiry: new Date(Number(watchResult.expiration)).toISOString(),
+          }).eq("id", ct.id);
+        } catch { /* calendar might not support watch */ }
+      }
+    } catch (err) {
+      console.error("[Google Callback] Calendar webhooks setup failed:", err);
     }
 
     return NextResponse.redirect(`${origin}/dashboard/parametres?gcal_success=true`);

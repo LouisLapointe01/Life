@@ -1,6 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { rescheduleSchema, rescheduleVoteSchema } from "@/lib/validations";
+import { syncAppointmentToGoogle } from "@/lib/google-calendar";
 import { NextResponse } from "next/server";
 
 async function getAuthUser() {
@@ -275,14 +276,27 @@ export async function PATCH(request: Request) {
       const allYes = (allVotes || []).every((v) => v.vote === "yes") && vote === "yes";
       if (allYes) {
         // Tout le monde accepte → déplacer le RDV
-        await supabase.from("appointments").update({
+        const { data: updatedApt } = await supabase.from("appointments").update({
           start_at: req.new_start_at,
           end_at: req.new_end_at,
           status: "confirmed",
           updated_at: new Date().toISOString(),
-        }).eq("id", apt.id);
+        }).eq("id", apt.id).select("id, type_id, guest_name, message, start_at, end_at, google_event_id, google_calendar_id, requester_id").single();
 
         await supabase.from("reschedule_requests").update({ status: "approved" }).eq("id", reschedule_id);
+
+        // Sync vers Google Calendar
+        if (updatedApt) {
+          syncAppointmentToGoogle(updatedApt.requester_id, updatedApt.id, {
+            guest_name: updatedApt.guest_name,
+            message: updatedApt.message,
+            start_at: updatedApt.start_at,
+            end_at: updatedApt.end_at,
+            type_id: updatedApt.type_id,
+            google_event_id: updatedApt.google_event_id,
+            google_calendar_id: updatedApt.google_calendar_id,
+          }).catch((e) => console.error("[Reschedule] Google sync:", e));
+        }
 
         // Notifier tout le monde
         for (const pid of allParticipantIds) {
