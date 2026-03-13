@@ -141,7 +141,7 @@ export function ChatInput({ value, onChange, onSend, onSendGif, onFileSelect, di
     >
       <div ref={mediaPanelRef}>
       {mediaPanelMode === "emoji" && (
-        <div className="absolute bottom-[calc(100%-0.5rem)] left-2.5 z-30 flex max-w-[min(22rem,calc(100vw-1.25rem))] flex-col gap-2 lg:left-4">
+        <div className="absolute bottom-[calc(100%-0.5rem)] left-2.5 z-30 flex max-w-[min(22rem,calc(100vw-1.25rem))] flex-col gap-2 lg:bottom-[calc(100%+1rem)] lg:left-4">
           <div className="inline-flex items-center gap-2 self-start rounded-full border border-white/45 bg-white/82 px-3 py-2 shadow-lg backdrop-blur-xl dark:border-white/10 dark:bg-zinc-900/85">
             <span className="rounded-full bg-primary px-3 py-1 text-[12px] font-medium text-primary-foreground">Emojis</span>
             <button
@@ -166,7 +166,7 @@ export function ChatInput({ value, onChange, onSend, onSendGif, onFileSelect, di
 
       {mediaPanelMode === "gif" && (
         <div
-          className="absolute bottom-[calc(100%-0.5rem)] left-2.5 right-2.5 z-30 overflow-hidden rounded-[1.6rem] border border-white/45 bg-white/92 shadow-xl backdrop-blur-xl dark:border-white/10 dark:bg-zinc-900/92 lg:left-4 lg:right-4"
+          className="absolute bottom-[calc(100%-0.5rem)] left-2.5 right-2.5 z-30 overflow-hidden rounded-[1.6rem] border border-white/45 bg-white/92 shadow-xl backdrop-blur-xl dark:border-white/10 dark:bg-zinc-900/92 lg:bottom-[calc(100%+1rem)] lg:left-4 lg:right-4"
         >
           <div className="flex items-center gap-2 border-b border-foreground/[0.06] p-2.5">
             <span className="rounded-xl bg-primary px-3 py-1.5 text-[12px] font-medium text-primary-foreground">GIF</span>
