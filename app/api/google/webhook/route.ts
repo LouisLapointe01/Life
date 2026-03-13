@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { waitUntil } from "@vercel/functions";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getValidAccessToken, listGoogleEvents } from "@/lib/google-calendar";
 
@@ -20,9 +21,12 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Missing channel ID" }, { status: 400 });
   }
 
-  // Lancer la sync en arrière-plan SANS await — Google doit recevoir 200 rapidement
-  performIncrementalSync(channelId).catch((err) =>
-    console.error("[Webhook] Background sync error:", err)
+  // waitUntil garantit que la sync s'exécute jusqu'au bout même après
+  // l'envoi de la réponse (Vercel tue les fonctions serverless dès le return sinon)
+  waitUntil(
+    performIncrementalSync(channelId).catch((err) =>
+      console.error("[Webhook] Background sync error:", err)
+    )
   );
 
   return NextResponse.json({ ok: true });
