@@ -309,13 +309,14 @@ export async function listGoogleEvents(
   const params = new URLSearchParams();
   if (options?.syncToken) {
     params.set("syncToken", options.syncToken);
+    // orderBy et timeMin/timeMax sont incompatibles avec syncToken (Google retourne 410)
   } else {
     if (options?.timeMin) params.set("timeMin", options.timeMin);
     if (options?.timeMax) params.set("timeMax", options.timeMax);
+    params.set("orderBy", "startTime");
   }
   params.set("maxResults", String(options?.maxResults || 250));
   params.set("singleEvents", "true");
-  params.set("orderBy", "startTime");
 
   return gcalFetch(accessToken, `/calendars/${encodeURIComponent(calendarId)}/events?${params}`);
 }
