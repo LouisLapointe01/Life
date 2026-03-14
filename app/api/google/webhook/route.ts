@@ -113,6 +113,8 @@ async function performIncrementalSync(channelId: string) {
 /**
  * Sync un calendrier avec syncToken (delta uniquement).
  * Si le syncToken est expiré (410 Gone), fait un full re-sync.
+ * Lors d'un full sync, réconcilie les suppressions : tout RDV en DB
+ * dont le google_event_id n'est plus dans la réponse Google est supprimé.
  */
 async function syncCalendar(
   supabase: ReturnType<typeof createAdminClient>,
@@ -121,17 +123,20 @@ async function syncCalendar(
   gType: { id: string; google_calendar_id: string; sync_token: string | null }
 ) {
   let result: { items?: GoogleEvent[]; nextSyncToken?: string };
+  let isFullSync = false;
+  const timeMin = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+  const timeMax = new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString();
 
   try {
     if (gType.sync_token) {
       // Sync incrémentale : uniquement les événements modifiés depuis le dernier syncToken
+      // Note: orderBy est incompatible avec syncToken (cf. listGoogleEvents)
       result = await listGoogleEvents(accessToken, gType.google_calendar_id, {
         syncToken: gType.sync_token,
       });
     } else {
       // Premier sync : fenêtre classique pour initialiser le syncToken
-      const timeMin = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
-      const timeMax = new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString();
+      isFullSync = true;
       result = await listGoogleEvents(accessToken, gType.google_calendar_id, { timeMin, timeMax });
     }
   } catch (err: unknown) {
@@ -139,17 +144,40 @@ async function syncCalendar(
     const status = (err as { status?: number })?.status;
     if (status === 410) {
       await supabase.from("appointment_types").update({ sync_token: null }).eq("id", gType.id);
-      const timeMin = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
-      const timeMax = new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString();
+      isFullSync = true;
       result = await listGoogleEvents(accessToken, gType.google_calendar_id, { timeMin, timeMax });
     } else {
       throw err;
     }
   }
 
-  // Traiter les événements (seulement ceux qui ont changé)
+  // Traiter les événements (créations / modifications / annulations incrémentales)
   for (const event of result.items || []) {
     await processGoogleEvent(supabase, userId, gType.google_calendar_id, gType.id, event);
+  }
+
+  // Réconciliation des suppressions lors d'un full sync :
+  // supprime les RDV en DB dont le google_event_id n'existe plus chez Google
+  if (isFullSync) {
+    const googleIds = new Set((result.items || []).map((e) => e.id));
+    const { data: dbApts } = await supabase
+      .from("appointments")
+      .select("id, google_event_id")
+      .eq("user_id", userId)
+      .eq("google_calendar_id", gType.google_calendar_id)
+      .gte("start_at", timeMin)
+      .lte("start_at", timeMax)
+      .not("google_event_id", "is", null);
+
+    for (const apt of dbApts || []) {
+      if (apt.google_event_id && !googleIds.has(apt.google_event_id)) {
+        await supabase
+          .from("appointments")
+          .delete()
+          .eq("id", apt.id)
+          .eq("user_id", userId);
+      }
+    }
   }
 
   // Stocker le nouveau syncToken pour la prochaine notification
