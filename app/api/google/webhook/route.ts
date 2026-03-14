@@ -178,12 +178,12 @@ async function processGoogleEvent(
   event: GoogleEvent
 ) {
   if (event.status === "cancelled") {
+    // Suppression réelle : un événement supprimé sur Google doit disparaître de l'app
     await supabase
       .from("appointments")
-      .update({ status: "cancelled", google_sync_status: "synced", updated_at: new Date().toISOString() })
+      .delete()
       .eq("google_event_id", event.id)
-      .eq("user_id", userId)
-      .neq("status", "cancelled");
+      .eq("user_id", userId);
     return;
   }
 
