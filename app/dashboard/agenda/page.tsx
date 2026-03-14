@@ -216,12 +216,18 @@ export default function AgendaPage() {
     if (!profile?.id) return;
     const supabase = createClient();
     const ch = supabase.channel(`google-sync:${profile.id}`)
-      .on("broadcast", { event: "update" }, () => fetchAppointments())
+      .on("broadcast", { event: "update" }, () => {
+        // Invalider le cache avant de refetch pour éviter l'affichage stale
+        clientCache.del("appointments");
+        fetchAppointments();
+      })
       .subscribe();
     return () => { supabase.removeChannel(ch); };
   }, [profile?.id, fetchAppointments]);
 
-  // Auto-sync polling (60s) — silencieux, pause quand l'onglet est invisible
+  // Auto-sync polling (8s) — silencieux, pause quand l'onglet est invisible
+  // Intervalle court pour garantir la visibilité des changements Google en < 10s
+  // même si le broadcast realtime n'est pas reçu
   useEffect(() => {
     const silentFetch = async () => {
       if (document.visibilityState !== "visible") return;
@@ -234,9 +240,21 @@ export default function AgendaPage() {
         }
       } catch { /* silencieux */ }
     };
-    const interval = setInterval(silentFetch, 60_000);
+    const interval = setInterval(silentFetch, 8_000);
     return () => clearInterval(interval);
   }, []);
+
+  // Retour sur l'onglet (ex: depuis Google Agenda) → refresh immédiat sans stale
+  useEffect(() => {
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") {
+        clientCache.del("appointments");
+        fetchAppointments();
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () => document.removeEventListener("visibilitychange", handleVisibility);
+  }, [fetchAppointments]);
 
   // Contacts
   useEffect(() => {
