@@ -203,11 +203,17 @@ export default function AgendaPage() {
     });
   }, [appointments]);
 
-  // Realtime
+  // Realtime — postgres_changes (fonctionne maintenant grâce à REPLICA IDENTITY FULL)
   useEffect(() => {
     const supabase = createClient();
-    const ch1 = supabase.channel("apts-rt").on("postgres_changes", { event: "*", schema: "public", table: "appointments" }, () => fetchAppointments()).subscribe();
-    const ch2 = supabase.channel("parts-rt").on("postgres_changes", { event: "*", schema: "public", table: "appointment_participants" }, () => fetchAppointments()).subscribe();
+    const ch1 = supabase.channel("apts-rt").on("postgres_changes", { event: "*", schema: "public", table: "appointments" }, () => {
+      clientCache.del("appointments");
+      fetchAppointments();
+    }).subscribe();
+    const ch2 = supabase.channel("parts-rt").on("postgres_changes", { event: "*", schema: "public", table: "appointment_participants" }, () => {
+      clientCache.del("appointments");
+      fetchAppointments();
+    }).subscribe();
     return () => { supabase.removeChannel(ch1); supabase.removeChannel(ch2); };
   }, [fetchAppointments]);
 
@@ -240,7 +246,7 @@ export default function AgendaPage() {
         }
       } catch { /* silencieux */ }
     };
-    const interval = setInterval(silentFetch, 8_000);
+    const interval = setInterval(silentFetch, 3_000);
     return () => clearInterval(interval);
   }, []);
 
