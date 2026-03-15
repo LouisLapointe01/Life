@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { clientCache } from "@/lib/client-cache";
 import { useProfile } from "@/hooks/use-profile";
@@ -96,6 +96,32 @@ type SlotInfo = {
 type ViewMode = "month" | "week";
 type RdvStep = "recipient" | "type" | "date" | "slot" | "form" | "confirmation";
 
+// Hauteur uniforme pour la vue semaine
+const W_HOUR_H = 40; // px par heure
+const W_TOTAL_H = 24 * W_HOUR_H; // 960px
+const W_VISIBLE_H = 15 * W_HOUR_H; // 600px (montre 6h–21h)
+const W_SCROLL_TO = 6 * W_HOUR_H; // scroll initial à 6h
+
+// Algorithme anti-chevauchement d'événements
+function layoutWeekEvents(events: Appointment[]): { apt: Appointment; col: number; cols: number }[] {
+  const sorted = [...events].sort((a, b) => new Date(a.start_at).getTime() - new Date(b.start_at).getTime());
+  const result: { apt: Appointment; col: number; cols: number }[] = [];
+  const colEnds: Date[] = [];
+  for (const apt of sorted) {
+    const start = new Date(apt.start_at);
+    const end = new Date(apt.end_at);
+    let col = colEnds.findIndex((e) => e <= start);
+    if (col === -1) { col = colEnds.length; colEnds.push(end); } else { colEnds[col] = end; }
+    result.push({ apt, col, cols: 0 });
+  }
+  for (const item of result) {
+    const s = new Date(item.apt.start_at).getTime();
+    const e = new Date(item.apt.end_at).getTime();
+    item.cols = Math.max(...result.filter(o => new Date(o.apt.start_at).getTime() < e && new Date(o.apt.end_at).getTime() > s).map(o => o.col)) + 1;
+  }
+  return result;
+}
+
 const statusConfig: Record<string, { label: string; color: string; bg: string; dot: string }> = {
   pending: { label: "En attente", color: "text-amber-600 dark:text-amber-400", bg: "bg-amber-500/10", dot: "bg-amber-500" },
   confirmed: { label: "Confirmé", color: "text-green-600 dark:text-green-400", bg: "bg-green-500/10", dot: "bg-green-500" },
@@ -137,7 +163,9 @@ export default function AgendaPage() {
   const [filter, setFilter] = useState<"all" | "pending" | "confirmed" | "cancelled">("all");
   const [search, setSearch] = useState("");
   const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
-  const [viewMode, setViewMode] = useState<ViewMode>("month");
+  const [viewMode, setViewMode] = useState<ViewMode>(() =>
+    typeof window !== "undefined" && window.innerWidth >= 1024 ? "week" : "month"
+  );
 
   // RDV creation state
   const [showRdvForm, setShowRdvForm] = useState(false);
@@ -177,6 +205,29 @@ export default function AgendaPage() {
   const [confirmDuplicate, setConfirmDuplicate] = useState<{ participant: UserProfile; existing: Contact } | null>(null);
 
   const isAdmin = profile?.role === "admin";
+  const [isDesktop, setIsDesktop] = useState(() => typeof window !== "undefined" && window.innerWidth >= 1024);
+  useEffect(() => {
+    const handler = () => setIsDesktop(window.innerWidth >= 1024);
+    window.addEventListener("resize", handler);
+    return () => window.removeEventListener("resize", handler);
+  }, []);
+  const [draggedAptId, setDraggedAptId] = useState<string | null>(null);
+  const weekScrollRef = useRef<HTMLDivElement>(null);
+  const [quickCreate, setQuickCreate] = useState<{ date: Date; hour: number; minute: number } | null>(null);
+  const [quickTitle, setQuickTitle] = useState("");
+  const [aptPopup, setAptPopup] = useState<Appointment | null>(null);
+  const [dragOver, setDragOver] = useState<{ day: Date; hour: number; minute: number } | null>(null);
+  const [resizing, setResizing] = useState<{ aptId: string; startY: number; origDurMin: number; curDurMin: number } | null>(null);
+  const resizingRef = useRef<typeof resizing>(null);
+  resizingRef.current = resizing;
+  const appointmentsRef = useRef<Appointment[]>([]);
+  appointmentsRef.current = appointments;
+
+  useEffect(() => {
+    if (viewMode === "week" && weekScrollRef.current) {
+      weekScrollRef.current.scrollTop = W_SCROLL_TO;
+    }
+  }, [viewMode]);
 
   const fetchAppointments = useCallback(async () => {
     const cached = clientCache.get<Appointment[]>("appointments");
@@ -193,6 +244,76 @@ export default function AgendaPage() {
   }, []);
 
   useEffect(() => { fetchAppointments(); }, [fetchAppointments]);
+
+  const handleDrop = useCallback(async (targetDay: Date, targetHour?: number, targetMinute?: number) => {
+    const aptId = draggedAptId;
+    setDraggedAptId(null);
+    if (!aptId) return;
+    const apt = appointments.find((a) => a.id === aptId);
+    if (!apt) return;
+    const oldStart = new Date(apt.start_at);
+    const oldEnd = new Date(apt.end_at);
+    const duration = oldEnd.getTime() - oldStart.getTime();
+    const newStart = new Date(targetDay);
+    newStart.setHours(targetHour ?? oldStart.getHours(), targetMinute ?? oldStart.getMinutes(), 0, 0);
+    const newEnd = new Date(newStart.getTime() + duration);
+    if (newStart.getTime() === oldStart.getTime()) return;
+    clientCache.del("appointments");
+    setAppointments((prev) => prev.map((a) => a.id === aptId ? { ...a, start_at: newStart.toISOString(), end_at: newEnd.toISOString() } : a));
+    try {
+      const res = await fetch("/api/appointments", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: aptId, start_at: newStart.toISOString(), end_at: newEnd.toISOString() }),
+      });
+      if (!res.ok) { clientCache.del("appointments"); fetchAppointments(); }
+    } catch { clientCache.del("appointments"); fetchAppointments(); }
+  }, [draggedAptId, appointments, fetchAppointments]);
+
+  // Ref fetchAppointments + mouse listeners resize (déclarés après fetchAppointments)
+  const fetchAppointmentsRef = useRef(fetchAppointments);
+  fetchAppointmentsRef.current = fetchAppointments;
+
+  useEffect(() => {
+    if (!resizing?.aptId) return;
+    const handleMouseMove = (e: MouseEvent) => {
+      const r = resizingRef.current!;
+      const deltaY = e.clientY - r.startY;
+      const deltaMin = Math.round((deltaY / W_HOUR_H) * 60 / 15) * 15;
+      const newDur = Math.max(15, r.origDurMin + deltaMin);
+      if (newDur !== r.curDurMin) setResizing((prev) => prev ? { ...prev, curDurMin: newDur } : null);
+    };
+    // handleMouseUp recalcule depuis e.clientY pour éviter la valeur périmée du ref
+    const handleMouseUp = async (e: MouseEvent) => {
+      const r = resizingRef.current!;
+      const { aptId, startY, origDurMin } = r;
+      const deltaY = e.clientY - startY;
+      const deltaMin = Math.round((deltaY / W_HOUR_H) * 60 / 15) * 15;
+      const finalDurMin = Math.max(15, origDurMin + deltaMin);
+      setResizing(null);
+      const apt = appointmentsRef.current.find((a) => a.id === aptId);
+      if (!apt) return;
+      const prevDurMin = Math.round((new Date(apt.end_at).getTime() - new Date(apt.start_at).getTime()) / 60000);
+      if (finalDurMin === prevDurMin) return;
+      const newEnd = new Date(new Date(apt.start_at).getTime() + finalDurMin * 60000);
+      clientCache.del("appointments");
+      setAppointments((prev) => prev.map((a) => a.id === aptId ? { ...a, end_at: newEnd.toISOString() } : a));
+      try {
+        const res = await fetch("/api/appointments", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: aptId, end_at: newEnd.toISOString() }) });
+        if (!res.ok) { clientCache.del("appointments"); fetchAppointmentsRef.current(); }
+      } catch { clientCache.del("appointments"); fetchAppointmentsRef.current(); }
+    };
+    document.body.style.cursor = "s-resize";
+    document.body.style.userSelect = "none";
+    document.addEventListener("mousemove", handleMouseMove);
+    document.addEventListener("mouseup", handleMouseUp);
+    return () => {
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+      document.removeEventListener("mousemove", handleMouseMove);
+      document.removeEventListener("mouseup", handleMouseUp);
+    };
+  }, [resizing?.aptId]);
 
   // Sync selectedAppointment avec les données fraîches après chaque refresh
   useEffect(() => {
@@ -651,7 +772,7 @@ export default function AgendaPage() {
       {/* Main Content */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-12 lg:gap-6">
         {/* Left: Calendar + List */}
-        <div className="lg:col-span-8 space-y-4">
+        <div className={cn("space-y-4", viewMode === "week" ? "lg:col-span-12" : "lg:col-span-8")}>
           {/* Calendar Nav */}
           <div className="premium-panel rounded-[1.9rem] p-3 sm:p-4 lg:p-5">
             <div className="flex items-center justify-between gap-2 mb-3 sm:mb-4">
@@ -664,44 +785,85 @@ export default function AgendaPage() {
                 {viewMode === "month" ? format(selectedDate, "MMMM yyyy", { locale: fr }) : `${format(weekDays[0], "d MMM", { locale: fr })} — ${format(weekDays[6], "d MMM yyyy", { locale: fr })}`}
               </h3>
               <div className="premium-panel-soft flex rounded-xl p-0.5 shrink-0">
-                <button onClick={() => setViewMode("month")} className={cn("rounded-lg px-2 sm:px-3 py-1.5 text-[11px] sm:text-[12px] font-medium transition-all", viewMode === "month" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground")}>Mois</button>
-                <button onClick={() => setViewMode("week")} className={cn("rounded-lg px-2 sm:px-3 py-1.5 text-[11px] sm:text-[12px] font-medium transition-all", viewMode === "week" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground")}>Sem.</button>
+                <button onClick={() => setViewMode("month")} className={cn("rounded-lg px-2 py-1 text-[10px] font-medium transition-all", viewMode === "month" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground")}>Mois</button>
+                <button onClick={() => setViewMode("week")} className={cn("rounded-lg px-2 py-1 text-[10px] font-medium transition-all", viewMode === "week" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground")}>Sem.</button>
               </div>
             </div>
 
             {/* Month View */}
             {viewMode === "month" && (
               <div>
-                <div className="grid grid-cols-7 mb-1">
-                  {["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"].map((d) => (
-                    <div key={d} className="text-center text-[11px] font-semibold uppercase tracking-wider text-muted-foreground py-2">{d}</div>
+                {/* En-têtes jours */}
+                <div className="grid grid-cols-7 mb-1.5">
+                  {["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"].map((d, i) => (
+                    <div key={d} className={cn("text-center text-[9px] sm:text-[10px] font-semibold uppercase tracking-widest py-2", i >= 5 ? "text-muted-foreground/40" : "text-muted-foreground/60")}>{d}</div>
                   ))}
                 </div>
-                <div className="grid grid-cols-7 gap-px bg-foreground/[0.04] rounded-[1.2rem] overflow-hidden">
+                {/* Grille */}
+                <div className="grid grid-cols-7 gap-px bg-foreground/[0.07] rounded-2xl overflow-hidden">
                   {monthDays.map((day) => {
                     const count = appointmentCountForDay(day);
                     const isSelected = isSameDay(day, selectedDate);
                     const isTodayDay = isToday(day);
                     const isCurrentMonth = isSameMonth(day, selectedDate);
+                    const isWeekend = day.getDay() === 0 || day.getDay() === 6;
                     const dayAppts = appointments.filter((a) => isSameDay(new Date(a.start_at), day) && a.status !== "cancelled").slice(0, 3);
                     return (
-                      <button key={day.toISOString()} onClick={() => setSelectedDate(day)} className={cn("relative flex flex-col items-start p-1 sm:p-2 min-h-[60px] sm:min-h-[80px] bg-card transition-all duration-200", isSelected ? "bg-primary/5 ring-2 ring-primary/30 ring-inset" : "hover:bg-foreground/[0.02]", !isCurrentMonth && "opacity-40")}>
-                        <span className={cn("flex h-6 w-6 sm:h-7 sm:w-7 items-center justify-center rounded-full text-[11px] sm:text-[12px] font-medium", isTodayDay ? "bg-primary text-primary-foreground font-bold" : "", isSelected && !isTodayDay ? "bg-primary/15 text-primary font-semibold" : "")}>
+                      <button
+                        key={day.toISOString()}
+                        onClick={() => { if (!draggedAptId) setSelectedDate(day); }}
+                        onDragOver={isDesktop ? (e) => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; } : undefined}
+                        onDrop={isDesktop ? (e) => { e.preventDefault(); handleDrop(day); } : undefined}
+                        className={cn(
+                          "relative flex flex-col items-start p-1.5 sm:p-2 min-h-[72px] sm:min-h-[96px] lg:min-h-[112px] transition-all duration-150",
+                          isWeekend ? "bg-foreground/[0.018] dark:bg-foreground/[0.03]" : "bg-card",
+                          isSelected ? "!bg-primary/[0.08] ring-2 ring-inset ring-primary/30" : "hover:bg-primary/[0.03]",
+                          !isCurrentMonth && "opacity-30",
+                          draggedAptId && "hover:!bg-primary/[0.12] hover:ring-2 hover:ring-inset hover:ring-primary/30"
+                        )}
+                      >
+                        {/* Numéro du jour */}
+                        <span className={cn(
+                          "flex h-6 w-6 sm:h-7 sm:w-7 items-center justify-center rounded-full text-[11px] sm:text-[12px]",
+                          isTodayDay
+                            ? "bg-primary text-primary-foreground font-bold shadow-sm shadow-primary/40"
+                            : isSelected
+                              ? "bg-primary/12 text-primary font-bold"
+                              : isWeekend
+                                ? "font-medium text-foreground/45"
+                                : "font-medium text-foreground/75"
+                        )}>
                           {format(day, "d")}
                         </span>
-                        <div className="mt-0.5 w-full space-y-0.5 overflow-hidden">
+                        {/* Événements */}
+                        <div className="mt-1 w-full space-y-[3px] overflow-hidden">
                           {dayAppts.map((apt) => {
                             const mt = getMyType(apt, profile?.id);
                             return (
-                              <div key={apt.id} className="hidden sm:block truncate rounded px-1 py-0.5 text-[9px] font-medium leading-tight" style={{ backgroundColor: `${mt.color}20`, color: mt.color }}>
-                                {format(new Date(apt.start_at), "HH:mm")} {apt.guest_name.split(" ")[0]}
+                              <div
+                                key={apt.id}
+                                draggable={isDesktop}
+                                onDragStart={isDesktop ? (e) => {
+                                  e.stopPropagation(); setDraggedAptId(apt.id); e.dataTransfer.effectAllowed = "move";
+                                  const c = document.createElement("canvas"); c.width = 1; c.height = 1; c.style.cssText = "position:fixed;top:-2px;left:-2px;opacity:0;pointer-events:none;";
+                                  document.body.appendChild(c); e.dataTransfer.setDragImage(c, 0, 0); requestAnimationFrame(() => { if (document.body.contains(c)) document.body.removeChild(c); });
+                                } : undefined}
+                                onDragEnd={isDesktop ? () => setDraggedAptId(null) : undefined}
+                                className={cn("hidden sm:flex items-center gap-1 truncate rounded-md px-1.5 py-[3px] text-[9px] sm:text-[10px] font-medium select-none", isDesktop ? "cursor-grab active:cursor-grabbing" : "cursor-default")}
+                                style={{ backgroundColor: `${mt.color}18`, color: mt.color }}
+                              >
+                                <span className="shrink-0 h-1.5 w-1.5 rounded-full" style={{ backgroundColor: mt.color }} />
+                                <span className="truncate">{format(new Date(apt.start_at), "HH:mm")} {apt.guest_name.split(" ")[0]}</span>
                               </div>
                             );
                           })}
+                          {/* Mobile : dots + compteur */}
                           {count > 0 && (
-                            <div className="flex gap-0.5 sm:hidden justify-center mt-1">
-                              {Array.from({ length: Math.min(count, 3) }).map((_, i) => (<span key={i} className="h-1.5 w-1.5 rounded-full bg-primary" />))}
-                              {count > 3 && <span className="text-[8px] text-muted-foreground">+{count - 3}</span>}
+                            <div className="flex items-center gap-1 sm:hidden justify-center mt-1">
+                              {Array.from({ length: Math.min(count, 3) }).map((_, i) => (
+                                <span key={i} className="h-1.5 w-1.5 rounded-full bg-primary/70" />
+                              ))}
+                              {count > 3 && <span className="text-[8px] text-muted-foreground/70">+{count - 3}</span>}
                             </div>
                           )}
                         </div>
@@ -712,23 +874,180 @@ export default function AgendaPage() {
               </div>
             )}
 
-            {/* Week View */}
+            {/* Week View — Google Calendar style */}
             {viewMode === "week" && (
-              <div className="grid grid-cols-7 gap-1 sm:gap-2">
-                {weekDays.map((day) => {
-                  const count = appointmentCountForDay(day);
-                  const isSelected = isSameDay(day, selectedDate);
-                  const isTodayDay = isToday(day);
-                  return (
-                    <button key={day.toISOString()} onClick={() => setSelectedDate(day)} className={cn("relative flex flex-col items-center gap-0.5 sm:gap-1 rounded-xl sm:rounded-2xl px-0.5 sm:px-2 py-2 sm:py-3 transition-all duration-300", isSelected ? "bg-primary text-primary-foreground shadow-lg shadow-primary/25" : isTodayDay ? "bg-primary/10 text-primary" : "hover:bg-foreground/[0.04]")}>
-                      <span className="text-[9px] sm:text-[11px] font-medium uppercase">{format(day, "EEEEE", { locale: fr })}</span>
-                      <span className="text-sm sm:text-lg font-bold">{format(day, "d")}</span>
-                      {count > 0 && (
-                        <div className={cn("flex h-4 sm:h-5 min-w-4 sm:min-w-5 items-center justify-center rounded-full px-0.5 sm:px-1 text-[9px] sm:text-[10px] font-bold", isSelected ? "bg-white/25 text-white" : "bg-primary/15 text-primary")}>{count}</div>
-                      )}
-                    </button>
-                  );
-                })}
+              <div className="rounded-2xl border border-foreground/[0.07] overflow-hidden select-none bg-card">
+                {/* En-tête jours — sticky */}
+                <div className="flex border-b border-foreground/[0.07] bg-card/95 backdrop-blur-sm">
+                  <div className="w-14 shrink-0 border-r border-foreground/[0.05]" />
+                  {weekDays.map((day) => {
+                    const isTodayDay = isToday(day);
+                    const isWeekendDay = day.getDay() === 0 || day.getDay() === 6;
+                    return (
+                      <div key={day.toISOString()} className={cn("flex-1 min-w-0 py-3 text-center border-l border-foreground/[0.05]", isWeekendDay && "bg-foreground/[0.012]")}>
+                        <div className={cn("text-[9px] uppercase font-semibold tracking-wider", isTodayDay ? "text-primary" : isWeekendDay ? "text-muted-foreground/45" : "text-muted-foreground/60")}>
+                          {format(day, "EEE", { locale: fr })}
+                        </div>
+                        <div className={cn("mx-auto mt-1 h-8 w-8 flex items-center justify-center rounded-full text-[13px] font-bold", isTodayDay ? "bg-primary text-primary-foreground shadow-md shadow-primary/30" : isWeekendDay ? "text-foreground/45" : "text-foreground/80")}>
+                          {format(day, "d")}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+                {/* Grille scrollable */}
+                <div ref={weekScrollRef} className="overflow-y-auto" style={{ height: `${W_VISIBLE_H}px` }}>
+                  <div className="flex" style={{ height: `${W_TOTAL_H}px` }}>
+                    {/* Labels horaires */}
+                    <div className="w-14 shrink-0 relative border-r border-foreground/[0.05]">
+                      {Array.from({ length: 24 }, (_, h) => (
+                        <div key={h} className="absolute w-full flex justify-end pr-2" style={{ top: `${h * W_HOUR_H - 8}px` }}>
+                          {h > 0 && <span className="text-[10px] font-medium text-muted-foreground/45">{String(h).padStart(2, "0")}:00</span>}
+                        </div>
+                      ))}
+                    </div>
+                    {/* Colonnes jours */}
+                    {weekDays.map((day) => {
+                      const isTodayDay = isToday(day);
+                      const isWeekendDay = day.getDay() === 0 || day.getDay() === 6;
+                      const dayAppts = appointments.filter((a) => isSameDay(new Date(a.start_at), day) && a.status !== "cancelled");
+                      const laid = layoutWeekEvents(dayAppts);
+                      return (
+                        <div
+                          key={day.toISOString()}
+                          className={cn("relative flex-1 min-w-0 border-l border-foreground/[0.05]", isWeekendDay && "bg-foreground/[0.012]", isTodayDay && "bg-primary/[0.018]")}
+                          style={{ height: `${W_TOTAL_H}px` }}
+                          onDragOver={isDesktop && draggedAptId ? (e) => {
+                            e.preventDefault(); e.dataTransfer.dropEffect = "move";
+                            const relY = e.clientY - e.currentTarget.getBoundingClientRect().top + (weekScrollRef.current?.scrollTop ?? 0);
+                            const h = Math.min(23, Math.max(0, Math.floor(relY / W_HOUR_H)));
+                            const rawMin = Math.round((relY % W_HOUR_H) / (W_HOUR_H / 2)) * 30;
+                            const m = rawMin >= 60 ? 0 : rawMin;
+                            const adjH = rawMin >= 60 ? Math.min(23, h + 1) : h;
+                            if (!dragOver || !isSameDay(dragOver.day, day) || dragOver.hour !== adjH || dragOver.minute !== m) setDragOver({ day, hour: adjH, minute: m });
+                          } : undefined}
+                          onDrop={isDesktop && draggedAptId ? (e) => {
+                            e.preventDefault();
+                            const relY = e.clientY - e.currentTarget.getBoundingClientRect().top + (weekScrollRef.current?.scrollTop ?? 0);
+                            const h = Math.min(23, Math.max(0, Math.floor(relY / W_HOUR_H)));
+                            const rawMin = Math.round((relY % W_HOUR_H) / (W_HOUR_H / 2)) * 30;
+                            const m = rawMin >= 60 ? 0 : rawMin;
+                            const adjH = rawMin >= 60 ? Math.min(23, h + 1) : h;
+                            setDragOver(null); handleDrop(day, adjH, m);
+                          } : undefined}
+                        >
+                          {/* Lignes heure pleine */}
+                          {Array.from({ length: 24 }, (_, h) => (
+                            <div key={h} className="absolute w-full border-t border-foreground/[0.06]" style={{ top: `${h * W_HOUR_H}px` }} />
+                          ))}
+                          {/* Lignes demi-heure (tiretées) */}
+                          {Array.from({ length: 24 }, (_, h) => (
+                            <div key={h} className="absolute w-full border-t border-dashed border-foreground/[0.03]" style={{ top: `${h * W_HOUR_H + W_HOUR_H / 2}px` }} />
+                          ))}
+                          {/* Zones click-to-create (desktop uniquement) */}
+                          {isDesktop && !draggedAptId && Array.from({ length: 48 }, (_, i) => {
+                            const hour = Math.floor(i / 2);
+                            const minute = (i % 2) * 30;
+                            return (
+                              <div
+                                key={i}
+                                className="absolute w-full cursor-pointer hover:bg-foreground/[0.03] transition-colors"
+                                style={{ top: `${i * (W_HOUR_H / 2)}px`, height: `${W_HOUR_H / 2}px` }}
+                                onClick={() => { setQuickTitle(""); setQuickCreate({ date: day, hour, minute }); }}
+                              />
+                            );
+                          })}
+                          {/* Ghost de déplacement */}
+                          {draggedAptId && dragOver && isSameDay(dragOver.day, day) && (() => {
+                            const draggedApt = appointments.find((a) => a.id === draggedAptId);
+                            if (!draggedApt) return null;
+                            const dur = new Date(draggedApt.end_at).getTime() - new Date(draggedApt.start_at).getTime();
+                            const ghostTop = (dragOver.hour + dragOver.minute / 60) * W_HOUR_H;
+                            const ghostH = Math.max(22, (dur / 3600000) * W_HOUR_H);
+                            const mt = getMyType(draggedApt, profile?.id);
+                            return (
+                              <div
+                                className="absolute left-[1%] right-[1%] rounded-lg pointer-events-none z-30 transition-[top] duration-75"
+                                style={{
+                                  top: `${ghostTop}px`,
+                                  height: `${ghostH}px`,
+                                  backgroundColor: `${mt.color}28`,
+                                  borderLeft: `3px solid ${mt.color}`,
+                                  outline: `1.5px solid ${mt.color}`,
+                                  outlineOffset: "-1px",
+                                }}
+                              >
+                                <p className="px-1.5 pt-0.5 text-[10px] font-bold" style={{ color: mt.color }}>
+                                  {String(dragOver.hour).padStart(2, "0")}:{String(dragOver.minute).padStart(2, "0")}
+                                </p>
+                              </div>
+                            );
+                          })()}
+                          {/* Événements positionnés */}
+                          {laid.map(({ apt, col, cols }) => {
+                            const startDate = new Date(apt.start_at);
+                            const endDate = new Date(apt.end_at);
+                            const top = (startDate.getHours() + startDate.getMinutes() / 60) * W_HOUR_H;
+                            const isBeingDragged = draggedAptId === apt.id;
+                            const isResizingThis = resizing?.aptId === apt.id;
+                            const durMin = isResizingThis
+                              ? resizing!.curDurMin
+                              : Math.round((endDate.getTime() - startDate.getTime()) / 60000);
+                            const height = Math.max(22, (durMin / 60) * W_HOUR_H);
+                            const resizeEndTotalMin = isResizingThis ? startDate.getHours() * 60 + startDate.getMinutes() + resizing!.curDurMin : 0;
+                            const resizeEndLabel = isResizingThis ? `${String(Math.floor(resizeEndTotalMin / 60) % 24).padStart(2, "0")}:${String(resizeEndTotalMin % 60).padStart(2, "0")}` : "";
+                            const myType = getMyType(apt, profile?.id);
+                            const colW = 100 / cols;
+                            return (
+                              <div
+                                key={apt.id}
+                                draggable={isDesktop && !resizing}
+                                onDragStart={isDesktop && !resizing ? (e) => {
+                                  e.stopPropagation(); setDraggedAptId(apt.id); e.dataTransfer.effectAllowed = "move";
+                                  const c = document.createElement("canvas"); c.width = 1; c.height = 1; c.style.cssText = "position:fixed;top:-2px;left:-2px;opacity:0;pointer-events:none;";
+                                  document.body.appendChild(c); e.dataTransfer.setDragImage(c, 0, 0); requestAnimationFrame(() => { if (document.body.contains(c)) document.body.removeChild(c); });
+                                } : undefined}
+                                onDragEnd={isDesktop ? () => { setDraggedAptId(null); setDragOver(null); } : undefined}
+                                onClick={(e) => { e.stopPropagation(); if (!isBeingDragged && !resizing) setAptPopup(apt); }}
+                                className={cn("absolute rounded-lg px-1.5 py-1 overflow-hidden z-10 hover:z-20 transition-[opacity,filter] shadow-sm", isDesktop && !resizing ? "cursor-grab active:cursor-grabbing" : "cursor-pointer", isBeingDragged ? "opacity-25" : "hover:brightness-95", isResizingThis && "z-20 shadow-md")}
+                                style={{
+                                  top: `${top + 1}px`,
+                                  height: `${height - 2}px`,
+                                  left: `${col * colW + 1}%`,
+                                  width: `calc(${colW}% - 3px)`,
+                                  backgroundColor: `${myType.color}20`,
+                                  borderLeft: `3px solid ${myType.color}`,
+                                }}
+                              >
+                                <p className="text-[10px] font-semibold leading-tight truncate" style={{ color: myType.color }}>
+                                  {format(startDate, "HH:mm")}
+                                  {isResizingThis
+                                    ? <span className="font-normal"> → {resizeEndLabel}</span>
+                                    : height > 30 && <span className="font-normal"> {apt.guest_name.split(" ")[0]}</span>
+                                  }
+                                </p>
+                                {!isResizingThis && height > 44 && <p className="text-[9px] text-muted-foreground/60 truncate mt-0.5">{myType.name}</p>}
+                                {/* Resize handle */}
+                                {isDesktop && (
+                                  <div
+                                    className="absolute bottom-0 left-0 right-0 h-3 flex items-end justify-center pb-0.5 cursor-s-resize z-20 group/rh"
+                                    onMouseDown={(e) => {
+                                      e.preventDefault(); e.stopPropagation();
+                                      const dur = Math.round((endDate.getTime() - startDate.getTime()) / 60000);
+                                      setResizing({ aptId: apt.id, startY: e.clientY, origDurMin: dur, curDurMin: dur });
+                                    }}
+                                  >
+                                    <div className="w-6 h-[3px] rounded-full opacity-0 group-hover/rh:opacity-60 transition-opacity" style={{ backgroundColor: myType.color }} />
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
               </div>
             )}
           </div>
@@ -817,7 +1136,7 @@ export default function AgendaPage() {
                     const myPart = getMyParticipant(apt, profile?.id);
                     const participantCount = apt.appointment_participants?.length || 0;
                     return (
-                      <button key={apt.id} onClick={() => setSelectedAppointment(apt)} className={cn("group w-full text-left rounded-[1.7rem] p-3 sm:p-4 transition-all duration-300", isSelected ? "premium-panel shadow-lg" : "premium-panel-soft hover:bg-white/72 dark:hover:bg-white/[0.08]")}>
+                      <button key={apt.id} draggable onDragStart={(e) => { setDraggedAptId(apt.id); e.dataTransfer.effectAllowed = "move"; }} onDragEnd={() => setDraggedAptId(null)} onClick={() => setSelectedAppointment(apt)} className={cn("group w-full text-left rounded-[1.7rem] p-3 sm:p-4 transition-all duration-300 cursor-grab active:cursor-grabbing", isSelected ? "premium-panel shadow-lg" : "premium-panel-soft hover:bg-white/72 dark:hover:bg-white/[0.08]")}>
                         <div className="flex items-start gap-3 sm:gap-4">
                           <div className="flex flex-col items-center text-center min-w-[48px] sm:min-w-[56px]">
                             <span className="text-base sm:text-lg font-bold">{format(new Date(apt.start_at), "HH:mm")}</span>
@@ -874,8 +1193,8 @@ export default function AgendaPage() {
 
         {/* Right Panel */}
         {(selectedAppointment || showRdvForm) && (
-          <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm lg:static lg:bg-transparent lg:backdrop-blur-none lg:col-span-4">
-            <div className="h-full overflow-y-auto lg:h-auto p-4 lg:p-0">
+          <div className={cn("fixed inset-0 z-50 bg-background/80 backdrop-blur-sm", viewMode === "month" && "lg:sticky lg:top-6 lg:self-start lg:bg-transparent lg:backdrop-blur-none lg:col-span-4")}>
+            <div className="h-full overflow-y-auto lg:h-auto lg:max-h-[calc(100vh-8rem)] lg:overflow-y-auto p-4 lg:p-0">
               {showRdvForm ? (
                 <RdvCreationPanel
                   step={rdvStep} setStep={setRdvStep} stepIndex={rdvStepIndex}
@@ -931,7 +1250,7 @@ export default function AgendaPage() {
           </div>
         )}
         {!selectedAppointment && !showRdvForm && (
-          <div className="hidden lg:block lg:col-span-4">
+          <div className="hidden lg:block lg:col-span-4 lg:sticky lg:top-6 lg:self-start">
             <div className="premium-panel flex flex-col items-center justify-center rounded-[2rem] py-20 text-center">
               <div className="flex h-16 w-16 items-center justify-center rounded-3xl bg-primary/10 mb-4"><CalendarIcon className="h-7 w-7 text-primary" /></div>
               <p className="text-[14px] font-medium">Aucun RDV sélectionné</p>
@@ -941,12 +1260,118 @@ export default function AgendaPage() {
         )}
       </div>
 
-      {/* FAB — toujours visible */}
-      {!showRdvForm && !selectedAppointment && (
-        <button onClick={() => { resetRdvForm(); setShowRdvForm(true); }} className="fixed bottom-20 right-4 z-40 flex h-13 w-13 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg shadow-primary/30 transition-all hover:shadow-xl hover:scale-105 active:scale-95 lg:bottom-8 lg:right-8" aria-label="Nouveau rendez-vous">
-          <Plus className="h-5 w-5" />
-        </button>
+      {/* Appointment Detail Popup */}
+      {aptPopup && (
+        <>
+          <div className="fixed inset-0 z-[65]" onClick={() => setAptPopup(null)} />
+          <div className="fixed z-[70] bg-card/95 backdrop-blur-xl border border-border/50 shadow-2xl dark:bg-card/90 bottom-0 left-0 right-0 rounded-t-3xl p-5 lg:bottom-[84px] lg:left-auto lg:right-10 lg:w-80 lg:rounded-2xl lg:p-5">
+            <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-foreground/[0.1] lg:hidden" />
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2 min-w-0">
+                <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: aptPopup.appointment_types.color }} />
+                <p className="text-[15px] font-semibold tracking-tight truncate">{aptPopup.guest_name}</p>
+              </div>
+              <button onClick={() => setAptPopup(null)} className="ml-2 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-foreground/[0.06] text-muted-foreground hover:bg-foreground/[0.1] transition-colors">
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="space-y-2 mb-4">
+              <div className="flex items-center gap-2 text-[12px] text-muted-foreground bg-foreground/[0.04] rounded-xl px-3 py-2.5">
+                <CalendarIcon className="h-3.5 w-3.5 shrink-0" />
+                <span className="capitalize">{format(new Date(aptPopup.start_at), "EEEE d MMMM", { locale: fr })}</span>
+              </div>
+              <div className="flex items-center gap-2 text-[12px] text-muted-foreground bg-foreground/[0.04] rounded-xl px-3 py-2.5">
+                <Clock className="h-3.5 w-3.5 shrink-0" />
+                <span>{format(new Date(aptPopup.start_at), "HH:mm")} – {format(new Date(aptPopup.end_at), "HH:mm")}</span>
+                <span className="ml-auto text-[11px] opacity-60">{Math.round((new Date(aptPopup.end_at).getTime() - new Date(aptPopup.start_at).getTime()) / 60000)} min</span>
+              </div>
+              <div className="flex items-center gap-2 text-[12px] px-3 py-1.5">
+                <span className={cn("rounded-lg px-2 py-0.5 text-[11px] font-medium", statusConfig[aptPopup.status]?.bg, statusConfig[aptPopup.status]?.color)}>
+                  {statusConfig[aptPopup.status]?.label ?? aptPopup.status}
+                </span>
+                <span className="text-muted-foreground/60">{aptPopup.appointment_types.name}</span>
+              </div>
+            </div>
+            <button
+              onClick={() => { setSelectedAppointment(aptPopup); setSelectedDate(new Date(aptPopup.start_at)); setAptPopup(null); }}
+              className="w-full rounded-xl bg-primary px-4 py-2.5 text-[13px] font-medium text-primary-foreground transition-all hover:opacity-90 active:scale-[0.98]"
+            >
+              Voir les détails
+            </button>
+          </div>
+        </>
       )}
+
+      {/* Quick Create Popup */}
+      {quickCreate && (
+        <>
+          <div className="fixed inset-0 z-[65]" onClick={() => setQuickCreate(null)} />
+          <div className="fixed z-[70] bg-card/95 backdrop-blur-xl border border-border/50 shadow-2xl dark:bg-card/90 bottom-0 left-0 right-0 rounded-t-3xl p-5 lg:bottom-[84px] lg:left-auto lg:right-10 lg:w-80 lg:rounded-2xl lg:p-5">
+            {/* Handle bar mobile */}
+            <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-foreground/[0.1] lg:hidden" />
+            <div className="flex items-center justify-between mb-4">
+              <p className="text-[15px] font-semibold tracking-tight">Nouveau rendez-vous</p>
+              <button onClick={() => setQuickCreate(null)} className="flex h-7 w-7 items-center justify-center rounded-full bg-foreground/[0.06] text-muted-foreground hover:bg-foreground/[0.1] transition-colors">
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="mb-4 flex items-center gap-2 text-[12px] text-muted-foreground bg-foreground/[0.04] rounded-xl px-3 py-2.5">
+              <CalendarIcon className="h-3.5 w-3.5 shrink-0" />
+              <span className="capitalize">{format(quickCreate.date, "EEEE d MMMM", { locale: fr })}</span>
+              <span className="mx-0.5 opacity-40">·</span>
+              <Clock className="h-3.5 w-3.5 shrink-0" />
+              <span>{String(quickCreate.hour).padStart(2, "0")}:{String(quickCreate.minute).padStart(2, "0")}</span>
+            </div>
+            <input
+              type="text"
+              placeholder="Titre (optionnel)..."
+              value={quickTitle}
+              onChange={(e) => setQuickTitle(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  const d = new Date(quickCreate.date);
+                  d.setHours(quickCreate.hour, quickCreate.minute, 0, 0);
+                  setQuickCreate(null);
+                  resetRdvForm();
+                  if (quickTitle.trim()) setRdvFormData({ ...emptyForm, guest_name: quickTitle.trim() });
+                  setRdvSelectedDate(d);
+                  setShowRdvForm(true);
+                }
+              }}
+              className="w-full glass-input px-3 py-2.5 text-[13px] mb-4"
+              autoFocus
+            />
+            <button
+              onClick={() => {
+                const d = new Date(quickCreate.date);
+                d.setHours(quickCreate.hour, quickCreate.minute, 0, 0);
+                setQuickCreate(null);
+                resetRdvForm();
+                if (quickTitle.trim()) setRdvFormData({ ...emptyForm, guest_name: quickTitle.trim() });
+                setRdvSelectedDate(d);
+                setShowRdvForm(true);
+              }}
+              className="w-full rounded-xl bg-primary px-4 py-2.5 text-[13px] font-medium text-primary-foreground transition-all hover:opacity-90 active:scale-[0.98]"
+            >
+              Configurer le rendez-vous
+            </button>
+          </div>
+        </>
+      )}
+
+      {/* FAB — toujours visible */}
+      <button
+        onClick={() => {
+          const now = new Date();
+          const rMin = now.getMinutes() >= 30 ? 30 : 0;
+          setQuickTitle("");
+          setQuickCreate({ date: now, hour: now.getHours(), minute: rMin });
+        }}
+        className="fixed bottom-20 right-5 z-[60] flex h-13 w-13 items-center justify-center rounded-full bg-foreground/10 backdrop-blur-xl border border-white/20 text-muted-foreground shadow-md transition-all hover:shadow-xl hover:scale-105 active:scale-95 lg:bottom-10 lg:right-10 lg:bg-white/58 lg:border-white/45 lg:text-foreground lg:shadow-lg dark:lg:bg-white/[0.08] dark:lg:border-white/[0.12]"
+        aria-label="Nouveau rendez-vous"
+      >
+        <Plus className="h-5 w-5" />
+      </button>
     </div>
   );
 }

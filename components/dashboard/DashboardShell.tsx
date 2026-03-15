@@ -248,7 +248,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
         <Sidebar />
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden lg:pl-3 lg:pr-4 lg:py-4">
           <main className={cn(
-            "flex-1 overflow-y-auto overflow-x-hidden no-scrollbar lg:rounded-[2rem] lg:border lg:border-white/25 lg:bg-white/14 lg:shadow-[0_24px_70px_rgba(15,23,42,0.08)] lg:backdrop-blur-[6px] dark:lg:border-white/10 dark:lg:bg-white/[0.02]",
+            "flex-1 overflow-y-auto overflow-x-hidden no-scrollbar lg:rounded-[2rem] lg:border lg:border-white/25 lg:bg-white/14 lg:shadow-[0_24px_70px_rgba(15,23,42,0.08)] dark:lg:border-white/10 dark:lg:bg-white/[0.02]",
             isMessagesRoute
               ? cn("overflow-hidden px-0 py-0", isMobileNavVisible ? "pb-[96px]" : "pb-0", "lg:pb-0")
               : "px-4 py-4 pb-[120px] lg:px-8 lg:py-8 lg:pb-8"

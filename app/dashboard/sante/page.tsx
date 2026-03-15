@@ -24,6 +24,7 @@ import {
   RotateCcw,
   Save,
   Lock,
+  MoreHorizontal,
 } from "lucide-react";
 import {
   Dialog,
@@ -183,6 +184,7 @@ export default function SantePage() {
 
   /* ─── Settings panel ─── */
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [fabOpen, setFabOpen] = useState(false);
 
   useEffect(() => {
     try {
@@ -561,25 +563,43 @@ export default function SantePage() {
       </Dialog>
 
       {/* FABs flottants */}
-      <div className="fixed bottom-20 right-4 z-40 flex flex-col gap-2 lg:bottom-6">
+      <div className="fixed bottom-20 right-5 z-[60] flex flex-col items-end gap-2 lg:bottom-10 lg:right-10">
+        {/* Sub-buttons (expanded) */}
+        {fabOpen && (
+          <>
+            <button
+              onClick={() => { setSettingsOpen(true); setFabOpen(false); }}
+              className="flex h-10 w-10 items-center justify-center rounded-full bg-foreground/10 backdrop-blur-xl border border-white/20 text-muted-foreground shadow-md transition-all hover:shadow-lg hover:scale-105 active:scale-95 lg:h-11 lg:w-11 lg:bg-white/58 lg:border-white/45 lg:text-foreground lg:shadow-lg dark:lg:bg-white/[0.08] dark:lg:border-white/[0.12]"
+              title="Gérer les sections"
+            >
+              <Settings2 className="h-4 w-4" />
+            </button>
+            <button
+              onClick={() => { setEditMode(!editMode); setFabOpen(false); }}
+              className={cn(
+                "flex h-10 w-10 items-center justify-center rounded-full shadow-md transition-all hover:shadow-lg hover:scale-105 active:scale-95 lg:h-11 lg:w-11",
+                editMode
+                  ? "bg-primary text-primary-foreground shadow-primary/25"
+                  : "bg-foreground/10 backdrop-blur-xl border border-white/20 text-muted-foreground lg:bg-white/58 lg:border-white/45 lg:text-foreground lg:shadow-lg dark:lg:bg-white/[0.08] dark:lg:border-white/[0.12]"
+              )}
+              title={editMode ? "Terminer" : "Modifier"}
+            >
+              {editMode ? <X className="h-4 w-4" /> : <Pencil className="h-4 w-4" />}
+            </button>
+          </>
+        )}
+        {/* Main toggle button */}
         <button
-          onClick={() => setSettingsOpen(true)}
-          className="flex h-10 w-10 items-center justify-center rounded-full bg-foreground/10 backdrop-blur-xl text-muted-foreground shadow-md transition-all hover:shadow-lg hover:scale-105 active:scale-95 border border-white/10"
-          title="Gérer les sections"
-        >
-          <Settings2 className="h-4 w-4" />
-        </button>
-        <button
-          onClick={() => setEditMode(!editMode)}
+          onClick={() => setFabOpen(!fabOpen)}
           className={cn(
-            "flex h-11 w-11 items-center justify-center rounded-full shadow-lg transition-all hover:shadow-xl hover:scale-105 active:scale-95",
-            editMode
-              ? "bg-primary text-primary-foreground shadow-primary/25"
-              : "bg-foreground/10 backdrop-blur-xl text-muted-foreground border border-white/10"
+            "flex h-11 w-11 items-center justify-center rounded-full backdrop-blur-xl border shadow-md transition-all hover:shadow-lg hover:scale-105 active:scale-95 lg:h-13 lg:w-13 lg:shadow-lg",
+            fabOpen
+              ? "bg-foreground/15 border-white/25 text-foreground lg:bg-white/70 lg:border-white/50 dark:lg:bg-white/[0.12]"
+              : "bg-foreground/10 border-white/20 text-muted-foreground lg:bg-white/58 lg:border-white/45 lg:text-foreground dark:lg:bg-white/[0.08] dark:lg:border-white/[0.12]"
           )}
-          title={editMode ? "Terminer" : "Modifier"}
+          title="Actions"
         >
-          {editMode ? <X className="h-5 w-5" /> : <Pencil className="h-4 w-4" />}
+          <MoreHorizontal className="h-5 w-5" />
         </button>
       </div>
     </div>

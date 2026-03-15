@@ -186,7 +186,7 @@ export function ChatView({
   }
 
   return (
-    <div className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-white/20 backdrop-blur-[18px] dark:bg-black/10 lg:m-3 lg:rounded-[2rem] lg:border lg:border-white/20 lg:shadow-[0_20px_60px_rgba(15,23,42,0.10)] lg:dark:border-white/10">
+    <div className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-white/20 backdrop-blur-[18px] dark:bg-black/10 lg:m-3 lg:pb-3 lg:rounded-[2rem] lg:border lg:border-white/20 lg:shadow-[0_20px_60px_rgba(15,23,42,0.10)] lg:dark:border-white/10">
       <div className="relative z-20 flex shrink-0 items-center gap-2 border-b border-foreground/[0.08] bg-white/48 px-2.5 py-2.5 backdrop-blur-xl dark:bg-black/12 lg:px-4 lg:py-4">
         <button
           onClick={onBack}
