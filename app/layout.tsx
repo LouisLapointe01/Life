@@ -65,31 +65,10 @@ export default function RootLayout({
         <link rel="apple-touch-icon" sizes="152x152" href="/icons/apple-icon-152.png" />
         <link rel="apple-touch-icon" sizes="120x120" href="/icons/apple-icon-120.png" />
         <meta name="msapplication-TileImage" content="/icons/icon-192.png" />
-        {/* Splash screen styles — inline so they load before any CSS chunk */}
-        <style dangerouslySetInnerHTML={{ __html: `
-          #__life_splash{position:fixed;inset:0;z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#F2F2F7;transition:opacity 0.4s ease}
-          @media(prefers-color-scheme:dark){#__life_splash{background:#0F0F14}}
-          #__spl_logo_wrap{position:relative;display:flex;align-items:center;justify-content:center}
-          #__spl_halo{position:absolute;width:144px;height:144px;border-radius:40px;background:radial-gradient(circle,rgba(68,189,183,.30) 0%,transparent 70%);animation:__spl_glow 2.4s ease-in-out infinite}
-          #__spl_logo{width:96px;height:96px;border-radius:26px;box-shadow:0 24px 64px rgba(44,160,155,.38),0 8px 24px rgba(44,160,155,.20);overflow:hidden;animation:__spl_float 3s ease-in-out infinite}
-          #__spl_brand{margin:32px 0 32px;text-align:center}
-          #__spl_title{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:28px;font-weight:600;letter-spacing:-.05em;color:#1D1D1F;margin:0 0 6px}
-          @media(prefers-color-scheme:dark){#__spl_title{color:#fff}}
-          #__spl_sub{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:13px;color:#8E8E93;margin:0}
-          @media(prefers-color-scheme:dark){#__spl_sub{color:#636366}}
-          #__spl_dots{display:flex;align-items:center;gap:8px}
-          .spl-dot{width:8px;height:8px;border-radius:50%;background:#2DA09B}
-          .spl-dot:nth-child(1){animation:__spl_dot 1.3s ease-in-out 0ms infinite}
-          .spl-dot:nth-child(2){animation:__spl_dot 1.3s ease-in-out 200ms infinite}
-          .spl-dot:nth-child(3){animation:__spl_dot 1.3s ease-in-out 400ms infinite}
-          @keyframes __spl_glow{0%,100%{opacity:.22;transform:scale(1)}50%{opacity:.42;transform:scale(1.06)}}
-          @keyframes __spl_float{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
-          @keyframes __spl_dot{0%,70%,100%{transform:translateY(0);opacity:.35}35%{transform:translateY(-7px);opacity:1}}
-        `}} />
       </head>
       <body className={`${inter.variable} font-sans antialiased`}>
         {/* HTML splash — visible immediately, before React hydrates */}
-        <div id="__life_splash">
+        <div id="__life_splash" suppressHydrationWarning>
           <div id="__spl_logo_wrap">
             <div id="__spl_halo" />
             <div id="__spl_logo">
@@ -121,10 +100,6 @@ export default function RootLayout({
                 <path d="M50 67 C53.5 67.5 57.5 69 62 71.5" stroke="#1E8986" strokeWidth="0.95" fill="none" strokeLinecap="round" opacity="0.28"/>
               </svg>
             </div>
-          </div>
-          <div id="__spl_brand">
-            <p id="__spl_title">Life</p>
-            <p id="__spl_sub">Chargement de votre espace…</p>
           </div>
           <div id="__spl_dots">
             <div className="spl-dot" />

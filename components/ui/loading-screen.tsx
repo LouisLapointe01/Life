@@ -1,7 +1,7 @@
 export function LoadingScreen() {
   return (
     <div className="fixed inset-0 z-[999] flex flex-col items-center justify-center bg-[#F2F2F7] dark:bg-[#0F0F14]">
-      <div className="flex flex-col items-center gap-8">
+      <div className="flex flex-col items-center gap-10">
 
         {/* Logo avec lueur animée */}
         <div className="relative flex items-center justify-center">
@@ -26,18 +26,6 @@ export function LoadingScreen() {
               draggable={false}
             />
           </div>
-        </div>
-
-        {/* Brand */}
-        <div className="flex flex-col items-center gap-1.5">
-          <h1
-            className="text-[28px] font-semibold tracking-[-0.05em] text-[#1D1D1F] dark:text-white"
-          >
-            Life
-          </h1>
-          <p className="text-[13px] text-[#8E8E93] dark:text-[#636366]">
-            Chargement de votre espace…
-          </p>
         </div>
 
         {/* Indicateur — trois points rebondissants */}

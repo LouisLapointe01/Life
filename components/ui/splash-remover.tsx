@@ -7,7 +7,8 @@ export function SplashRemover() {
     const el = document.getElementById("__life_splash");
     if (!el) return;
     el.style.opacity = "0";
-    const t = setTimeout(() => el.remove(), 450);
+    el.style.pointerEvents = "none";
+    const t = setTimeout(() => { el.style.visibility = "hidden"; }, 450);
     return () => clearTimeout(t);
   }, []);
   return null;
