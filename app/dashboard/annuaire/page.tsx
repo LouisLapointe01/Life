@@ -32,7 +32,6 @@ import {
   UserCheck,
   UserX,
 } from "lucide-react";
-import { LoadingScreen } from "@/components/ui/loading-screen";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
@@ -308,7 +307,7 @@ export default function AnnuairePage() {
   };
 
   /* ─── Loading ─── */
-  if (loading) return <LoadingScreen />;
+  if (loading) return null;
 
   return (
     <div className="mx-auto max-w-7xl space-y-6">
