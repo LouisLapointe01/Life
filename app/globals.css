@@ -22,6 +22,59 @@
   100% { transform: translateX(260%); }
 }
 
+/* ── HTML Splash (injected before React hydrates) ─────── */
+#__life_splash {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: #F2F2F7;
+  transition: opacity 0.4s ease;
+}
+@media (prefers-color-scheme: dark) {
+  #__life_splash { background: #0F0F14; }
+}
+#__spl_logo_wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+#__spl_halo {
+  position: absolute;
+  width: 144px;
+  height: 144px;
+  border-radius: 40px;
+  background: radial-gradient(circle, rgba(68,189,183,0.30) 0%, transparent 70%);
+  animation: life-glow 2.4s ease-in-out infinite;
+}
+#__spl_logo {
+  width: 96px;
+  height: 96px;
+  border-radius: 26px;
+  box-shadow: 0 24px 64px rgba(44,160,155,0.38), 0 8px 24px rgba(44,160,155,0.20);
+  overflow: hidden;
+  animation: life-float 3s ease-in-out infinite;
+}
+#__spl_dots {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 40px;
+}
+.spl-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #2DA09B;
+}
+.spl-dot:nth-child(1) { animation: life-dot 1.3s ease-in-out 0ms infinite; }
+.spl-dot:nth-child(2) { animation: life-dot 1.3s ease-in-out 200ms infinite; }
+.spl-dot:nth-child(3) { animation: life-dot 1.3s ease-in-out 400ms infinite; }
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
