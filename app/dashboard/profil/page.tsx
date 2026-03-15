@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { Mail, Shield, Settings, MessageCircle, Pencil, Loader2, X, Check } from "lucide-react";
+import { LoadingScreen } from "@/components/ui/loading-screen";
 import { toast } from "sonner";
 import { useProfile } from "@/hooks/use-profile";
 
@@ -63,13 +64,7 @@ export default function ProfilPage() {
     setSaving(false);
   }
 
-  if (loading) {
-    return (
-      <div className="flex h-64 items-center justify-center">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-      </div>
-    );
-  }
+  if (loading) return <LoadingScreen />;
 
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-5 pb-16 lg:pb-0">
