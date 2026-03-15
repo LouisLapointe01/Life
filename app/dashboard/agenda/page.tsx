@@ -15,6 +15,7 @@ import {
   TrendingUp, Plus, ArrowLeft, Users, X, AlertTriangle, ArrowRightLeft, UserCheck, UserX,
 } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
+import { LoadingScreen } from "@/components/ui/loading-screen";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
@@ -680,9 +681,7 @@ export default function AgendaPage() {
   const navigateNext = () => { viewMode === "month" ? setSelectedDate((d) => addMonths(d, 1)) : setSelectedDate((d) => addWeeks(d, 1)); };
   const goToToday = () => setSelectedDate(new Date());
 
-  if (loading) {
-    return <div className="flex items-center justify-center py-20"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
-  }
+  if (loading) return <LoadingScreen />;
 
   const rdvStepIndex = (["recipient", "type", "date", "slot", "form"] as const).indexOf(rdvStep as never);
 

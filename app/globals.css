@@ -4,6 +4,24 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* ── Loading screen animations ────────────────────────── */
+@keyframes life-glow {
+  0%, 100% { opacity: 0.22; transform: scale(1); }
+  50%       { opacity: 0.42; transform: scale(1.06); }
+}
+@keyframes life-float {
+  0%, 100% { transform: translateY(0px); }
+  50%       { transform: translateY(-6px); }
+}
+@keyframes life-dot {
+  0%, 70%, 100% { transform: translateY(0); opacity: 0.35; }
+  35%            { transform: translateY(-7px); opacity: 1; }
+}
+@keyframes life-bar {
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(260%); }
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);

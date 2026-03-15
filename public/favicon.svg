@@ -1,24 +1,42 @@
-<svg width="192" height="192" viewBox="0 0 192 192" fill="none" xmlns="http://www.w3.org/2000/svg">
+<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
   <defs>
-    <linearGradient id="leafBg" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#3AAFA9" />
-      <stop offset="50%" stop-color="#2B9390" />
-      <stop offset="100%" stop-color="#1F7A8C" />
+    <linearGradient id="bg" x1="0" y1="0" x2="100" y2="100" gradientUnits="userSpaceOnUse">
+      <stop offset="0%"   stop-color="#44BDB7"/>
+      <stop offset="55%"  stop-color="#2DA09B"/>
+      <stop offset="100%" stop-color="#1B7C8A"/>
     </linearGradient>
-    <linearGradient id="leafShape" x1="30%" y1="0%" x2="70%" y2="100%">
-      <stop offset="0%" stop-color="#ffffff" />
-      <stop offset="100%" stop-color="#e0f2f1" />
+    <linearGradient id="lf" x1="50" y1="10" x2="50" y2="90" gradientUnits="userSpaceOnUse">
+      <stop offset="0%"   stop-color="#FFFFFF"/>
+      <stop offset="100%" stop-color="#E2F5F4"/>
     </linearGradient>
+    <radialGradient id="shine" cx="42%" cy="27%" r="34%">
+      <stop offset="0%"   stop-color="#FFFFFF" stop-opacity="0.55"/>
+      <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0"/>
+    </radialGradient>
   </defs>
-  <rect width="192" height="192" rx="42" fill="url(#leafBg)" />
-  <g transform="translate(96, 96)">
-    <path d="M0,-52 C28,-48 52,-24 52,8 C52,38 28,56 0,60 C-28,56 -52,38 -52,8 C-52,-24 -28,-48 0,-52Z" fill="url(#leafShape)" opacity="0.95" />
-    <line x1="0" y1="-46" x2="0" y2="54" stroke="#2B9390" stroke-width="2.5" stroke-linecap="round" opacity="0.5" />
-    <path d="M0,-20 C-16,-14 -30,-4 -38,6" stroke="#2B9390" stroke-width="1.8" fill="none" stroke-linecap="round" opacity="0.4" />
-    <path d="M0,4 C-18,10 -32,22 -38,32" stroke="#2B9390" stroke-width="1.8" fill="none" stroke-linecap="round" opacity="0.4" />
-    <path d="M0,26 C-14,32 -24,40 -28,48" stroke="#2B9390" stroke-width="1.8" fill="none" stroke-linecap="round" opacity="0.35" />
-    <path d="M0,-20 C16,-14 30,-4 38,6" stroke="#2B9390" stroke-width="1.8" fill="none" stroke-linecap="round" opacity="0.4" />
-    <path d="M0,4 C18,10 32,22 38,32" stroke="#2B9390" stroke-width="1.8" fill="none" stroke-linecap="round" opacity="0.4" />
-    <path d="M0,26 C14,32 24,40 28,48" stroke="#2B9390" stroke-width="1.8" fill="none" stroke-linecap="round" opacity="0.35" />
-  </g>
+
+  <!-- Background -->
+  <rect width="100" height="100" rx="22" fill="url(#bg)"/>
+
+  <!-- Leaf: egg-shaped, slightly pointed at top, rounded at bottom -->
+  <path d="M50 11 C58.5 11.5 72 23 72.5 44 C73 65.5 65 84 50 88.5 C35 84 27 65.5 27.5 44 C28 23 41.5 11.5 50 11 Z"
+        fill="url(#lf)" opacity="0.97"/>
+  <!-- Inner shine -->
+  <path d="M50 11 C58.5 11.5 72 23 72.5 44 C73 65.5 65 84 50 88.5 C35 84 27 65.5 27.5 44 C28 23 41.5 11.5 50 11 Z"
+        fill="url(#shine)"/>
+
+  <!-- Midrib -->
+  <line x1="50" y1="14" x2="50" y2="84.5" stroke="#1E8986" stroke-width="1.15" stroke-linecap="round" opacity="0.42"/>
+
+  <!-- Veins upper -->
+  <path d="M50 30 C46 28.5 41.5 27 36.5 26.5" stroke="#1E8986" stroke-width="0.95" fill="none" stroke-linecap="round" opacity="0.38"/>
+  <path d="M50 30 C54 28.5 58.5 27 63.5 26.5" stroke="#1E8986" stroke-width="0.95" fill="none" stroke-linecap="round" opacity="0.38"/>
+
+  <!-- Veins middle -->
+  <path d="M50 50 C45.5 49 40 48.5 34 49" stroke="#1E8986" stroke-width="0.95" fill="none" stroke-linecap="round" opacity="0.34"/>
+  <path d="M50 50 C54.5 49 60 48.5 66 49" stroke="#1E8986" stroke-width="0.95" fill="none" stroke-linecap="round" opacity="0.34"/>
+
+  <!-- Veins lower -->
+  <path d="M50 67 C46.5 67.5 42.5 69 38 71.5" stroke="#1E8986" stroke-width="0.95" fill="none" stroke-linecap="round" opacity="0.28"/>
+  <path d="M50 67 C53.5 67.5 57.5 69 62 71.5" stroke="#1E8986" stroke-width="0.95" fill="none" stroke-linecap="round" opacity="0.28"/>
 </svg>
