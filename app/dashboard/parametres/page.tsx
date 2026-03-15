@@ -48,7 +48,6 @@ import {
   useMobileVisibleTabs,
   type TabId,
 } from "@/lib/stores/dashboard-tabs";
-import { LoadingScreen } from "@/components/ui/loading-screen";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
@@ -453,7 +452,7 @@ function AppointmentTypesSection({ userId }: { userId?: string }) {
     }
   };
 
-  if (loading) return <LoadingScreen />;
+  if (loading) return null;
 
   return (
     <div className="space-y-4">
@@ -622,7 +621,7 @@ function ContactsSection() {
     fetchContacts();
   };
 
-  if (loading) return <LoadingScreen />;
+  if (loading) return null;
 
   const closeContacts = contacts.filter((c) => c.is_close);
   const otherContacts = contacts.filter((c) => !c.is_close);
@@ -1006,7 +1005,7 @@ function UnavailabilitySection() {
     }));
   };
 
-  if (loading) return <LoadingScreen />;
+  if (loading) return null;
 
   return (
     <div className="space-y-4 sm:space-y-6">
@@ -1263,7 +1262,7 @@ function GoogleCalendarSection({ userId }: { userId: string }) {
     finally { setSyncing(false); }
   };
 
-  if (loading) return <LoadingScreen />;
+  if (loading) return null;
 
   const accounts = status?.accounts || [];
 

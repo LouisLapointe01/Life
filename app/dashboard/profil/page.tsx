@@ -3,7 +3,6 @@
 import { useState } from "react";
 import Link from "next/link";
 import { Mail, Shield, Settings, MessageCircle, Pencil, Loader2, X, Check } from "lucide-react";
-import { LoadingScreen } from "@/components/ui/loading-screen";
 import { toast } from "sonner";
 import { useProfile } from "@/hooks/use-profile";
 
@@ -64,7 +63,7 @@ export default function ProfilPage() {
     setSaving(false);
   }
 
-  if (loading) return <LoadingScreen />;
+  if (loading) return null;
 
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-5 pb-16 lg:pb-0">
