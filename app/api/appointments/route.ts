@@ -274,8 +274,28 @@ export async function POST(request: Request) {
    ═══════════════════════════════════════════════════════ */
 export async function PATCH(request: Request) {
   try {
-    const { id, status } = await request.json();
+    const body = await request.json();
+    const { id, status, start_at, end_at } = body;
     if (!id) return NextResponse.json({ error: "id requis" }, { status: 400 });
+
+    // Move appointment (drag-and-drop)
+    if (start_at && end_at) {
+      const user = await getAuthUser();
+      if (!user) return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+      const supabase = createAdminClient();
+      const profile = await getProfile(supabase, user.id);
+      const { data: apt } = await supabase.from("appointments").select("requester_id").eq("id", id).single();
+      if (!apt) return NextResponse.json({ error: "RDV introuvable" }, { status: 404 });
+      if (apt.requester_id !== user.id && profile?.role !== "admin") {
+        return NextResponse.json({ error: "Non autorisé" }, { status: 403 });
+      }
+      const { data, error } = await supabase
+        .from("appointments").update({ start_at, end_at, updated_at: new Date().toISOString() })
+        .eq("id", id).select("*").single();
+      if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+      return NextResponse.json(data);
+    }
+
     if (status !== "cancelled") {
       return NextResponse.json({ error: "Utilisez /api/appointments/participants pour répondre" }, { status: 400 });
     }

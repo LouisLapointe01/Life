@@ -137,7 +137,7 @@ export function ChatInput({ value, onChange, onSend, onSendGif, onFileSelect, di
 
   return (
     <div
-      className="relative z-20 shrink-0 border-t border-foreground/[0.08] bg-white/52 px-2.5 py-2.5 pb-[calc(0.7rem+env(safe-area-inset-bottom,0px))] backdrop-blur-2xl dark:bg-black/12 lg:px-4 lg:py-4 lg:pb-4"
+      className="relative z-20 shrink-0 border-t border-foreground/[0.08] bg-white/52 px-2.5 py-2 pb-2 backdrop-blur-2xl dark:bg-black/12 lg:px-5 lg:py-4 lg:pb-5"
     >
       <div ref={mediaPanelRef}>
       {mediaPanelMode === "emoji" && (
