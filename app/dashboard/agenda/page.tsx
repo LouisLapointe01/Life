@@ -1354,12 +1354,20 @@ export default function AgendaPage() {
                 <span className="text-muted-foreground/60">{aptPopup.appointment_types.name}</span>
               </div>
             </div>
-            <button
-              onClick={() => { setSelectedAppointment(aptPopup); setSelectedDate(new Date(aptPopup.start_at)); setAptPopup(null); }}
-              className="w-full rounded-xl bg-primary px-4 py-2.5 text-[13px] font-medium text-primary-foreground transition-all hover:opacity-90 active:scale-[0.98]"
-            >
-              Voir les détails
-            </button>
+            <div className="flex gap-2">
+              <button
+                onClick={() => { setSelectedAppointment(aptPopup); setSelectedDate(new Date(aptPopup.start_at)); setAptPopup(null); }}
+                className="flex-1 rounded-xl bg-primary px-4 py-2.5 text-[13px] font-medium text-primary-foreground transition-all hover:opacity-90 active:scale-[0.98]"
+              >
+                Voir les détails
+              </button>
+              <button
+                onClick={() => { setAptPopup(null); const h = new Date(aptPopup.start_at).getHours(); const m = new Date(aptPopup.start_at).getMinutes() >= 30 ? 30 : 0; setQuickCreate({ date: new Date(aptPopup.start_at), hour: h, minute: m }); setQuickTitle(""); }}
+                className="flex-1 rounded-xl bg-foreground/[0.06] px-4 py-2.5 text-[13px] font-medium text-foreground transition-all hover:bg-foreground/[0.1] active:scale-[0.98]"
+              >
+                Nouveau RDV
+              </button>
+            </div>
           </div>
         </>
       )}
@@ -1429,7 +1437,7 @@ export default function AgendaPage() {
           setQuickTitle("");
           setQuickCreate({ date: now, hour: now.getHours(), minute: rMin });
         }}
-        className="fixed bottom-20 right-5 z-[60] flex h-13 w-13 items-center justify-center rounded-full bg-foreground/10 backdrop-blur-xl border border-white/20 text-muted-foreground shadow-md transition-all hover:shadow-xl hover:scale-105 active:scale-95 lg:bottom-10 lg:right-10 lg:bg-white/58 lg:border-white/45 lg:text-foreground lg:shadow-lg dark:lg:bg-white/[0.08] dark:lg:border-white/[0.12]"
+        className="fixed bottom-20 right-5 z-[60] flex h-11 w-11 items-center justify-center rounded-full bg-foreground/10 backdrop-blur-xl border border-white/20 text-muted-foreground shadow-md transition-all hover:shadow-lg hover:scale-105 active:scale-95 lg:bottom-10 lg:right-10 lg:h-13 lg:w-13 lg:bg-white/58 lg:border-white/45 lg:text-foreground lg:shadow-lg dark:lg:bg-white/[0.08] dark:lg:border-white/[0.12]"
         aria-label="Nouveau rendez-vous"
       >
         <Plus className="h-5 w-5" />
