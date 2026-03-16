@@ -213,10 +213,17 @@ export default function AgendaPage() {
   }, []);
   const [draggedAptId, setDraggedAptId] = useState<string | null>(null);
   const weekScrollRef = useRef<HTMLDivElement>(null);
+  const weekColsRef = useRef<HTMLDivElement>(null);
   const [quickCreate, setQuickCreate] = useState<{ date: Date; hour: number; minute: number } | null>(null);
   const [quickTitle, setQuickTitle] = useState("");
   const [aptPopup, setAptPopup] = useState<Appointment | null>(null);
   const [dragOver, setDragOver] = useState<{ day: Date; hour: number; minute: number } | null>(null);
+  // Pointer-based drag (vue semaine — fluide comme Google Calendar)
+  const [activeDrag, setActiveDrag] = useState<{ aptId: string; ghostX: number; ghostY: number; curDay: Date | null; curHour: number; curMinute: number } | null>(null);
+  const activeDragRef = useRef<typeof activeDrag>(null);
+  activeDragRef.current = activeDrag;
+  const dragInfoRef = useRef<{ aptId: string; grabOffsetMin: number; isDragging: boolean; startX: number; startY: number } | null>(null);
+  const weekDaysRef = useRef<Date[]>([]);
   const [resizing, setResizing] = useState<{
     aptId: string; handle: "top" | "bottom";
     startY: number; origStart: Date; origEnd: Date; curStart: Date; curEnd: Date;
@@ -250,8 +257,8 @@ export default function AgendaPage() {
 
   useEffect(() => { fetchAppointments(); }, [fetchAppointments]);
 
-  const handleDrop = useCallback(async (targetDay: Date, targetHour?: number, targetMinute?: number) => {
-    const aptId = draggedAptId;
+  const handleDrop = useCallback(async (targetDay: Date, targetHour?: number, targetMinute?: number, aptIdOverride?: string) => {
+    const aptId = aptIdOverride ?? draggedAptId;
     setDraggedAptId(null);
     if (!aptId) return;
     const apt = appointments.find((a) => a.id === aptId);
@@ -344,6 +351,59 @@ export default function AgendaPage() {
       document.removeEventListener("mouseup", handleMouseUp);
     };
   }, [resizing?.aptId]);
+
+  // Pointer-based drag — vue semaine (Google Calendar style)
+  useEffect(() => {
+    const handlePointerMove = (e: PointerEvent) => {
+      const info = dragInfoRef.current;
+      if (!info) return;
+      const dx = e.clientX - info.startX;
+      const dy = e.clientY - info.startY;
+      if (!info.isDragging) {
+        if (Math.abs(dx) < 5 && Math.abs(dy) < 5) return;
+        info.isDragging = true;
+        document.body.style.cursor = "grabbing";
+        document.body.style.userSelect = "none";
+      }
+      let curDay: Date | null = null;
+      let curHour = 0;
+      let curMinute = 0;
+      if (weekColsRef.current && weekScrollRef.current) {
+        const colsRect = weekColsRef.current.getBoundingClientRect();
+        const scrollTop = weekScrollRef.current.scrollTop;
+        const relX = e.clientX - colsRect.left;
+        const colWidth = colsRect.width / 7;
+        const colIndex = Math.max(0, Math.min(6, Math.floor(relX / colWidth)));
+        curDay = weekDaysRef.current[colIndex] ?? null;
+        const relY = e.clientY - colsRect.top + scrollTop - (info.grabOffsetMin / 60) * W_HOUR_H;
+        const rawHour = relY / W_HOUR_H;
+        const snapped = Math.round(rawHour * 4) / 4;
+        curHour = Math.max(0, Math.min(23, Math.floor(snapped)));
+        const rawMin = (snapped - Math.floor(snapped)) * 60;
+        curMinute = Math.round(rawMin / 15) * 15;
+        if (curMinute >= 60) { curMinute = 0; curHour = Math.min(23, curHour + 1); }
+      }
+      setActiveDrag({ aptId: info.aptId, ghostX: e.clientX, ghostY: e.clientY, curDay, curHour, curMinute });
+    };
+    const handlePointerUp = () => {
+      const info = dragInfoRef.current;
+      if (!info) return;
+      dragInfoRef.current = null;
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+      const drag = activeDragRef.current;
+      setActiveDrag(null);
+      if (info.isDragging && drag?.curDay) {
+        handleDrop(drag.curDay, drag.curHour, drag.curMinute, drag.aptId);
+      }
+    };
+    document.addEventListener("pointermove", handlePointerMove);
+    document.addEventListener("pointerup", handlePointerUp);
+    return () => {
+      document.removeEventListener("pointermove", handlePointerMove);
+      document.removeEventListener("pointerup", handlePointerUp);
+    };
+  }, [handleDrop]);
 
   // Sync selectedAppointment avec les données fraîches après chaque refresh
   useEffect(() => {
@@ -685,6 +745,7 @@ export default function AgendaPage() {
     const start = startOfWeek(selectedDate, { weekStartsOn: 1 });
     return Array.from({ length: 7 }, (_, i) => addDays(start, i));
   }, [selectedDate]);
+  weekDaysRef.current = weekDays;
 
   const appointmentsForDay = useMemo(() => {
     return appointments
@@ -935,6 +996,7 @@ export default function AgendaPage() {
                       ))}
                     </div>
                     {/* Colonnes jours */}
+                    <div ref={weekColsRef} className="flex flex-1 min-w-0">
                     {weekDays.map((day) => {
                       const isTodayDay = isToday(day);
                       const isWeekendDay = day.getDay() === 0 || day.getDay() === 6;
@@ -950,24 +1012,6 @@ export default function AgendaPage() {
                           key={day.toISOString()}
                           className={cn("relative flex-1 min-w-0 border-l border-foreground/[0.05]", isWeekendDay && "bg-foreground/[0.012]", isTodayDay && "bg-primary/[0.018]")}
                           style={{ height: `${W_TOTAL_H}px` }}
-                          onDragOver={isDesktop && draggedAptId ? (e) => {
-                            e.preventDefault(); e.dataTransfer.dropEffect = "move";
-                            const relY = e.clientY - e.currentTarget.getBoundingClientRect().top + (weekScrollRef.current?.scrollTop ?? 0);
-                            const h = Math.min(23, Math.max(0, Math.floor(relY / W_HOUR_H)));
-                            const rawMin = Math.round((relY % W_HOUR_H) / (W_HOUR_H / 4)) * 15;
-                            const m = rawMin >= 60 ? 0 : rawMin;
-                            const adjH = rawMin >= 60 ? Math.min(23, h + 1) : h;
-                            if (!dragOver || !isSameDay(dragOver.day, day) || dragOver.hour !== adjH || dragOver.minute !== m) setDragOver({ day, hour: adjH, minute: m });
-                          } : undefined}
-                          onDrop={isDesktop && draggedAptId ? (e) => {
-                            e.preventDefault();
-                            const relY = e.clientY - e.currentTarget.getBoundingClientRect().top + (weekScrollRef.current?.scrollTop ?? 0);
-                            const h = Math.min(23, Math.max(0, Math.floor(relY / W_HOUR_H)));
-                            const rawMin = Math.round((relY % W_HOUR_H) / (W_HOUR_H / 4)) * 15;
-                            const m = rawMin >= 60 ? 0 : rawMin;
-                            const adjH = rawMin >= 60 ? Math.min(23, h + 1) : h;
-                            setDragOver(null); handleDrop(day, adjH, m);
-                          } : undefined}
                         >
                           {/* Lignes heure pleine */}
                           {Array.from({ length: 24 }, (_, h) => (
@@ -978,7 +1022,7 @@ export default function AgendaPage() {
                             <div key={h} className="absolute w-full border-t border-dashed border-foreground/[0.03]" style={{ top: `${h * W_HOUR_H + W_HOUR_H / 2}px` }} />
                           ))}
                           {/* Zones click-to-create (desktop uniquement) */}
-                          {isDesktop && !draggedAptId && Array.from({ length: 48 }, (_, i) => {
+                          {isDesktop && !activeDrag && Array.from({ length: 48 }, (_, i) => {
                             const hour = Math.floor(i / 2);
                             const minute = (i % 2) * 30;
                             return (
@@ -991,16 +1035,16 @@ export default function AgendaPage() {
                             );
                           })}
                           {/* Ghost de déplacement */}
-                          {draggedAptId && dragOver && isSameDay(dragOver.day, day) && (() => {
-                            const draggedApt = appointments.find((a) => a.id === draggedAptId);
+                          {activeDrag && activeDrag.curDay && isSameDay(activeDrag.curDay, day) && (() => {
+                            const draggedApt = appointments.find((a) => a.id === activeDrag.aptId);
                             if (!draggedApt) return null;
                             const dur = new Date(draggedApt.end_at).getTime() - new Date(draggedApt.start_at).getTime();
-                            const ghostTop = (dragOver.hour + dragOver.minute / 60) * W_HOUR_H;
+                            const ghostTop = (activeDrag.curHour + activeDrag.curMinute / 60) * W_HOUR_H;
                             const ghostH = Math.max(22, (dur / 3600000) * W_HOUR_H);
                             const mt = getMyType(draggedApt, profile?.id);
                             return (
                               <div
-                                className="absolute left-[1%] right-[1%] rounded-lg pointer-events-none z-30 transition-[top] duration-75"
+                                className="absolute left-[1%] right-[1%] rounded-lg pointer-events-none z-30"
                                 style={{
                                   top: `${ghostTop}px`,
                                   height: `${ghostH}px`,
@@ -1011,7 +1055,7 @@ export default function AgendaPage() {
                                 }}
                               >
                                 <p className="px-1.5 pt-0.5 text-[10px] font-bold" style={{ color: mt.color }}>
-                                  {String(dragOver.hour).padStart(2, "0")}:{String(dragOver.minute).padStart(2, "0")}
+                                  {String(activeDrag.curHour).padStart(2, "0")}:{String(activeDrag.curMinute).padStart(2, "0")}
                                 </p>
                               </div>
                             );
@@ -1020,7 +1064,7 @@ export default function AgendaPage() {
                           {laid.map(({ apt, col, cols }) => {
                             const startDate = new Date(apt.start_at);
                             const endDate = new Date(apt.end_at);
-                            const isBeingDragged = draggedAptId === apt.id;
+                            const isBeingDragged = activeDrag?.aptId === apt.id;
                             const isResizingThis = resizing?.aptId === apt.id;
                             // Dates courantes (pendant resize)
                             const curStart = isResizingThis ? resizing!.curStart : startDate;
@@ -1048,13 +1092,16 @@ export default function AgendaPage() {
                             return (
                               <div
                                 key={`${apt.id}-${day.toISOString()}`}
-                                draggable={isDesktop && !resizing && !isResizingHandleRef.current}
-                                onDragStart={isDesktop && !resizing && !isResizingHandleRef.current ? (e) => {
-                                  e.stopPropagation(); setDraggedAptId(apt.id); e.dataTransfer.effectAllowed = "move";
-                                  const c = document.createElement("canvas"); c.width = 1; c.height = 1; c.style.cssText = "position:fixed;top:-2px;left:-2px;opacity:0;pointer-events:none;";
-                                  document.body.appendChild(c); e.dataTransfer.setDragImage(c, 0, 0); requestAnimationFrame(() => { if (document.body.contains(c)) document.body.removeChild(c); });
+                                onPointerDown={isDesktop && !resizing && !isResizingHandleRef.current ? (e) => {
+                                  if (e.button !== 0) return;
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  const rect = e.currentTarget.getBoundingClientRect();
+                                  const offsetY = e.clientY - rect.top;
+                                  const durMin = (new Date(apt.end_at).getTime() - new Date(apt.start_at).getTime()) / 60000;
+                                  const grabOffsetMin = Math.max(0, Math.min((offsetY / W_HOUR_H) * 60, durMin - 15));
+                                  dragInfoRef.current = { aptId: apt.id, grabOffsetMin, isDragging: false, startX: e.clientX, startY: e.clientY };
                                 } : undefined}
-                                onDragEnd={isDesktop ? () => { setDraggedAptId(null); setDragOver(null); } : undefined}
                                 onClick={(e) => { e.stopPropagation(); if (!isBeingDragged && !resizing) setAptPopup(apt); }}
                                 className={cn("absolute rounded-lg px-1.5 overflow-hidden z-10 hover:z-20 transition-[opacity,filter] shadow-sm", isDesktop && !resizing ? "cursor-grab active:cursor-grabbing" : "cursor-pointer", isBeingDragged ? "opacity-25" : "hover:brightness-95", isResizingThis && "z-20 shadow-md")}
                                 style={{
@@ -1108,6 +1155,7 @@ export default function AgendaPage() {
                         </div>
                       );
                     })}
+                    </div>
                   </div>
                 </div>
               </div>
