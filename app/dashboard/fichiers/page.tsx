@@ -617,13 +617,17 @@ export default function FichiersPage() {
             {driveAccountLabel(acc)}
           </button>
         ))}
-        <a
-          href="/api/google/auth"
+        <button
+          onClick={async () => {
+            const res = await fetch("/api/google/auth");
+            const data = await res.json();
+            if (data.url) window.location.href = data.url;
+          }}
           className="flex items-center gap-2 shrink-0 rounded-2xl px-4 py-2.5 text-[13px] font-medium bg-foreground/[0.04] text-muted-foreground hover:text-foreground hover:bg-foreground/[0.08] transition-all"
         >
           <Plus className="h-3.5 w-3.5" />
           Connecter Drive
-        </a>
+        </button>
       </div>
 
       {/* ── Search + Actions ───────────────────────────── */}
@@ -866,9 +870,12 @@ export default function FichiersPage() {
               <Cloud className="h-12 w-12 text-muted-foreground/40" />
               <p className="text-[14px] font-semibold text-foreground">Accès refusé</p>
               <p className="text-[13px] text-muted-foreground max-w-sm">Le scope Drive n&apos;est pas autorisé pour ce compte. Reconnectez-le pour activer l&apos;accès à Google Drive.</p>
-              <a href="/api/google/auth" className="flex items-center gap-2 rounded-2xl bg-primary px-5 py-2.5 text-[13px] font-semibold text-primary-foreground shadow-lg shadow-primary/25">
+              <button
+                onClick={async () => { const res = await fetch("/api/google/auth"); const data = await res.json(); if (data.url) window.location.href = data.url; }}
+                className="flex items-center gap-2 rounded-2xl bg-primary px-5 py-2.5 text-[13px] font-semibold text-primary-foreground shadow-lg shadow-primary/25"
+              >
                 <Cloud className="h-4 w-4" /> Reconnecter le compte
-              </a>
+              </button>
             </div>
           )}
 
