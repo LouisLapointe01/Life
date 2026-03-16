@@ -9,6 +9,8 @@ import {
     Users,
     Settings,
     MessageCircle,
+    Cloud,
+    DollarSign,
     type LucideIcon,
 } from "lucide-react";
 
@@ -24,7 +26,9 @@ export type TabId =
     | "fichiers"
     | "annuaire"
     | "messages"
-    | "parametres";
+    | "parametres"
+    | "meteo"
+    | "finance";
 
 export interface TabDefinition {
     id: TabId;
@@ -103,6 +107,22 @@ export const ALL_TABS: TabDefinition[] = [
         icon: Settings,
         color: "from-gray-500/20 to-gray-600/20",
         iconColor: "text-gray-500",
+    },
+    {
+        id: "meteo",
+        href: "/dashboard/meteo",
+        label: "Météo",
+        icon: Cloud,
+        color: "from-sky-500/20 to-sky-600/20",
+        iconColor: "text-sky-500",
+    },
+    {
+        id: "finance",
+        href: "/dashboard/finance",
+        label: "Finances",
+        icon: DollarSign,
+        color: "from-emerald-500/20 to-emerald-600/20",
+        iconColor: "text-emerald-500",
     },
 ];
 
@@ -190,16 +210,25 @@ export const useDashboardTabs = create<DashboardTabsState>()(
         }),
         {
             name: "life-dashboard-tabs",
-            version: 1,
+            version: 2,
             migrate: (persisted, version) => {
+                const state = persisted as DashboardTabsState;
                 if (version === 0) {
-                    const state = persisted as DashboardTabsState;
                     // Ajouter "messages" si absent des onglets mobiles
                     if (!state.mobileTabs.includes("messages")) {
                         state.mobileTabs = [...state.mobileTabs, "messages"];
                     }
                 }
-                return persisted as DashboardTabsState;
+                if (version < 2) {
+                    // Ajouter "meteo" et "finance" aux onglets visibles si absents
+                    if (!state.visibleTabs.includes("meteo")) {
+                        state.visibleTabs = [...state.visibleTabs, "meteo"];
+                    }
+                    if (!state.visibleTabs.includes("finance")) {
+                        state.visibleTabs = [...state.visibleTabs, "finance"];
+                    }
+                }
+                return state;
             },
         }
     )

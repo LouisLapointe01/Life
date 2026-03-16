@@ -220,8 +220,7 @@ export default function AgendaPage() {
   const [dragOver, setDragOver] = useState<{ day: Date; hour: number; minute: number } | null>(null);
   // Pointer-based drag (vue semaine — fluide comme Google Calendar)
   const [activeDrag, setActiveDrag] = useState<{ aptId: string; ghostX: number; ghostY: number; curDay: Date | null; curHour: number; curMinute: number } | null>(null);
-  const activeDragRef = useRef<typeof activeDrag>(null);
-  activeDragRef.current = activeDrag;
+  const currentDragPositionRef = useRef<{ aptId: string; curDay: Date | null; curHour: number; curMinute: number } | null>(null);
   const dragInfoRef = useRef<{ aptId: string; grabOffsetMin: number; isDragging: boolean; startX: number; startY: number } | null>(null);
   const weekDaysRef = useRef<Date[]>([]);
   const [resizing, setResizing] = useState<{
@@ -360,7 +359,7 @@ export default function AgendaPage() {
       const dx = e.clientX - info.startX;
       const dy = e.clientY - info.startY;
       if (!info.isDragging) {
-        if (Math.abs(dx) < 5 && Math.abs(dy) < 5) return;
+        if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return;
         info.isDragging = true;
         document.body.style.cursor = "grabbing";
         document.body.style.userSelect = "none";
@@ -383,6 +382,7 @@ export default function AgendaPage() {
         curMinute = Math.round(rawMin / 15) * 15;
         if (curMinute >= 60) { curMinute = 0; curHour = Math.min(23, curHour + 1); }
       }
+      currentDragPositionRef.current = { aptId: info.aptId, curDay, curHour, curMinute };
       setActiveDrag({ aptId: info.aptId, ghostX: e.clientX, ghostY: e.clientY, curDay, curHour, curMinute });
     };
     const handlePointerUp = () => {
@@ -391,10 +391,11 @@ export default function AgendaPage() {
       dragInfoRef.current = null;
       document.body.style.cursor = "";
       document.body.style.userSelect = "";
-      const drag = activeDragRef.current;
+      const pos = currentDragPositionRef.current;
+      currentDragPositionRef.current = null;
       setActiveDrag(null);
-      if (info.isDragging && drag?.curDay) {
-        handleDrop(drag.curDay, drag.curHour, drag.curMinute, drag.aptId);
+      if (info.isDragging && pos?.curDay) {
+        handleDrop(pos.curDay, pos.curHour, pos.curMinute, pos.aptId);
       }
     };
     document.addEventListener("pointermove", handlePointerMove);
@@ -1109,7 +1110,7 @@ export default function AgendaPage() {
                                   height: `${height - 2}px`,
                                   left: `${col * colW + 1}%`,
                                   width: `calc(${colW}% - 3px)`,
-                                  backgroundColor: `${myType.color}20`,
+                                  backgroundColor: `${myType.color}35`,
                                   borderLeft: `3px solid ${myType.color}`,
                                   paddingTop: isDesktop && isFirstDay ? "14px" : "4px",
                                   paddingBottom: isDesktop && isLastDay ? "14px" : "4px",
