@@ -1,11 +1,11 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import {
   FolderOpen, Upload, FileText, Image, File, Search, Grid3X3, List,
   Download, Trash2, Eye, Plus, Loader2, FolderPlus, ChevronRight,
   MoreHorizontal, Pencil, FolderIcon, Home, ArrowRight, ChevronDown,
-  Filter, Cloud, HardDrive, ExternalLink, Star,
+  Filter, Cloud, HardDrive, ExternalLink, Star, X, LogOut, RefreshCw, ZoomIn,
 } from "lucide-react";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
@@ -51,6 +51,28 @@ const driveCatColors: Record<string, string> = {
   slide: "from-orange-500/20 to-orange-600/20 text-orange-500",
   other: "from-gray-500/20 to-gray-600/20 text-gray-500",
 };
+
+function getDriveFileStyle(mimeType: string): { bg: string; iconColor: string } {
+  if (mimeType === "application/vnd.google-apps.document")
+    return { bg: "from-blue-500/20 to-blue-600/20", iconColor: "text-blue-500" };
+  if (mimeType === "application/vnd.google-apps.spreadsheet")
+    return { bg: "from-green-500/20 to-green-600/20", iconColor: "text-green-500" };
+  if (mimeType === "application/vnd.google-apps.presentation")
+    return { bg: "from-orange-500/20 to-orange-600/20", iconColor: "text-orange-500" };
+  if (mimeType === "application/vnd.google-apps.form")
+    return { bg: "from-purple-500/20 to-purple-600/20", iconColor: "text-purple-500" };
+  if (mimeType === "application/pdf")
+    return { bg: "from-red-500/20 to-red-600/20", iconColor: "text-red-500" };
+  if (mimeType.startsWith("image/"))
+    return { bg: "from-sky-400/20 to-blue-500/20", iconColor: "text-sky-500" };
+  if (mimeType.startsWith("video/"))
+    return { bg: "from-purple-500/20 to-indigo-600/20", iconColor: "text-purple-500" };
+  if (mimeType.startsWith("audio/"))
+    return { bg: "from-pink-500/20 to-rose-600/20", iconColor: "text-pink-500" };
+  if (mimeType.includes("zip") || mimeType.includes("tar") || mimeType.includes("rar"))
+    return { bg: "from-amber-500/20 to-amber-600/20", iconColor: "text-amber-500" };
+  return { bg: "from-gray-500/20 to-gray-600/20", iconColor: "text-gray-500" };
+}
 
 function clipName(name: string, max = 28): string {
   if (name.length <= max) return name;
@@ -133,6 +155,13 @@ export default function FichiersPage() {
   const [driveContextFile, setDriveContextFile] = useState<DriveFile | null>(null);
   const driveFileInputRef = useRef<HTMLInputElement>(null);
   const [driveUploading, setDriveUploading] = useState(false);
+  const [driveSort, setDriveSort] = useState<"name" | "date" | "size">("name");
+  const [driveSortDir, setDriveSortDir] = useState<"asc" | "desc">("asc");
+  const [driveSortMenuOpen, setDriveSortMenuOpen] = useState(false);
+  const [driveDetailFile, setDriveDetailFile] = useState<DriveFile | null>(null);
+  const [drivePreviewFile, setDrivePreviewFile] = useState<DriveFile | null>(null);
+  const [driveDragOver, setDriveDragOver] = useState(false);
+  const [driveDisconnectConfirm, setDriveDisconnectConfirm] = useState(false);
 
   /* ── Mobile ──────────────────────────────────────────── */
   const [isMobile, setIsMobile] = useState(false);
@@ -311,6 +340,19 @@ export default function FichiersPage() {
       fetchDriveFiles(source, driveFolderId, driveSearch);
     } catch {
       toast.error("Erreur");
+    }
+  };
+
+  const handleDisconnectDrive = async () => {
+    try {
+      const res = await fetch(`/api/google/auth?token_id=${source}`, { method: "DELETE" });
+      if (!res.ok) throw new Error();
+      toast.success("Compte Drive déconnecté");
+      setDriveDisconnectConfirm(false);
+      setSource("local");
+      fetchGoogleAccounts();
+    } catch {
+      toast.error("Erreur lors de la déconnexion");
     }
   };
 
@@ -538,6 +580,18 @@ export default function FichiersPage() {
     ? drive.folders.length + drive.files.length
     : driveFiles.length;
 
+  const sortedDriveFileItems = useMemo(() => {
+    const arr = [...driveFileItems];
+    arr.sort((a, b) => {
+      let cmp = 0;
+      if (driveSort === "name") cmp = a.name.localeCompare(b.name, "fr", { sensitivity: "base" });
+      else if (driveSort === "date") cmp = (a.modifiedTime || "").localeCompare(b.modifiedTime || "");
+      else if (driveSort === "size") cmp = (parseInt(a.size || "0")) - (parseInt(b.size || "0"));
+      return driveSortDir === "asc" ? cmp : -cmp;
+    });
+    return arr;
+  }, [driveFileItems, driveSort, driveSortDir]);
+
   const driveAccountLabel = (acc: GoogleAccount) => {
     if (!acc.google_email) return "Google Drive";
     const name = acc.google_email.split("@")[0];
@@ -642,6 +696,54 @@ export default function FichiersPage() {
         </button>
       </div>
 
+      {/* ── Drive account card ──────────────────────────── */}
+      {source !== "local" && (() => {
+        const acc = googleAccounts.find((a) => a.id === source);
+        if (!acc) return null;
+        const initials = acc.google_email?.[0]?.toUpperCase() ?? "G";
+        return (
+          <div className="premium-panel p-3 sm:p-4 flex items-center gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500/20 to-indigo-600/20 text-blue-500 font-semibold text-[15px] select-none">
+              {initials}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-[13px] font-semibold truncate">{acc.google_email}</p>
+              {quotaPercent !== null && (
+                <div className="mt-1 flex items-center gap-2">
+                  <div className="h-1 w-28 rounded-full bg-foreground/[0.08] overflow-hidden">
+                    <div
+                      className={cn("h-full rounded-full transition-all", quotaPercent > 80 ? "bg-red-500" : "bg-blue-500")}
+                      style={{ width: `${quotaPercent}%` }}
+                    />
+                  </div>
+                  <span className="text-[11px] text-muted-foreground">{quotaPercent}% utilisé</span>
+                </div>
+              )}
+            </div>
+            <div className="flex items-center gap-1 shrink-0">
+              <button
+                onClick={async () => {
+                  const res = await fetch("/api/google/auth?returnTo=/dashboard/fichiers");
+                  const data = await res.json();
+                  if (data.url) window.location.href = data.url;
+                }}
+                className="flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-[12px] font-medium text-muted-foreground hover:text-foreground hover:bg-foreground/[0.06] transition-all"
+              >
+                <RefreshCw className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">Reconnecter</span>
+              </button>
+              <button
+                onClick={() => setDriveDisconnectConfirm(true)}
+                className="flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-[12px] font-medium text-red-500 hover:bg-red-500/10 transition-all"
+              >
+                <LogOut className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">Déconnecter</span>
+              </button>
+            </div>
+          </div>
+        );
+      })()}
+
       {/* ── Search + Actions ───────────────────────────── */}
       {source === "local" ? (
         <div className="premium-panel p-2 sm:p-4 space-y-2 sm:space-y-0 sm:flex sm:items-center sm:justify-between sm:gap-2">
@@ -672,6 +774,38 @@ export default function FichiersPage() {
             <div className="hidden sm:flex rounded-xl bg-foreground/[0.04] p-0.5">
               <button onClick={() => setView("grid")} className={cn("rounded-lg p-2 transition-all", view === "grid" ? "bg-card shadow-sm text-foreground" : "text-muted-foreground")}><Grid3X3 className="h-4 w-4" /></button>
               <button onClick={() => setView("list")} className={cn("rounded-lg p-2 transition-all", view === "list" ? "bg-card shadow-sm text-foreground" : "text-muted-foreground")}><List className="h-4 w-4" /></button>
+            </div>
+            {/* Sort dropdown */}
+            <div className="relative hidden sm:block">
+              <button
+                onClick={() => setDriveSortMenuOpen((v) => !v)}
+                className="flex h-9 items-center gap-1.5 rounded-xl px-3 text-[12px] font-medium text-muted-foreground hover:text-foreground hover:bg-foreground/[0.06] transition-all border border-transparent hover:border-foreground/[0.08]"
+              >
+                <ZoomIn className="h-3.5 w-3.5 rotate-0" />
+                {{ name: "Nom", date: "Date", size: "Taille" }[driveSort]}
+                <span className="text-[10px]">{driveSortDir === "asc" ? "↑" : "↓"}</span>
+              </button>
+              {driveSortMenuOpen && (
+                <>
+                  <div className="fixed inset-0 z-20" onClick={() => setDriveSortMenuOpen(false)} />
+                  <div className="absolute right-0 top-full mt-1 z-30 w-40 rounded-2xl border border-foreground/[0.08] bg-card shadow-xl p-1">
+                    {(["name", "date", "size"] as const).map((s) => (
+                      <button
+                        key={s}
+                        onClick={() => {
+                          if (driveSort === s) setDriveSortDir((d) => (d === "asc" ? "desc" : "asc"));
+                          else { setDriveSort(s); setDriveSortDir("asc"); }
+                          setDriveSortMenuOpen(false);
+                        }}
+                        className={cn("flex w-full items-center justify-between rounded-xl px-3 py-2 text-[13px] font-medium transition-colors hover:bg-foreground/[0.04]", driveSort === s && "text-primary")}
+                      >
+                        <span>{{ name: "Nom", date: "Date", size: "Taille" }[s]}</span>
+                        {driveSort === s && <span className="text-[11px] text-muted-foreground">{driveSortDir === "asc" ? "▲" : "▼"}</span>}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
             </div>
             <button onClick={() => setDriveFolderDialog(true)} className="flex flex-1 sm:flex-none h-9 sm:h-auto items-center justify-center gap-2 rounded-xl sm:rounded-2xl bg-foreground/[0.06] sm:px-4 sm:py-2.5 text-[12px] sm:text-[13px] font-medium text-muted-foreground transition-all hover:bg-foreground/[0.1] hover:text-foreground">
               <FolderPlus className="h-4 w-4" /><span>Dossier</span>
@@ -875,7 +1009,22 @@ export default function FichiersPage() {
           DRIVE CONTENT
           ══════════════════════════════════════════════════ */}
       {source !== "local" && (
-        <>
+        <div
+          onDragOver={(e) => { e.preventDefault(); setDriveDragOver(true); }}
+          onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setDriveDragOver(false); }}
+          onDrop={(e) => { e.preventDefault(); setDriveDragOver(false); const f = Array.from(e.dataTransfer.files); if (f.length) handleDriveUpload(f); }}
+          className="relative space-y-4"
+        >
+          {driveDragOver && (
+            <div className="pointer-events-none fixed inset-0 z-30 flex flex-col items-center justify-center bg-background/60 backdrop-blur-sm">
+              <div className="rounded-3xl border-2 border-dashed border-primary bg-primary/10 px-16 py-12 flex flex-col items-center gap-3 shadow-2xl">
+                <Upload className="h-12 w-12 text-primary" />
+                <p className="text-[16px] font-semibold text-primary">Déposer les fichiers ici</p>
+                <p className="text-[13px] text-primary/70">Ils seront importés dans le dossier actuel</p>
+              </div>
+            </div>
+          )}
+
           {/* Permission denied */}
           {drivePermissionDenied && (
             <div className="premium-panel flex flex-col items-center gap-4 py-16 text-center">
@@ -981,38 +1130,40 @@ export default function FichiersPage() {
                   {driveFolders.length > 0 && <p className="mb-2 px-1 text-[12px] font-semibold uppercase tracking-widest text-muted-foreground">Fichiers ({driveFileItems.length})</p>}
                   {effectiveView === "grid" ? (
                     <div className="grid gap-2 sm:gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 w-full overflow-hidden">
-                      {driveFileItems.map((file) => {
+                      {sortedDriveFileItems.map((file) => {
                         const cat = driveFileCategory(file.mimeType);
-                        const colorClass = driveCatColors[cat] || driveCatColors.other;
+                        const style = getDriveFileStyle(file.mimeType);
                         const hasThumbnail = !!file.thumbnailLink && cat === "image";
                         return (
-                          <div key={file.id} onContextMenu={(e) => { e.preventDefault(); setDriveContextFile(file); }}
-                            className="premium-panel-soft group relative min-w-0 max-w-full overflow-hidden p-3 sm:p-4 cursor-default">
+                          <div key={file.id}
+                            onClick={() => setDriveDetailFile(file)}
+                            onContextMenu={(e) => { e.preventDefault(); setDriveContextFile(file); }}
+                            className="premium-panel-soft group relative min-w-0 max-w-full overflow-hidden p-3 sm:p-4 cursor-pointer select-none">
                             <div className="flex items-start justify-between gap-2">
                               {hasThumbnail ? (
                                 // eslint-disable-next-line @next/next/no-img-element
                                 <img src={file.thumbnailLink} alt={file.name} className="h-12 w-12 sm:h-16 sm:w-16 rounded-xl object-cover shrink-0" />
                               ) : (
-                                <div className={cn("flex h-10 w-10 sm:h-12 sm:w-12 shrink-0 items-center justify-center rounded-xl sm:rounded-2xl bg-gradient-to-br", colorClass)}>
-                                  <File className="h-4 w-4 sm:h-5 sm:w-5" />
+                                <div className={cn("flex h-10 w-10 sm:h-12 sm:w-12 shrink-0 items-center justify-center rounded-xl sm:rounded-2xl bg-gradient-to-br", style.bg)}>
+                                  <File className={cn("h-4 w-4 sm:h-5 sm:w-5", style.iconColor)} />
                                 </div>
                               )}
-                              <button onClick={() => setDriveContextFile(file)} className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-all hover:bg-foreground/[0.06] hover:text-foreground sm:opacity-0 sm:group-hover:opacity-100"><MoreHorizontal className="h-3.5 w-3.5" /></button>
+                              <button onClick={(e) => { e.stopPropagation(); setDriveContextFile(file); }} className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-all hover:bg-foreground/[0.06] hover:text-foreground sm:opacity-0 sm:group-hover:opacity-100"><MoreHorizontal className="h-3.5 w-3.5" /></button>
                             </div>
                             <div className="mt-2 sm:mt-3 w-full min-w-0">
                               <p className="text-[12px] sm:text-[13px] font-semibold leading-snug" title={file.name}>{clipName(file.name, 22)}</p>
-                              {file.size && <p className="mt-0.5 text-[10px] sm:text-[11px] text-muted-foreground">{formatSize(parseInt(file.size))}</p>}
-                              {file.starred && <Star className="mt-1 h-3 w-3 text-yellow-500 fill-yellow-500" />}
+                              <div className="mt-0.5 flex items-center gap-1.5">
+                                {file.size && <p className="text-[10px] sm:text-[11px] text-muted-foreground">{formatSize(parseInt(file.size))}</p>}
+                                {file.starred && <Star className="h-3 w-3 text-yellow-500 fill-yellow-500" />}
+                              </div>
                             </div>
                             <div className="mt-2 sm:mt-3 flex gap-1.5 sm:opacity-0 sm:group-hover:opacity-100 transition-all">
+                              <button onClick={(e) => { e.stopPropagation(); setDrivePreviewFile(file); }} className="flex flex-1 items-center justify-center gap-1 rounded-xl bg-foreground/[0.04] py-1.5 text-[11px] font-medium text-muted-foreground hover:bg-primary/10 hover:text-primary">
+                                <ZoomIn className="h-3 w-3" /><span className="hidden sm:inline">Aperçu</span>
+                              </button>
                               {file.webViewLink && (
                                 <a href={file.webViewLink} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="flex flex-1 items-center justify-center gap-1 rounded-xl bg-foreground/[0.04] py-1.5 text-[11px] font-medium text-muted-foreground hover:bg-foreground/[0.08] hover:text-foreground">
-                                  <ExternalLink className="h-3 w-3" /><span className="hidden sm:inline">Ouvrir</span>
-                                </a>
-                              )}
-                              {file.webContentLink && (
-                                <a href={file.webContentLink} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="flex flex-1 items-center justify-center gap-1 rounded-xl bg-foreground/[0.04] py-1.5 text-[11px] font-medium text-muted-foreground hover:bg-foreground/[0.08] hover:text-foreground">
-                                  <Download className="h-3 w-3" /><span className="hidden sm:inline">DL</span>
+                                  <ExternalLink className="h-3 w-3" /><span className="hidden sm:inline">Drive</span>
                                 </a>
                               )}
                             </div>
@@ -1022,19 +1173,21 @@ export default function FichiersPage() {
                     </div>
                   ) : (
                     <div className="premium-panel divide-y divide-foreground/[0.06] overflow-hidden">
-                      {driveFileItems.map((file) => {
+                      {sortedDriveFileItems.map((file) => {
                         const cat = driveFileCategory(file.mimeType);
-                        const colorClass = driveCatColors[cat] || driveCatColors.other;
+                        const style = getDriveFileStyle(file.mimeType);
                         const hasThumbnail = !!file.thumbnailLink && cat === "image";
                         return (
-                          <div key={file.id} onContextMenu={(e) => { e.preventDefault(); setDriveContextFile(file); }}
-                            className="group flex items-center gap-2.5 sm:gap-4 px-3 sm:px-5 py-2.5 sm:py-3.5 transition-colors hover:bg-foreground/[0.02]">
+                          <div key={file.id}
+                            onClick={() => setDriveDetailFile(file)}
+                            onContextMenu={(e) => { e.preventDefault(); setDriveContextFile(file); }}
+                            className="group flex items-center gap-2.5 sm:gap-4 px-3 sm:px-5 py-2.5 sm:py-3.5 transition-colors hover:bg-foreground/[0.02] cursor-pointer">
                             {hasThumbnail ? (
                               // eslint-disable-next-line @next/next/no-img-element
                               <img src={file.thumbnailLink} alt={file.name} className="h-9 w-9 rounded-lg object-cover shrink-0" />
                             ) : (
-                              <div className={cn("flex h-8 w-8 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-lg sm:rounded-xl bg-gradient-to-br", colorClass)}>
-                                <File className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                              <div className={cn("flex h-8 w-8 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-lg sm:rounded-xl bg-gradient-to-br", style.bg)}>
+                                <File className={cn("h-3.5 w-3.5 sm:h-4 sm:w-4", style.iconColor)} />
                               </div>
                             )}
                             <div className="flex-1 min-w-0">
@@ -1045,14 +1198,15 @@ export default function FichiersPage() {
                               <p className="text-[10px] sm:text-[12px] text-muted-foreground">{cat}{file.size ? ` · ${formatSize(parseInt(file.size))}` : ""}{file.modifiedTime ? ` · ${formatDate(file.modifiedTime)}` : ""}</p>
                             </div>
                             <div className="hidden sm:flex gap-1 opacity-0 group-hover:opacity-100 transition-all">
-                              {file.webViewLink && <a href={file.webViewLink} target="_blank" rel="noopener noreferrer" className="rounded-xl p-2 text-muted-foreground hover:bg-foreground/[0.06] hover:text-foreground transition-all"><ExternalLink className="h-4 w-4" /></a>}
-                              {file.webContentLink && <a href={file.webContentLink} target="_blank" rel="noopener noreferrer" className="rounded-xl p-2 text-muted-foreground hover:bg-foreground/[0.06] hover:text-foreground transition-all"><Download className="h-4 w-4" /></a>}
-                              <button onClick={() => { setDriveRenameTarget(file); setDriveRenameName(file.name); }} className="rounded-xl p-2 text-muted-foreground hover:bg-foreground/[0.06] hover:text-foreground transition-all"><Pencil className="h-4 w-4" /></button>
-                              <button onClick={() => handleDriveStar(file)} className="rounded-xl p-2 text-muted-foreground hover:bg-foreground/[0.06] hover:text-foreground transition-all"><Star className={cn("h-4 w-4", file.starred && "fill-yellow-500 text-yellow-500")} /></button>
-                              <button onClick={() => setDriveDeleteTarget(file)} className="rounded-xl p-2 text-muted-foreground hover:bg-red-500/10 hover:text-red-500 transition-all"><Trash2 className="h-4 w-4" /></button>
+                              <button onClick={(e) => { e.stopPropagation(); setDrivePreviewFile(file); }} className="rounded-xl p-2 text-muted-foreground hover:bg-primary/10 hover:text-primary transition-all"><ZoomIn className="h-4 w-4" /></button>
+                              {file.webViewLink && <a href={file.webViewLink} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="rounded-xl p-2 text-muted-foreground hover:bg-foreground/[0.06] hover:text-foreground transition-all"><ExternalLink className="h-4 w-4" /></a>}
+                              {file.webContentLink && <a href={file.webContentLink} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="rounded-xl p-2 text-muted-foreground hover:bg-foreground/[0.06] hover:text-foreground transition-all"><Download className="h-4 w-4" /></a>}
+                              <button onClick={(e) => { e.stopPropagation(); setDriveRenameTarget(file); setDriveRenameName(file.name); }} className="rounded-xl p-2 text-muted-foreground hover:bg-foreground/[0.06] hover:text-foreground transition-all"><Pencil className="h-4 w-4" /></button>
+                              <button onClick={(e) => { e.stopPropagation(); handleDriveStar(file); }} className="rounded-xl p-2 text-muted-foreground hover:bg-foreground/[0.06] hover:text-foreground transition-all"><Star className={cn("h-4 w-4", file.starred && "fill-yellow-500 text-yellow-500")} /></button>
+                              <button onClick={(e) => { e.stopPropagation(); setDriveDeleteTarget(file); }} className="rounded-xl p-2 text-muted-foreground hover:bg-red-500/10 hover:text-red-500 transition-all"><Trash2 className="h-4 w-4" /></button>
                             </div>
                             <div className="flex sm:hidden shrink-0">
-                              <button onClick={() => setDriveContextFile(file)} className="rounded-lg p-1 text-muted-foreground"><MoreHorizontal className="h-4 w-4" /></button>
+                              <button onClick={(e) => { e.stopPropagation(); setDriveContextFile(file); }} className="rounded-lg p-1 text-muted-foreground"><MoreHorizontal className="h-4 w-4" /></button>
                             </div>
                           </div>
                         );
@@ -1063,7 +1217,7 @@ export default function FichiersPage() {
               )}
             </div>
           )}
-        </>
+        </div>
       )}
 
       {/* ══════════════════════════════════════════════════
@@ -1258,6 +1412,9 @@ export default function FichiersPage() {
         <DialogContent className="rounded-3xl sm:max-w-xs">
           <DialogHeader><DialogTitle className="truncate text-[15px]">{driveContextFile?.name}</DialogTitle></DialogHeader>
           <div className="space-y-1 pt-1">
+            {driveContextFile && !isDriveFolder(driveContextFile.mimeType) && (
+              <button onClick={() => { setDrivePreviewFile(driveContextFile); setDriveContextFile(null); }} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-[13px] font-medium transition-colors hover:bg-foreground/[0.04]"><ZoomIn className="h-4 w-4 text-muted-foreground" /> Aperçu</button>
+            )}
             {driveContextFile?.webViewLink && (
               <a href={driveContextFile.webViewLink} target="_blank" rel="noopener noreferrer" onClick={() => setDriveContextFile(null)} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-[13px] font-medium transition-colors hover:bg-foreground/[0.04]"><ExternalLink className="h-4 w-4 text-muted-foreground" /> Ouvrir dans Drive</a>
             )}
@@ -1313,6 +1470,188 @@ export default function FichiersPage() {
             <div className="flex gap-3">
               <button onClick={() => setDriveDeleteTarget(null)} className="flex-1 rounded-2xl bg-foreground/[0.06] py-3 text-[13px] font-medium text-muted-foreground transition-all hover:bg-foreground/[0.1] hover:text-foreground">Annuler</button>
               <button onClick={() => driveDeleteTarget && handleDriveDelete(driveDeleteTarget)} className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-red-500 py-3 text-[13px] font-semibold text-white shadow-lg shadow-red-500/25 transition-all hover:shadow-xl"><Trash2 className="h-4 w-4" />Supprimer</button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Drive Detail Panel ───────────────────────────── */}
+      <Dialog open={!!driveDetailFile} onOpenChange={(o) => !o && setDriveDetailFile(null)}>
+        <DialogContent className="rounded-3xl sm:max-w-sm p-0 overflow-hidden">
+          {driveDetailFile && (() => {
+            const style = getDriveFileStyle(driveDetailFile.mimeType);
+            const cat = driveFileCategory(driveDetailFile.mimeType);
+            const isFile = !isDriveFolder(driveDetailFile.mimeType);
+            return (
+              <>
+                {/* Header with thumbnail or icon */}
+                <div className="flex flex-col items-center gap-3 px-5 pt-6 pb-4 bg-gradient-to-b from-foreground/[0.02] to-transparent">
+                  {driveDetailFile.thumbnailLink && cat === "image" ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={driveDetailFile.thumbnailLink} alt={driveDetailFile.name} className="max-h-36 max-w-full rounded-2xl object-contain shadow-md" />
+                  ) : (
+                    <div className={cn("flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br shadow-md", style.bg)}>
+                      <File className={cn("h-7 w-7", style.iconColor)} />
+                    </div>
+                  )}
+                  <div className="text-center space-y-0.5">
+                    <p className="text-[14px] font-semibold leading-snug px-2 text-center" title={driveDetailFile.name}>{driveDetailFile.name}</p>
+                    <p className="text-[12px] text-muted-foreground capitalize">{cat}</p>
+                  </div>
+                </div>
+
+                {/* Metadata */}
+                <div className="px-5 pb-4 space-y-2">
+                  <div className="rounded-2xl bg-foreground/[0.03] p-3 space-y-2 text-[13px]">
+                    {driveDetailFile.size && (
+                      <div className="flex justify-between items-center">
+                        <span className="text-muted-foreground">Taille</span>
+                        <span className="font-medium">{formatSize(parseInt(driveDetailFile.size))}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between items-center">
+                      <span className="text-muted-foreground">Modifié</span>
+                      <span className="font-medium">{formatDate(driveDetailFile.modifiedTime)}</span>
+                    </div>
+                    {driveDetailFile.createdTime && (
+                      <div className="flex justify-between items-center">
+                        <span className="text-muted-foreground">Créé</span>
+                        <span className="font-medium">{formatDate(driveDetailFile.createdTime)}</span>
+                      </div>
+                    )}
+                    {driveDetailFile.starred && (
+                      <div className="flex justify-between items-center">
+                        <span className="text-muted-foreground">Étoile</span>
+                        <Star className="h-4 w-4 fill-yellow-500 text-yellow-500" />
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Actions */}
+                  <div className="grid grid-cols-2 gap-2 pt-1">
+                    {isFile && (
+                      <button
+                        onClick={() => { setDrivePreviewFile(driveDetailFile); setDriveDetailFile(null); }}
+                        className="col-span-2 flex items-center justify-center gap-2 rounded-2xl bg-primary py-3 text-[13px] font-semibold text-primary-foreground shadow-lg shadow-primary/25 transition-all hover:shadow-xl hover:-translate-y-0.5"
+                      >
+                        <ZoomIn className="h-4 w-4" /> Aperçu
+                      </button>
+                    )}
+                    {driveDetailFile.webViewLink && (
+                      <a
+                        href={driveDetailFile.webViewLink} target="_blank" rel="noopener noreferrer"
+                        onClick={() => setDriveDetailFile(null)}
+                        className="flex items-center justify-center gap-2 rounded-2xl bg-foreground/[0.06] py-2.5 text-[13px] font-medium text-muted-foreground hover:text-foreground hover:bg-foreground/[0.1] transition-all"
+                      >
+                        <ExternalLink className="h-4 w-4" /> Ouvrir
+                      </a>
+                    )}
+                    {isFile && driveDetailFile.webContentLink && (
+                      <a
+                        href={driveDetailFile.webContentLink} target="_blank" rel="noopener noreferrer"
+                        onClick={() => setDriveDetailFile(null)}
+                        className="flex items-center justify-center gap-2 rounded-2xl bg-foreground/[0.06] py-2.5 text-[13px] font-medium text-muted-foreground hover:text-foreground hover:bg-foreground/[0.1] transition-all"
+                      >
+                        <Download className="h-4 w-4" /> Télécharger
+                      </a>
+                    )}
+                    {isFile && (
+                      <button
+                        onClick={() => { handleDriveStar(driveDetailFile); setDriveDetailFile(null); }}
+                        className="flex items-center justify-center gap-2 rounded-2xl bg-foreground/[0.06] py-2.5 text-[13px] font-medium text-muted-foreground hover:text-foreground hover:bg-foreground/[0.1] transition-all"
+                      >
+                        <Star className={cn("h-4 w-4", driveDetailFile.starred && "fill-yellow-500 text-yellow-500")} />
+                        {driveDetailFile.starred ? "Retirer" : "Étoile"}
+                      </button>
+                    )}
+                    <button
+                      onClick={() => { setDriveRenameTarget(driveDetailFile); setDriveRenameName(driveDetailFile.name); setDriveDetailFile(null); }}
+                      className="flex items-center justify-center gap-2 rounded-2xl bg-foreground/[0.06] py-2.5 text-[13px] font-medium text-muted-foreground hover:text-foreground hover:bg-foreground/[0.1] transition-all"
+                    >
+                      <Pencil className="h-4 w-4" /> Renommer
+                    </button>
+                    <button
+                      onClick={() => { setDriveDeleteTarget(driveDetailFile); setDriveDetailFile(null); }}
+                      className="col-span-2 flex items-center justify-center gap-2 rounded-2xl bg-red-500/10 py-2.5 text-[13px] font-medium text-red-500 hover:bg-red-500/20 transition-all"
+                    >
+                      <Trash2 className="h-4 w-4" /> Mettre à la corbeille
+                    </button>
+                  </div>
+                </div>
+              </>
+            );
+          })()}
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Drive Preview Modal ──────────────────────────── */}
+      <Dialog open={!!drivePreviewFile} onOpenChange={(o) => !o && setDrivePreviewFile(null)}>
+        <DialogContent className="rounded-3xl sm:max-w-4xl h-[85vh] flex flex-col gap-0 p-0 overflow-hidden">
+          {drivePreviewFile && (
+            <>
+              {/* Top bar */}
+              <div className="flex items-center justify-between px-4 py-3 border-b border-foreground/[0.08] shrink-0 bg-card">
+                <div className="flex items-center gap-2 min-w-0">
+                  <div className={cn("flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br", getDriveFileStyle(drivePreviewFile.mimeType).bg)}>
+                    <File className={cn("h-3.5 w-3.5", getDriveFileStyle(drivePreviewFile.mimeType).iconColor)} />
+                  </div>
+                  <p className="text-[14px] font-semibold truncate">{drivePreviewFile.name}</p>
+                </div>
+                <div className="flex items-center gap-1 shrink-0">
+                  {drivePreviewFile.webViewLink && (
+                    <a href={drivePreviewFile.webViewLink} target="_blank" rel="noopener noreferrer" className="rounded-xl p-2 text-muted-foreground hover:text-foreground hover:bg-foreground/[0.06] transition-all">
+                      <ExternalLink className="h-4 w-4" />
+                    </a>
+                  )}
+                  {drivePreviewFile.webContentLink && (
+                    <a href={drivePreviewFile.webContentLink} target="_blank" rel="noopener noreferrer" className="rounded-xl p-2 text-muted-foreground hover:text-foreground hover:bg-foreground/[0.06] transition-all">
+                      <Download className="h-4 w-4" />
+                    </a>
+                  )}
+                  <button onClick={() => setDrivePreviewFile(null)} className="rounded-xl p-2 text-muted-foreground hover:text-foreground hover:bg-foreground/[0.06] transition-all">
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Content */}
+              <div className="flex-1 overflow-hidden bg-foreground/[0.02]">
+                {driveFileCategory(drivePreviewFile.mimeType) === "image" && drivePreviewFile.thumbnailLink ? (
+                  <div className="flex h-full items-center justify-center p-6">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={drivePreviewFile.thumbnailLink}
+                      alt={drivePreviewFile.name}
+                      className="max-h-full max-w-full object-contain rounded-xl shadow-2xl"
+                    />
+                  </div>
+                ) : (
+                  <iframe
+                    src={`https://drive.google.com/file/d/${drivePreviewFile.id}/preview`}
+                    className="h-full w-full border-0"
+                    allow="autoplay"
+                    title={drivePreviewFile.name}
+                  />
+                )}
+              </div>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Drive Disconnect Confirm ─────────────────────── */}
+      <Dialog open={driveDisconnectConfirm} onOpenChange={setDriveDisconnectConfirm}>
+        <DialogContent className="rounded-3xl sm:max-w-sm">
+          <DialogHeader><DialogTitle>Déconnecter le compte</DialogTitle></DialogHeader>
+          <div className="space-y-5 pt-1">
+            <p className="text-[14px] text-muted-foreground leading-relaxed">
+              Déconnecter <span className="font-semibold text-foreground">{googleAccounts.find((a) => a.id === source)?.google_email}</span> de Google Drive ?
+            </p>
+            <div className="flex gap-3">
+              <button onClick={() => setDriveDisconnectConfirm(false)} className="flex-1 rounded-2xl bg-foreground/[0.06] py-3 text-[13px] font-medium text-muted-foreground transition-all hover:bg-foreground/[0.1] hover:text-foreground">Annuler</button>
+              <button onClick={handleDisconnectDrive} className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-red-500 py-3 text-[13px] font-semibold text-white shadow-lg shadow-red-500/25 transition-all hover:shadow-xl">
+                <LogOut className="h-4 w-4" /> Déconnecter
+              </button>
             </div>
           </div>
         </DialogContent>
