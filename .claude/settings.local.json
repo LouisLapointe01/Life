@@ -9,7 +9,13 @@
       "mcp__claude_ai_Vercel__list_deployments",
       "mcp__claude_ai_Vercel__get_runtime_logs",
       "mcp__claude_ai_Vercel__get_project",
-      "Bash(rm:*)"
+      "Bash(rm:*)",
+      "mcp__claude_ai_Supabase__execute_sql",
+      "mcp__claude_ai_Supabase__get_logs",
+      "mcp__claude_ai_Supabase__apply_migration",
+      "mcp__claude_ai_Supabase__list_projects",
+      "Bash(ls -lh /c/Users/luigi/Desktop/Code/plant-iot/public/*.svg)",
+      "Read(//c/Users/luigi/Desktop/Code/plant-iot/**)"
     ]
   }
 }
