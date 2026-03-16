@@ -19,7 +19,9 @@ export async function GET(request: Request) {
     const { origin } = new URL(request.url);
     const redirectUri = `${origin}/api/google/callback`;
 
-    const state = Buffer.from(JSON.stringify({ userId: user.id })).toString("base64url");
+    const { searchParams } = new URL(request.url);
+    const returnTo = searchParams.get("returnTo") || "/dashboard/parametres";
+    const state = Buffer.from(JSON.stringify({ userId: user.id, returnTo })).toString("base64url");
     const authUrl = getGoogleAuthUrl(state, redirectUri);
 
     return NextResponse.json({ url: authUrl });
