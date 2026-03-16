@@ -473,7 +473,7 @@ function AppointmentTypesSection({ userId }: { userId?: string }) {
       {/* FAB Ajouter type */}
       <button
         onClick={() => setDialogOpen(true)}
-        className="fixed bottom-28 right-4 z-40 flex h-11 w-11 items-center justify-center rounded-full bg-foreground/10 backdrop-blur-xl text-muted-foreground shadow-md transition-all hover:shadow-lg hover:scale-105 active:scale-95 border border-white/10 lg:bottom-14"
+        className="fixed bottom-20 right-5 z-[60] flex h-11 w-11 items-center justify-center rounded-full bg-foreground/10 backdrop-blur-xl border border-white/20 text-muted-foreground shadow-md transition-all hover:shadow-lg hover:scale-105 active:scale-95 lg:bottom-10 lg:right-10 lg:h-13 lg:w-13 lg:bg-white/58 lg:border-white/45 lg:text-foreground lg:shadow-lg dark:lg:bg-white/[0.08] dark:lg:border-white/[0.12]"
         aria-label="Ajouter un type"
         title="Ajouter un type"
       >
@@ -1034,7 +1034,7 @@ function UnavailabilitySection() {
       {/* FAB */}
       <button
         onClick={() => { setForm({ label: "", start_at: "", end_at: "", start_time: "22:00", end_time: "07:00", recurrence_days: [] }); setDialogOpen(true); }}
-        className="fixed bottom-28 right-4 z-40 flex h-11 w-11 items-center justify-center rounded-full bg-foreground/10 backdrop-blur-xl text-muted-foreground shadow-md transition-all hover:shadow-lg hover:scale-105 active:scale-95 border border-white/10 lg:bottom-14"
+        className="fixed bottom-20 right-5 z-[60] flex h-11 w-11 items-center justify-center rounded-full bg-foreground/10 backdrop-blur-xl border border-white/20 text-muted-foreground shadow-md transition-all hover:shadow-lg hover:scale-105 active:scale-95 lg:bottom-10 lg:right-10 lg:h-13 lg:w-13 lg:bg-white/58 lg:border-white/45 lg:text-foreground lg:shadow-lg dark:lg:bg-white/[0.08] dark:lg:border-white/[0.12]"
       >
         <Plus className="h-5 w-5" />
       </button>
