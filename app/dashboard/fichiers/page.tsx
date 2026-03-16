@@ -145,12 +145,24 @@ export default function FichiersPage() {
   const effectiveView = isMobile ? "list" : view;
 
   /* ── Fetch Google accounts ───────────────────────────── */
-  useEffect(() => {
+  const fetchGoogleAccounts = useCallback(() => {
     fetch("/api/google/sync")
       .then((r) => r.json())
       .then((data) => setGoogleAccounts(data.accounts || []))
       .catch(() => {});
   }, []);
+
+  useEffect(() => {
+    fetchGoogleAccounts();
+    // Gestion du retour OAuth (gcal_success=true)
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("gcal_success") === "true") {
+      toast.success("Google Drive connecté !");
+      window.history.replaceState({}, "", window.location.pathname);
+      // Petit délai pour laisser le temps au serveur de traiter
+      setTimeout(fetchGoogleAccounts, 500);
+    }
+  }, [fetchGoogleAccounts]);
 
   /* ── Drive API ───────────────────────────────────────── */
   const fetchDriveFiles = useCallback(async (tokenId: string, folderId: string | null, q: string) => {
@@ -619,7 +631,7 @@ export default function FichiersPage() {
         ))}
         <button
           onClick={async () => {
-            const res = await fetch("/api/google/auth");
+            const res = await fetch("/api/google/auth?returnTo=/dashboard/fichiers");
             const data = await res.json();
             if (data.url) window.location.href = data.url;
           }}

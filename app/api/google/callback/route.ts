@@ -24,12 +24,13 @@ export async function GET(request: Request) {
       return NextResponse.redirect(`${origin}/dashboard/parametres?gcal_error=missing_params`);
     }
 
-    let state: { userId: string };
+    let state: { userId: string; returnTo?: string };
     try {
       state = JSON.parse(Buffer.from(stateB64, "base64url").toString());
     } catch {
       return NextResponse.redirect(`${origin}/dashboard/parametres?gcal_error=invalid_state`);
     }
+    const returnTo = state.returnTo || "/dashboard/parametres";
 
     // Échanger le code contre des tokens
     const redirectUri = `${origin}/api/google/callback`;
@@ -151,7 +152,7 @@ export async function GET(request: Request) {
       console.error("[Google Callback] Calendar webhooks setup failed:", err);
     }
 
-    return NextResponse.redirect(`${origin}/dashboard/parametres?gcal_success=true`);
+    return NextResponse.redirect(`${origin}${returnTo}?gcal_success=true`);
   } catch (err) {
     console.error("[GET /api/google/callback]", err);
     const { origin } = new URL(request.url);
