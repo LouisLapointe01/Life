@@ -217,9 +217,14 @@ export default function AgendaPage() {
   const [quickTitle, setQuickTitle] = useState("");
   const [aptPopup, setAptPopup] = useState<Appointment | null>(null);
   const [dragOver, setDragOver] = useState<{ day: Date; hour: number; minute: number } | null>(null);
-  const [resizing, setResizing] = useState<{ aptId: string; startY: number; origDurMin: number; curDurMin: number } | null>(null);
+  const [resizing, setResizing] = useState<{
+    aptId: string; handle: "top" | "bottom";
+    startY: number; origStart: Date; origEnd: Date; curStart: Date; curEnd: Date;
+  } | null>(null);
   const resizingRef = useRef<typeof resizing>(null);
   resizingRef.current = resizing;
+  // Ref synchrone pour bloquer le drag HTML5 immédiatement lors d'un mousedown sur un handle
+  const isResizingHandleRef = useRef(false);
   const appointmentsRef = useRef<Appointment[]>([]);
   appointmentsRef.current = appointments;
 
@@ -280,30 +285,55 @@ export default function AgendaPage() {
       const r = resizingRef.current!;
       const deltaY = e.clientY - r.startY;
       const deltaMin = Math.round((deltaY / W_HOUR_H) * 60 / 15) * 15;
-      const newDur = Math.max(15, r.origDurMin + deltaMin);
-      if (newDur !== r.curDurMin) setResizing((prev) => prev ? { ...prev, curDurMin: newDur } : null);
+      if (r.handle === "bottom") {
+        const newEnd = new Date(r.origEnd.getTime() + deltaMin * 60000);
+        const minEnd = new Date(r.origStart.getTime() + 15 * 60000);
+        const clampedEnd = newEnd < minEnd ? minEnd : newEnd;
+        if (clampedEnd.getTime() !== r.curEnd.getTime())
+          setResizing((prev) => prev ? { ...prev, curEnd: clampedEnd } : null);
+      } else {
+        const newStart = new Date(r.origStart.getTime() + deltaMin * 60000);
+        const maxStart = new Date(r.origEnd.getTime() - 15 * 60000);
+        const clampedStart = newStart > maxStart ? maxStart : newStart;
+        if (clampedStart.getTime() !== r.curStart.getTime())
+          setResizing((prev) => prev ? { ...prev, curStart: clampedStart } : null);
+      }
     };
-    // handleMouseUp recalcule depuis e.clientY pour éviter la valeur périmée du ref
     const handleMouseUp = async (e: MouseEvent) => {
       const r = resizingRef.current!;
-      const { aptId, startY, origDurMin } = r;
+      const { aptId, handle, startY, origStart, origEnd } = r;
       const deltaY = e.clientY - startY;
       const deltaMin = Math.round((deltaY / W_HOUR_H) * 60 / 15) * 15;
-      const finalDurMin = Math.max(15, origDurMin + deltaMin);
+      isResizingHandleRef.current = false;
       setResizing(null);
       const apt = appointmentsRef.current.find((a) => a.id === aptId);
       if (!apt) return;
-      const prevDurMin = Math.round((new Date(apt.end_at).getTime() - new Date(apt.start_at).getTime()) / 60000);
-      if (finalDurMin === prevDurMin) return;
-      const newEnd = new Date(new Date(apt.start_at).getTime() + finalDurMin * 60000);
+      let newStart = new Date(apt.start_at);
+      let newEnd = new Date(apt.end_at);
+      if (handle === "bottom") {
+        const candidate = new Date(origEnd.getTime() + deltaMin * 60000);
+        const minEnd = new Date(origStart.getTime() + 15 * 60000);
+        newEnd = candidate < minEnd ? minEnd : candidate;
+        if (newEnd.getTime() === new Date(apt.end_at).getTime()) return;
+      } else {
+        const candidate = new Date(origStart.getTime() + deltaMin * 60000);
+        const maxStart = new Date(origEnd.getTime() - 15 * 60000);
+        newStart = candidate > maxStart ? maxStart : candidate;
+        if (newStart.getTime() === new Date(apt.start_at).getTime()) return;
+      }
       clientCache.del("appointments");
-      setAppointments((prev) => prev.map((a) => a.id === aptId ? { ...a, end_at: newEnd.toISOString() } : a));
+      setAppointments((prev) => prev.map((a) => a.id === aptId
+        ? { ...a, start_at: newStart.toISOString(), end_at: newEnd.toISOString() }
+        : a));
       try {
-        const res = await fetch("/api/appointments", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: aptId, end_at: newEnd.toISOString() }) });
+        const res = await fetch("/api/appointments", {
+          method: "PATCH", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id: aptId, start_at: newStart.toISOString(), end_at: newEnd.toISOString() }),
+        });
         if (!res.ok) { clientCache.del("appointments"); fetchAppointmentsRef.current(); }
       } catch { clientCache.del("appointments"); fetchAppointmentsRef.current(); }
     };
-    document.body.style.cursor = "s-resize";
+    document.body.style.cursor = resizing.handle === "bottom" ? "s-resize" : "n-resize";
     document.body.style.userSelect = "none";
     document.addEventListener("mousemove", handleMouseMove);
     document.addEventListener("mouseup", handleMouseUp);
@@ -908,7 +938,12 @@ export default function AgendaPage() {
                     {weekDays.map((day) => {
                       const isTodayDay = isToday(day);
                       const isWeekendDay = day.getDay() === 0 || day.getDay() === 6;
-                      const dayAppts = appointments.filter((a) => isSameDay(new Date(a.start_at), day) && a.status !== "cancelled");
+                      const colDayStart = new Date(day); colDayStart.setHours(0, 0, 0, 0);
+                      const colDayEnd = new Date(day); colDayEnd.setHours(24, 0, 0, 0);
+                      const dayAppts = appointments.filter((a) => {
+                        if (a.status === "cancelled") return false;
+                        return new Date(a.start_at) < colDayEnd && new Date(a.end_at) > colDayStart;
+                      });
                       const laid = layoutWeekEvents(dayAppts);
                       return (
                         <div
@@ -919,7 +954,7 @@ export default function AgendaPage() {
                             e.preventDefault(); e.dataTransfer.dropEffect = "move";
                             const relY = e.clientY - e.currentTarget.getBoundingClientRect().top + (weekScrollRef.current?.scrollTop ?? 0);
                             const h = Math.min(23, Math.max(0, Math.floor(relY / W_HOUR_H)));
-                            const rawMin = Math.round((relY % W_HOUR_H) / (W_HOUR_H / 2)) * 30;
+                            const rawMin = Math.round((relY % W_HOUR_H) / (W_HOUR_H / 4)) * 15;
                             const m = rawMin >= 60 ? 0 : rawMin;
                             const adjH = rawMin >= 60 ? Math.min(23, h + 1) : h;
                             if (!dragOver || !isSameDay(dragOver.day, day) || dragOver.hour !== adjH || dragOver.minute !== m) setDragOver({ day, hour: adjH, minute: m });
@@ -928,7 +963,7 @@ export default function AgendaPage() {
                             e.preventDefault();
                             const relY = e.clientY - e.currentTarget.getBoundingClientRect().top + (weekScrollRef.current?.scrollTop ?? 0);
                             const h = Math.min(23, Math.max(0, Math.floor(relY / W_HOUR_H)));
-                            const rawMin = Math.round((relY % W_HOUR_H) / (W_HOUR_H / 2)) * 30;
+                            const rawMin = Math.round((relY % W_HOUR_H) / (W_HOUR_H / 4)) * 15;
                             const m = rawMin >= 60 ? 0 : rawMin;
                             const adjH = rawMin >= 60 ? Math.min(23, h + 1) : h;
                             setDragOver(null); handleDrop(day, adjH, m);
@@ -985,29 +1020,43 @@ export default function AgendaPage() {
                           {laid.map(({ apt, col, cols }) => {
                             const startDate = new Date(apt.start_at);
                             const endDate = new Date(apt.end_at);
-                            const top = (startDate.getHours() + startDate.getMinutes() / 60) * W_HOUR_H;
                             const isBeingDragged = draggedAptId === apt.id;
                             const isResizingThis = resizing?.aptId === apt.id;
-                            const durMin = isResizingThis
-                              ? resizing!.curDurMin
-                              : Math.round((endDate.getTime() - startDate.getTime()) / 60000);
-                            const height = Math.max(22, (durMin / 60) * W_HOUR_H);
-                            const resizeEndTotalMin = isResizingThis ? startDate.getHours() * 60 + startDate.getMinutes() + resizing!.curDurMin : 0;
-                            const resizeEndLabel = isResizingThis ? `${String(Math.floor(resizeEndTotalMin / 60) % 24).padStart(2, "0")}:${String(resizeEndTotalMin % 60).padStart(2, "0")}` : "";
+                            // Dates courantes (pendant resize)
+                            const curStart = isResizingThis ? resizing!.curStart : startDate;
+                            const curEnd = isResizingThis ? resizing!.curEnd : endDate;
+                            // Clip à la colonne jour pour multi-jours
+                            const clipStart = new Date(Math.max(curStart.getTime(), colDayStart.getTime()));
+                            const clipEnd = new Date(Math.min(curEnd.getTime(), colDayEnd.getTime()));
+                            const top = (clipStart.getHours() + clipStart.getMinutes() / 60) * W_HOUR_H;
+                            const clipDurMin = Math.max(15, (clipEnd.getTime() - clipStart.getTime()) / 60000);
+                            const height = Math.max(22, (clipDurMin / 60) * W_HOUR_H);
+                            // Handles visibles selon la position dans les jours couverts
+                            const isFirstDay = curStart >= colDayStart && curStart < colDayEnd;
+                            const isLastDay = curEnd > colDayStart && curEnd <= colDayEnd;
                             const myType = getMyType(apt, profile?.id);
                             const colW = 100 / cols;
+                            // Label resize
+                            let resizeLabel = "";
+                            if (isResizingThis) {
+                              if (resizing!.handle === "bottom") {
+                                resizeLabel = `→ ${format(curEnd, "HH:mm")}`;
+                              } else {
+                                resizeLabel = `${format(curStart, "HH:mm")} →`;
+                              }
+                            }
                             return (
                               <div
-                                key={apt.id}
-                                draggable={isDesktop && !resizing}
-                                onDragStart={isDesktop && !resizing ? (e) => {
+                                key={`${apt.id}-${day.toISOString()}`}
+                                draggable={isDesktop && !resizing && !isResizingHandleRef.current}
+                                onDragStart={isDesktop && !resizing && !isResizingHandleRef.current ? (e) => {
                                   e.stopPropagation(); setDraggedAptId(apt.id); e.dataTransfer.effectAllowed = "move";
                                   const c = document.createElement("canvas"); c.width = 1; c.height = 1; c.style.cssText = "position:fixed;top:-2px;left:-2px;opacity:0;pointer-events:none;";
                                   document.body.appendChild(c); e.dataTransfer.setDragImage(c, 0, 0); requestAnimationFrame(() => { if (document.body.contains(c)) document.body.removeChild(c); });
                                 } : undefined}
                                 onDragEnd={isDesktop ? () => { setDraggedAptId(null); setDragOver(null); } : undefined}
                                 onClick={(e) => { e.stopPropagation(); if (!isBeingDragged && !resizing) setAptPopup(apt); }}
-                                className={cn("absolute rounded-lg px-1.5 py-1 overflow-hidden z-10 hover:z-20 transition-[opacity,filter] shadow-sm", isDesktop && !resizing ? "cursor-grab active:cursor-grabbing" : "cursor-pointer", isBeingDragged ? "opacity-25" : "hover:brightness-95", isResizingThis && "z-20 shadow-md")}
+                                className={cn("absolute rounded-lg px-1.5 overflow-hidden z-10 hover:z-20 transition-[opacity,filter] shadow-sm", isDesktop && !resizing ? "cursor-grab active:cursor-grabbing" : "cursor-pointer", isBeingDragged ? "opacity-25" : "hover:brightness-95", isResizingThis && "z-20 shadow-md")}
                                 style={{
                                   top: `${top + 1}px`,
                                   height: `${height - 2}px`,
@@ -1015,27 +1064,42 @@ export default function AgendaPage() {
                                   width: `calc(${colW}% - 3px)`,
                                   backgroundColor: `${myType.color}20`,
                                   borderLeft: `3px solid ${myType.color}`,
+                                  paddingTop: isDesktop && isFirstDay ? "14px" : "4px",
+                                  paddingBottom: isDesktop && isLastDay ? "14px" : "4px",
                                 }}
                               >
-                                <p className="text-[10px] font-semibold leading-tight truncate" style={{ color: myType.color }}>
-                                  {format(startDate, "HH:mm")}
-                                  {isResizingThis
-                                    ? <span className="font-normal"> → {resizeEndLabel}</span>
-                                    : height > 30 && <span className="font-normal"> {apt.guest_name.split(" ")[0]}</span>
-                                  }
-                                </p>
-                                {!isResizingThis && height > 44 && <p className="text-[9px] text-muted-foreground/60 truncate mt-0.5">{myType.name}</p>}
-                                {/* Resize handle */}
-                                {isDesktop && (
+                                {/* Top resize handle */}
+                                {isDesktop && isFirstDay && (
                                   <div
-                                    className="absolute bottom-0 left-0 right-0 h-3 flex items-end justify-center pb-0.5 cursor-s-resize z-20 group/rh"
+                                    className="absolute top-0 left-0 right-0 h-3 flex items-start justify-center pt-0.5 cursor-n-resize z-20 group/rht"
                                     onMouseDown={(e) => {
                                       e.preventDefault(); e.stopPropagation();
-                                      const dur = Math.round((endDate.getTime() - startDate.getTime()) / 60000);
-                                      setResizing({ aptId: apt.id, startY: e.clientY, origDurMin: dur, curDurMin: dur });
+                                      isResizingHandleRef.current = true;
+                                      setResizing({ aptId: apt.id, handle: "top", startY: e.clientY, origStart: startDate, origEnd: endDate, curStart: startDate, curEnd: endDate });
                                     }}
                                   >
-                                    <div className="w-6 h-[3px] rounded-full opacity-0 group-hover/rh:opacity-60 transition-opacity" style={{ backgroundColor: myType.color }} />
+                                    <div className="w-6 h-[3px] rounded-full opacity-0 group-hover/rht:opacity-60 transition-opacity" style={{ backgroundColor: myType.color }} />
+                                  </div>
+                                )}
+                                <p className="text-[10px] font-semibold leading-tight truncate" style={{ color: myType.color }}>
+                                  {isResizingThis
+                                    ? resizeLabel
+                                    : (isFirstDay ? format(startDate, "HH:mm") : "↓")
+                                  }
+                                  {!isResizingThis && height > 30 && isFirstDay && <span className="font-normal"> {apt.guest_name.split(" ")[0]}</span>}
+                                </p>
+                                {!isResizingThis && height > 44 && <p className="text-[9px] text-muted-foreground/60 truncate mt-0.5">{myType.name}</p>}
+                                {/* Bottom resize handle */}
+                                {isDesktop && isLastDay && (
+                                  <div
+                                    className="absolute bottom-0 left-0 right-0 h-3 flex items-end justify-center pb-0.5 cursor-s-resize z-20 group/rhb"
+                                    onMouseDown={(e) => {
+                                      e.preventDefault(); e.stopPropagation();
+                                      isResizingHandleRef.current = true;
+                                      setResizing({ aptId: apt.id, handle: "bottom", startY: e.clientY, origStart: startDate, origEnd: endDate, curStart: startDate, curEnd: endDate });
+                                    }}
+                                  >
+                                    <div className="w-6 h-[3px] rounded-full opacity-0 group-hover/rhb:opacity-60 transition-opacity" style={{ backgroundColor: myType.color }} />
                                   </div>
                                 )}
                               </div>
