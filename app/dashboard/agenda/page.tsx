@@ -787,31 +787,11 @@ export default function AgendaPage() {
       <section className="grid gap-4 xl:grid-cols-[minmax(0,1.2fr)_360px]">
         <div className="premium-panel relative overflow-hidden rounded-[2rem] px-5 py-5 lg:px-7 lg:py-6">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(59,130,246,0.12),transparent_28%),radial-gradient(circle_at_bottom_left,rgba(16,185,129,0.10),transparent_22%)]" />
-          <div className="relative flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
-            <div className="max-w-2xl">
-              <p className="text-[12px] font-semibold uppercase tracking-[0.24em] text-primary/75">Agenda</p>
-              <h1 className="mt-3 text-[28px] font-semibold tracking-[-0.05em] text-foreground lg:text-[40px]">
-                Une vue claire sur vos rendez-vous.
-              </h1>
-              <p className="mt-3 max-w-xl text-[14px] leading-6 text-muted-foreground lg:text-[15px]">
-                Suivi des disponibilités, lecture rapide des rendez-vous et panneau détail plus lisible, dans une interface plus sobre et plus premium.
-              </p>
-            </div>
-
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:min-w-[320px]">
-              <div className="premium-panel-soft rounded-[1.35rem] px-4 py-3">
-                <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">Date</p>
-                <p className="mt-2 text-[15px] font-semibold text-foreground">{format(selectedDate, "d MMM", { locale: fr })}</p>
-              </div>
-              <div className="premium-panel-soft rounded-[1.35rem] px-4 py-3">
-                <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">Vue</p>
-                <p className="mt-2 text-[15px] font-semibold capitalize text-foreground">{viewMode === "month" ? "Mois" : "Semaine"}</p>
-              </div>
-              <div className="premium-panel-soft rounded-[1.35rem] px-4 py-3 sm:col-span-2 xl:col-span-1">
-                <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">Filtre</p>
-                <p className="mt-2 text-[15px] font-semibold text-foreground">{filter === "all" ? "Tous" : filter === "pending" ? "En attente" : filter === "confirmed" ? "Confirmés" : "Annulés"}</p>
-              </div>
-            </div>
+          <div className="relative">
+            <h1 className="text-[36px] font-semibold tracking-[-0.05em] text-foreground lg:text-[48px]">Agenda</h1>
+            <p className="mt-2 text-[14px] text-muted-foreground capitalize">
+              {format(selectedDate, "d MMMM", { locale: fr })} · {viewMode === "month" ? "Mois" : "Semaine"}
+            </p>
           </div>
         </div>
 
