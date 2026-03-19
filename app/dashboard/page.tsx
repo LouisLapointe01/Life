@@ -10,6 +10,7 @@ import {
   Clock, Wallet, Bell, Wind, Sun, Cpu, ShieldCheck, Flame, Activity,
   Gauge, Lightbulb, Lock, BatteryCharging, TrendingDown, TrendingUp,
   Bitcoin, Sunrise, Umbrella, Waves, HeartPulse, Scale, Pencil, Check,
+  MapPin,
   type LucideIcon,
 } from "lucide-react";
 import Link from "next/link";
@@ -45,6 +46,10 @@ export interface WidgetDef {
   subcat: WidgetSubcat; href?: string;
 }
 
+export interface SavedCity {
+  id: string; name: string; country: string; latitude: number; longitude: number;
+}
+
 /* ═══════════════════════════════════════════
    Static data
    ═══════════════════════════════════════════ */
@@ -65,6 +70,8 @@ export const WIDGET_SUBCATS: Record<WidgetSubcat, { defaultLabel: string; icon: 
   sante:    { defaultLabel: "Santé",      icon: Heart,      color: "text-pink-400" },
   finance:  { defaultLabel: "Finances",   icon: DollarSign, color: "text-emerald-400" },
 };
+
+const WEATHER_WIDGET_IDS: WidgetId[] = ["meteo-temp","meteo-vent","meteo-pluie","meteo-humidite-ext","meteo-uv","meteo-lever"];
 
 export const ALL_WIDGETS: WidgetDef[] = [
   { id: "horloge",            subcat: "systeme",  label: "Horloge",             description: "Heure et date en direct",           icon: Clock,           color: "text-purple-400",  bg: "bg-purple-500/10" },
@@ -104,20 +111,17 @@ export const ALL_WIDGETS: WidgetDef[] = [
 ];
 
 /* ═══════════════════════════════════════════
-   Preferences store (in-memory, synced to Supabase)
+   Preferences store
    ═══════════════════════════════════════════ */
 interface PrefsState {
   loaded: boolean;
   activeWidgets: WidgetId[];
   categoryOrder: string[];
   categoryHidden: string[];
-  subcatNames: Record<string, string>;   // subcat id → custom label
-
-  setAll: (p: Omit<PrefsState, "loaded" | "setAll" | "setActiveWidgets" | "setCategoryOrder" | "setCategoryHidden" | "setSubcatNames">) => void;
-  setActiveWidgets: (v: WidgetId[]) => void;
-  setCategoryOrder: (v: string[]) => void;
-  setCategoryHidden: (v: string[]) => void;
-  setSubcatNames: (v: Record<string, string>) => void;
+  subcatNames: Record<string, string>;
+  widgetCities: Record<string, SavedCity | null>; // WidgetId → city (null = first saved city / geo)
+  set: (patch: Partial<Omit<PrefsState, "loaded" | "set">>) => void;
+  setLoaded: (v: boolean) => void;
 }
 
 const DEFAULT_ACTIVE: WidgetId[] = ["messages", "prochain-rdv", "meteo-temp", "horloge"];
@@ -129,65 +133,53 @@ const usePrefsStore = create<PrefsState>()((set) => ({
   categoryOrder: DEFAULT_CAT_ORDER,
   categoryHidden: [],
   subcatNames: {},
-  setAll: (p) => set({ ...p, loaded: true }),
-  setActiveWidgets: (v) => set({ activeWidgets: v }),
-  setCategoryOrder: (v) => set({ categoryOrder: v }),
-  setCategoryHidden: (v) => set({ categoryHidden: v }),
-  setSubcatNames: (v) => set({ subcatNames: v }),
+  widgetCities: {},
+  set: (patch) => set(patch),
+  setLoaded: (v) => set({ loaded: v }),
 }));
 
 /* ═══════════════════════════════════════════
-   Supabase sync hook
+   Supabase sync
    ═══════════════════════════════════════════ */
 function useSupabasePrefs() {
-  const store = usePrefsStore();
+  const setStore = usePrefsStore(s => s.set);
+  const setLoaded = usePrefsStore(s => s.setLoaded);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Load on mount
   useEffect(() => {
     fetch("/api/dashboard/preferences")
       .then(r => r.ok ? r.json() : null)
       .then(data => {
-        if (data) {
-          store.setAll({
-            activeWidgets: data.active_widgets ?? DEFAULT_ACTIVE,
-            categoryOrder: data.category_order ?? DEFAULT_CAT_ORDER,
-            categoryHidden: data.category_hidden ?? [],
-            subcatNames: data.subcat_names ?? {},
-          });
-        } else {
-          store.setAll({
-            activeWidgets: DEFAULT_ACTIVE,
-            categoryOrder: DEFAULT_CAT_ORDER,
-            categoryHidden: [],
-            subcatNames: {},
-          });
-        }
+        setStore({
+          activeWidgets:  data?.active_widgets  ?? DEFAULT_ACTIVE,
+          categoryOrder:  data?.category_order  ?? DEFAULT_CAT_ORDER,
+          categoryHidden: data?.category_hidden ?? [],
+          subcatNames:    data?.subcat_names    ?? {},
+          widgetCities:   data?.widget_cities   ?? {},
+        });
+        setLoaded(true);
       })
       .catch(() => {
-        store.setAll({
-          activeWidgets: DEFAULT_ACTIVE,
-          categoryOrder: DEFAULT_CAT_ORDER,
-          categoryHidden: [],
-          subcatNames: {},
-        });
+        setStore({ activeWidgets: DEFAULT_ACTIVE, categoryOrder: DEFAULT_CAT_ORDER, categoryHidden: [], subcatNames: {}, widgetCities: {} });
+        setLoaded(true);
       });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Debounced save
-  const save = useCallback((patch: {
-    active_widgets: WidgetId[];
-    category_order: string[];
-    category_hidden: string[];
-    subcat_names: Record<string, string>;
-  }) => {
+  const save = useCallback(() => {
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     saveTimerRef.current = setTimeout(() => {
+      const s = usePrefsStore.getState();
       fetch("/api/dashboard/preferences", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(patch),
+        body: JSON.stringify({
+          active_widgets:  s.activeWidgets,
+          category_order:  s.categoryOrder,
+          category_hidden: s.categoryHidden,
+          subcat_names:    s.subcatNames,
+          widget_cities:   s.widgetCities,
+        }),
       }).catch(() => {});
     }, 800);
   }, []);
@@ -221,33 +213,44 @@ function useNextAppointment() {
   return { value, sub };
 }
 
-function useMeteoData() {
-  const [temp, setTemp] = useState("...");
-  const [wind, setWind] = useState("...");
-  const [rain, setRain] = useState("...");
-  const [humidity, setHumidity] = useState("...");
-  const [uv, setUv] = useState("...");
-  const [sunrise, setSunrise] = useState("...");
-  const [city, setCity] = useState("...");
+function useMeteoForCity(city: SavedCity | null | undefined) {
+  // city = null → use first saved city / geo  // city = undefined → not yet resolved
+  const [data, setData] = useState<{
+    temp: string; wind: string; rain: string; humidity: string; uv: string; sunrise: string; cityName: string;
+  }>({ temp: "...", wind: "...", rain: "...", humidity: "...", uv: "...", sunrise: "...", cityName: "..." });
+
   useEffect(() => {
-    let lat: number, lon: number;
-    try {
-      const cities = JSON.parse(localStorage.getItem("life-weather-cities") ?? "[]");
-      if (!cities[0]) { setTemp("—"); setWind("—"); setRain("—"); setHumidity("—"); setUv("—"); setSunrise("—"); setCity("Aucune ville"); return; }
-      lat = cities[0].latitude; lon = cities[0].longitude; setCity(cities[0].name);
-    } catch { setTemp("—"); return; }
+    let lat: number, lon: number, name: string;
+    if (city) {
+      lat = city.latitude; lon = city.longitude; name = city.name;
+    } else {
+      try {
+        const cities: SavedCity[] = JSON.parse(localStorage.getItem("life-weather-cities") ?? "[]");
+        if (!cities[0]) { setData({ temp: "—", wind: "—", rain: "—", humidity: "—", uv: "—", sunrise: "—", cityName: "Aucune ville" }); return; }
+        lat = cities[0].latitude; lon = cities[0].longitude; name = cities[0].name;
+      } catch { setData(d => ({ ...d, temp: "—" })); return; }
+    }
+
     fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true&hourly=relativehumidity_2m,precipitation_probability,windspeed_10m,uv_index&daily=sunrise,sunset&timezone=auto`)
       .then(r => r.json()).then(d => {
-        setTemp(`${Math.round(d.current_weather?.temperature ?? 0)}°C`);
-        setWind(`${Math.round(d.current_weather?.windspeed ?? 0)} km/h`);
         const h = new Date().getHours();
-        const p = d.hourly?.precipitation_probability?.[h]; setRain(p != null ? `${p}%` : "—");
-        const hu = d.hourly?.relativehumidity_2m?.[h]; setHumidity(hu != null ? `${hu}%` : "—");
-        const uvv = d.hourly?.uv_index?.[h]; setUv(uvv != null ? String(Math.round(uvv)) : "—");
-        const sr = d.daily?.sunrise?.[0]; setSunrise(sr ? new Date(sr).toLocaleTimeString("fr", { hour: "2-digit", minute: "2-digit" }) : "—");
-      }).catch(() => { setTemp("—"); setWind("—"); setRain("—"); });
-  }, []);
-  return { temp, wind, rain, humidity, uv, sunrise, city };
+        const p = d.hourly?.precipitation_probability?.[h];
+        const hu = d.hourly?.relativehumidity_2m?.[h];
+        const uvv = d.hourly?.uv_index?.[h];
+        const sr = d.daily?.sunrise?.[0];
+        setData({
+          temp:     `${Math.round(d.current_weather?.temperature ?? 0)}°C`,
+          wind:     `${Math.round(d.current_weather?.windspeed ?? 0)} km/h`,
+          rain:     p  != null ? `${p}%`           : "—",
+          humidity: hu != null ? `${hu}%`           : "—",
+          uv:       uvv != null ? String(Math.round(uvv)) : "—",
+          sunrise:  sr ? new Date(sr).toLocaleTimeString("fr", { hour: "2-digit", minute: "2-digit" }) : "—",
+          cityName: name,
+        });
+      }).catch(() => setData(d => ({ ...d, temp: "—", wind: "—" })));
+  }, [city]);
+
+  return data;
 }
 
 function useClock() {
@@ -259,27 +262,97 @@ function useClock() {
       setValue(`${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`);
       setSub(now.toLocaleDateString("fr", { weekday: "long", day: "numeric", month: "long" }));
     };
-    update();
-    const id = setInterval(update, 10000);
-    return () => clearInterval(id);
+    update(); const id = setInterval(update, 10000); return () => clearInterval(id);
   }, []);
   return { value, sub };
+}
+
+/* ═══════════════════════════════════════════
+   City picker dialog
+   ═══════════════════════════════════════════ */
+function CityPickerDialog({
+  open, onClose, current, onSelect,
+}: {
+  open: boolean; onClose: () => void;
+  current: SavedCity | null;
+  onSelect: (city: SavedCity | null) => void;
+}) {
+  const [cities, setCities] = useState<SavedCity[]>([]);
+
+  useEffect(() => {
+    if (!open) return;
+    try {
+      const saved: SavedCity[] = JSON.parse(localStorage.getItem("life-weather-cities") ?? "[]");
+      setCities(saved);
+    } catch { setCities([]); }
+  }, [open]);
+
+  return (
+    <Dialog open={open} onOpenChange={onClose}>
+      <DialogContent className="premium-panel border-white/10 sm:max-w-xs">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2"><MapPin className="h-4 w-4 text-primary" />Ville météo du module</DialogTitle>
+          <DialogDescription>Choisissez la ville affichée sur ce module.</DialogDescription>
+        </DialogHeader>
+        <div className="space-y-1.5 pt-2">
+          <button
+            onClick={() => { onSelect(null); onClose(); }}
+            className={cn(
+              "w-full flex items-center gap-3 rounded-xl px-3 py-2.5 text-[13px] transition-all",
+              current === null ? "bg-primary/15 text-primary font-medium" : "hover:bg-foreground/[0.05] text-foreground"
+            )}
+          >
+            <MapPin className="h-4 w-4 shrink-0" />
+            <span className="flex-1 text-left">Première ville enregistrée</span>
+            {current === null && <Check className="h-4 w-4" />}
+          </button>
+          {cities.length === 0 && (
+            <p className="text-[12px] text-muted-foreground px-3 py-2">
+              Aucune ville enregistrée. Ajoutez des villes dans la page Météo.
+            </p>
+          )}
+          {cities.map(city => (
+            <button
+              key={city.id}
+              onClick={() => { onSelect(city); onClose(); }}
+              className={cn(
+                "w-full flex items-center gap-3 rounded-xl px-3 py-2.5 text-[13px] transition-all",
+                current?.id === city.id ? "bg-primary/15 text-primary font-medium" : "hover:bg-foreground/[0.05] text-foreground"
+              )}
+            >
+              <Cloud className="h-4 w-4 shrink-0 text-sky-400" />
+              <span className="flex-1 text-left">{city.name}</span>
+              {city.country && <span className="text-[11px] text-muted-foreground">{city.country}</span>}
+              {current?.id === city.id && <Check className="h-4 w-4 shrink-0" />}
+            </button>
+          ))}
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
 }
 
 /* ═══════════════════════════════════════════
    Widget tile
    ═══════════════════════════════════════════ */
 function WidgetTile({
-  id, editMode, onRemove, isDragOver, onPointerDown,
+  id, editMode, onRemove, isDragOver, isDragging,
+  onPointerDown, widgetCity, onCityChange,
 }: {
   id: WidgetId; editMode: boolean; onRemove: () => void;
-  isDragOver: boolean; onPointerDown: (e: React.PointerEvent) => void;
+  isDragOver: boolean; isDragging: boolean;
+  onPointerDown: (e: React.PointerEvent) => void;
+  widgetCity: SavedCity | null;
+  onCityChange: (city: SavedCity | null) => void;
 }) {
   const def = ALL_WIDGETS.find(w => w.id === id)!;
   const Icon = def.icon;
+  const isWeather = WEATHER_WIDGET_IDS.includes(id);
+  const [cityPickerOpen, setCityPickerOpen] = useState(false);
+
   const unread = useUnreadMessages(s => s.totalUnread);
   const nextRdv = useNextAppointment();
-  const meteo = useMeteoData();
+  const meteo = useMeteoForCity(isWeather ? widgetCity : undefined);
   const clock = useClock();
 
   let value = "—";
@@ -293,12 +366,12 @@ function WidgetTile({
     case "notifications":       value = "0"; sub = "alertes actives"; break;
     case "batterie":            value = "—"; sub = "Non disponible"; break;
     case "wifi":                value = "—"; sub = "Signal Wi-Fi"; break;
-    case "meteo-temp":          value = meteo.temp; sub = meteo.city; break;
-    case "meteo-vent":          value = meteo.wind; sub = "Vent actuel"; break;
-    case "meteo-pluie":         value = meteo.rain; sub = "Prob. pluie"; break;
-    case "meteo-humidite-ext":  value = meteo.humidity; sub = "Humidité ext."; break;
-    case "meteo-uv":            value = meteo.uv; sub = "UV Index"; break;
-    case "meteo-lever":         value = meteo.sunrise; sub = "Lever du soleil"; break;
+    case "meteo-temp":          value = meteo.temp; sub = meteo.cityName; break;
+    case "meteo-vent":          value = meteo.wind; sub = meteo.cityName; break;
+    case "meteo-pluie":         value = meteo.rain; sub = meteo.cityName; break;
+    case "meteo-humidite-ext":  value = meteo.humidity; sub = meteo.cityName; break;
+    case "meteo-uv":            value = meteo.uv; sub = meteo.cityName; break;
+    case "meteo-lever":         value = meteo.sunrise; sub = meteo.cityName; break;
     case "iot-temp":            value = "22°C"; sub = "Salon · IoT"; break;
     case "iot-humidite":        value = "45%"; sub = "Salon · IoT"; break;
     case "iot-co2":             value = "412 ppm"; sub = "Qualité air bonne"; break;
@@ -326,32 +399,54 @@ function WidgetTile({
     <div
       onPointerDown={onPointerDown}
       className={cn(
-        "relative rounded-[1.4rem] p-4 flex flex-col gap-2 transition-all select-none",
+        "relative rounded-[1.4rem] p-4 flex flex-col gap-2 transition-all duration-150 select-none touch-none",
         def.bg,
         "border border-white/[0.08] dark:border-white/[0.04]",
-        editMode && "cursor-grab ring-2 ring-dashed ring-foreground/20",
-        isDragOver && "ring-2 ring-primary scale-[0.97]",
+        isDragging && "opacity-40 scale-95",
+        isDragOver && "ring-2 ring-primary ring-offset-2 ring-offset-transparent scale-[0.97]",
+        editMode && !isDragging && "cursor-grab",
         def.href && !editMode && "cursor-pointer hover:brightness-105",
       )}
     >
+      {/* Remove button */}
       {editMode && (
         <button
-          onPointerDown={(e) => e.stopPropagation()}
-          onClick={(e) => { e.preventDefault(); e.stopPropagation(); onRemove(); }}
+          onPointerDown={e => e.stopPropagation()}
+          onClick={e => { e.preventDefault(); e.stopPropagation(); onRemove(); }}
           className="absolute -top-2 -right-2 z-10 flex h-6 w-6 items-center justify-center rounded-full bg-red-500 text-white shadow-md hover:bg-red-600 transition-colors"
         >
           <X className="h-3.5 w-3.5" />
         </button>
       )}
-      {editMode && <GripVertical className="absolute top-3 left-3 h-3.5 w-3.5 text-foreground/20" />}
+      {/* Grip icon */}
+      {editMode && <GripVertical className="absolute top-3 left-3 h-3.5 w-3.5 text-foreground/20 pointer-events-none" />}
+      {/* City picker button for weather */}
+      {editMode && isWeather && (
+        <button
+          onPointerDown={e => e.stopPropagation()}
+          onClick={e => { e.preventDefault(); e.stopPropagation(); setCityPickerOpen(true); }}
+          className="absolute bottom-2 right-2 z-10 flex items-center gap-1 rounded-lg bg-foreground/10 px-1.5 py-0.5 text-[9px] font-medium text-muted-foreground hover:bg-foreground/20 transition-colors"
+        >
+          <MapPin className="h-2.5 w-2.5" />
+          {widgetCity ? widgetCity.name.split(",")[0].split(" ")[0] : "Défaut"}
+        </button>
+      )}
+
       <div className={cn("flex h-8 w-8 items-center justify-center rounded-xl", def.bg, "ring-1 ring-white/10")}>
         <Icon className={cn("h-4 w-4", def.color)} />
       </div>
       <div className="mt-0.5">
         <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">{def.label}</p>
         <p className="text-[22px] font-bold tracking-tight mt-0.5 leading-none">{value}</p>
-        <p className="text-[10px] text-muted-foreground/70 mt-1 leading-tight line-clamp-1">{sub}</p>
+        <p className="text-[10px] text-muted-foreground/70 mt-1 leading-tight line-clamp-1 pr-8">{sub}</p>
       </div>
+
+      <CityPickerDialog
+        open={cityPickerOpen}
+        onClose={() => setCityPickerOpen(false)}
+        current={widgetCity}
+        onSelect={onCityChange}
+      />
     </div>
   );
 
@@ -362,12 +457,9 @@ function WidgetTile({
 /* ═══════════════════════════════════════════
    Editable subcat label
    ═══════════════════════════════════════════ */
-function SubcatLabel({
-  subcat, customNames, editMode,
-  onChange,
-}: {
+function SubcatLabel({ subcat, customNames, editMode, onChange }: {
   subcat: WidgetSubcat; customNames: Record<string, string>; editMode: boolean;
-  onChange: (subcat: WidgetSubcat, val: string) => void;
+  onChange: (sc: WidgetSubcat, val: string) => void;
 }) {
   const meta = WIDGET_SUBCATS[subcat];
   const SubIcon = meta.icon;
@@ -389,7 +481,7 @@ function SubcatLabel({
     <div className="flex items-center gap-2 mb-2.5 px-0.5">
       <SubIcon className={cn("h-3.5 w-3.5 shrink-0", meta.color)} />
       {editing ? (
-        <form onSubmit={(e) => { e.preventDefault(); commit(); }} className="flex items-center gap-1">
+        <form onSubmit={e => { e.preventDefault(); commit(); }} className="flex items-center gap-1">
           <input
             ref={inputRef}
             value={draft}
@@ -398,18 +490,13 @@ function SubcatLabel({
             onKeyDown={e => e.key === "Escape" && setEditing(false)}
             className="text-[10px] font-semibold uppercase tracking-[0.18em] bg-transparent border-b border-primary/50 outline-none text-foreground min-w-0 w-28"
           />
-          <button type="submit" className="p-0.5 rounded text-primary hover:text-primary/80">
-            <Check className="h-3 w-3" />
-          </button>
+          <button type="submit" className="p-0.5 rounded text-primary"><Check className="h-3 w-3" /></button>
         </form>
       ) : (
         <>
           <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{label}</p>
           {editMode && (
-            <button
-              onClick={() => { setDraft(label); setEditing(true); }}
-              className="p-0.5 rounded text-muted-foreground/40 hover:text-muted-foreground transition-colors"
-            >
+            <button onClick={() => { setDraft(label); setEditing(true); }} className="p-0.5 rounded text-muted-foreground/40 hover:text-muted-foreground transition-colors">
               <Pencil className="h-2.5 w-2.5" />
             </button>
           )}
@@ -420,11 +507,9 @@ function SubcatLabel({
 }
 
 /* ═══════════════════════════════════════════
-   Widget catalog — grouped accordion
+   Widget catalog
    ═══════════════════════════════════════════ */
-function WidgetCatalog({
-  activeWidgets, customNames, onToggle, onReset, onClose,
-}: {
+function WidgetCatalog({ activeWidgets, customNames, onToggle, onReset, onClose }: {
   activeWidgets: WidgetId[]; customNames: Record<string, string>;
   onToggle: (id: WidgetId) => void; onReset: () => void; onClose: () => void;
 }) {
@@ -432,7 +517,7 @@ function WidgetCatalog({
   const subcats = Object.keys(WIDGET_SUBCATS) as WidgetSubcat[];
   return (
     <div className="space-y-2 pt-1">
-      {subcats.map((subcat) => {
+      {subcats.map(subcat => {
         const meta = WIDGET_SUBCATS[subcat];
         const SubIcon = meta.icon;
         const label = customNames[subcat] ?? meta.defaultLabel;
@@ -447,33 +532,24 @@ function WidgetCatalog({
             >
               <SubIcon className={cn("h-4 w-4 shrink-0", meta.color)} />
               <span className="flex-1 text-left text-[13px] font-semibold">{label}</span>
-              {activeCount > 0 && (
-                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-primary/15 text-primary">
-                  {activeCount} actif{activeCount > 1 ? "s" : ""}
-                </span>
-              )}
+              {activeCount > 0 && <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-primary/15 text-primary">{activeCount} actif{activeCount > 1 ? "s" : ""}</span>}
               <ChevronRight className={cn("h-3.5 w-3.5 text-muted-foreground transition-transform", isOpen && "rotate-90")} />
             </button>
             {isOpen && (
               <div className="divide-y divide-foreground/[0.04]">
-                {widgets.map((w) => {
+                {widgets.map(w => {
                   const WIcon = w.icon;
                   const isActive = activeWidgets.includes(w.id);
                   return (
                     <div key={w.id} className="flex items-center gap-3 px-4 py-2.5 bg-foreground/[0.01] hover:bg-foreground/[0.04] transition-colors">
-                      <div className={cn("flex h-7 w-7 items-center justify-center rounded-xl shrink-0", w.bg)}>
-                        <WIcon className={cn("h-3.5 w-3.5", w.color)} />
-                      </div>
+                      <div className={cn("flex h-7 w-7 items-center justify-center rounded-xl shrink-0", w.bg)}><WIcon className={cn("h-3.5 w-3.5", w.color)} /></div>
                       <div className="flex-1 min-w-0">
                         <p className="text-[12px] font-medium">{w.label}</p>
                         <p className="text-[10px] text-muted-foreground leading-tight">{w.description}</p>
                       </div>
                       <button
                         onClick={() => onToggle(w.id)}
-                        className={cn(
-                          "flex h-7 w-7 items-center justify-center rounded-xl transition-all shrink-0",
-                          isActive ? "bg-red-500/15 text-red-500 hover:bg-red-500/25" : "bg-primary/15 text-primary hover:bg-primary/25"
-                        )}
+                        className={cn("flex h-7 w-7 items-center justify-center rounded-xl transition-all shrink-0", isActive ? "bg-red-500/15 text-red-500 hover:bg-red-500/25" : "bg-primary/15 text-primary hover:bg-primary/25")}
                       >
                         {isActive ? <X className="h-3.5 w-3.5" /> : <Plus className="h-3.5 w-3.5" />}
                       </button>
@@ -485,10 +561,7 @@ function WidgetCatalog({
           </div>
         );
       })}
-      <button
-        onClick={() => { onReset(); toast.success("Modules réinitialisés"); onClose(); }}
-        className="w-full flex items-center justify-center gap-2 rounded-xl bg-foreground/[0.05] py-2 text-[13px] font-medium text-muted-foreground hover:text-foreground transition-colors"
-      >
+      <button onClick={() => { onReset(); toast.success("Modules réinitialisés"); onClose(); }} className="w-full flex items-center justify-center gap-2 rounded-xl bg-foreground/[0.05] py-2 text-[13px] font-medium text-muted-foreground hover:text-foreground transition-colors">
         <RotateCcw className="h-3.5 w-3.5" />Réinitialiser
       </button>
     </div>
@@ -501,99 +574,95 @@ function WidgetCatalog({
 export default function DashboardPage() {
   const mounted = useSyncExternalStore(() => () => {}, () => true, () => false);
 
-  // Store
-  const loaded        = usePrefsStore(s => s.loaded);
-  const activeWidgets = usePrefsStore(s => s.activeWidgets);
-  const categoryOrder = usePrefsStore(s => s.categoryOrder);
+  const loaded         = usePrefsStore(s => s.loaded);
+  const activeWidgets  = usePrefsStore(s => s.activeWidgets);
+  const categoryOrder  = usePrefsStore(s => s.categoryOrder);
   const categoryHidden = usePrefsStore(s => s.categoryHidden);
-  const subcatNames   = usePrefsStore(s => s.subcatNames);
-  const setActiveWidgets  = usePrefsStore(s => s.setActiveWidgets);
-  const setCategoryOrder  = usePrefsStore(s => s.setCategoryOrder);
-  const setCategoryHidden = usePrefsStore(s => s.setCategoryHidden);
-  const setSubcatNames    = usePrefsStore(s => s.setSubcatNames);
+  const subcatNames    = usePrefsStore(s => s.subcatNames);
+  const widgetCities   = usePrefsStore(s => s.widgetCities);
+  const setStore       = usePrefsStore(s => s.set);
 
   const { save } = useSupabasePrefs();
 
-  // Helper: update and persist
-  const updateWidgets = useCallback((next: WidgetId[]) => {
-    setActiveWidgets(next);
-    save({ active_widgets: next, category_order: categoryOrder, category_hidden: categoryHidden, subcat_names: subcatNames });
-  }, [setActiveWidgets, save, categoryOrder, categoryHidden, subcatNames]);
+  // All mutations go through this — reads fresh state, writes and saves
+  const mutate = useCallback((patch: Partial<{
+    activeWidgets: WidgetId[]; categoryOrder: string[]; categoryHidden: string[];
+    subcatNames: Record<string, string>; widgetCities: Record<string, SavedCity | null>;
+  }>) => {
+    setStore(patch);
+    save();
+  }, [setStore, save]);
 
-  const updateCatOrder = useCallback((next: string[]) => {
-    setCategoryOrder(next);
-    save({ active_widgets: activeWidgets, category_order: next, category_hidden: categoryHidden, subcat_names: subcatNames });
-  }, [setCategoryOrder, save, activeWidgets, categoryHidden, subcatNames]);
-
-  const updateCatHidden = useCallback((next: string[]) => {
-    setCategoryHidden(next);
-    save({ active_widgets: activeWidgets, category_order: categoryOrder, category_hidden: next, subcat_names: subcatNames });
-  }, [setCategoryHidden, save, activeWidgets, categoryOrder, subcatNames]);
-
-  const updateSubcatNames = useCallback((next: Record<string, string>) => {
-    setSubcatNames(next);
-    save({ active_widgets: activeWidgets, category_order: categoryOrder, category_hidden: categoryHidden, subcat_names: next });
-  }, [setSubcatNames, save, activeWidgets, categoryOrder, categoryHidden]);
-
-  // UI state
+  // UI
   const [catSettingsOpen, setCatSettingsOpen] = useState(false);
   const [catalogOpen, setCatalogOpen] = useState(false);
   const [editWidgets, setEditWidgets] = useState(false);
   const [fabOpen, setFabOpen] = useState(false);
 
-  // Drag & drop state
-  const [draggedId, setDraggedId] = useState<WidgetId | null>(null);
+  /* ─── Drag & Drop ─── */
+  const editModeRef = useRef(false);
+  useEffect(() => { editModeRef.current = editWidgets; }, [editWidgets]);
+
+  const [draggedId, setDraggedId]     = useState<WidgetId | null>(null);
   const [dropTargetId, setDropTargetId] = useState<WidgetId | null>(null);
-  const tileRefs = useRef<Map<WidgetId, HTMLDivElement>>(new Map());
-  const dragInfoRef = useRef<{ startX: number; startY: number; isDragging: boolean; id: WidgetId } | null>(null);
+
+  // Refs updated synchronously — no stale closure issues
+  const dragInfoRef      = useRef<{ startX: number; startY: number; isDragging: boolean; id: WidgetId } | null>(null);
+  const dropTargetIdRef  = useRef<WidgetId | null>(null);
+  const tileRefs         = useRef<Map<WidgetId, HTMLDivElement>>(new Map());
 
   const handleTilePointerDown = useCallback((e: React.PointerEvent, id: WidgetId) => {
-    if (!editMode) return;
-    e.currentTarget.setPointerCapture(e.pointerId);
+    if (!editModeRef.current) return;
+    e.preventDefault();
     dragInfoRef.current = { startX: e.clientX, startY: e.clientY, isDragging: false, id };
-  }, []);
-
-  // editMode ref for use in pointer events
-  const editMode = editWidgets;
-  const editModeRef = useRef(editMode);
-  useEffect(() => { editModeRef.current = editMode; }, [editMode]);
+  }, []); // stable — reads editModeRef.current at call time
 
   useEffect(() => {
     const handlePointerMove = (e: PointerEvent) => {
       const info = dragInfoRef.current;
       if (!info) return;
+
       if (!info.isDragging) {
         if (Math.abs(e.clientX - info.startX) < 8 && Math.abs(e.clientY - info.startY) < 8) return;
         info.isDragging = true;
         setDraggedId(info.id);
       }
-      // Find which tile we're hovering over
+
+      // Hit-test all tiles
       let found: WidgetId | null = null;
       tileRefs.current.forEach((el, wid) => {
         if (wid === info.id) return;
-        const rect = el.getBoundingClientRect();
-        if (e.clientX >= rect.left && e.clientX <= rect.right && e.clientY >= rect.top && e.clientY <= rect.bottom) {
+        const r = el.getBoundingClientRect();
+        if (e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom) {
           found = wid;
         }
       });
+      // Update ref synchronously, state for render
+      dropTargetIdRef.current = found;
       setDropTargetId(found);
     };
 
     const handlePointerUp = () => {
       const info = dragInfoRef.current;
+      const target = dropTargetIdRef.current; // always fresh
       dragInfoRef.current = null;
-      if (info?.isDragging && dropTargetId && info.id !== dropTargetId) {
-        // Swap positions — read current state from store directly
+      dropTargetIdRef.current = null;
+
+      setDraggedId(null);
+      setDropTargetId(null);
+
+      if (info?.isDragging && target && info.id !== target) {
+        // Read fresh from store, not from closure
         const current = usePrefsStore.getState().activeWidgets;
         const next = [...current];
         const ai = next.indexOf(info.id);
-        const bi = next.indexOf(dropTargetId as WidgetId);
-        if (ai !== -1 && bi !== -1) { [next[ai], next[bi]] = [next[bi], next[ai]]; }
-        setActiveWidgets(next);
-        save({ active_widgets: next, category_order: categoryOrder, category_hidden: categoryHidden, subcat_names: subcatNames });
+        const bi = next.indexOf(target);
+        if (ai !== -1 && bi !== -1) {
+          [next[ai], next[bi]] = [next[bi], next[ai]];
+          mutate({ activeWidgets: next });
+          toast.success("Modules échangés");
+        }
       }
-      setDraggedId(null);
-      setDropTargetId(null);
     };
 
     document.addEventListener("pointermove", handlePointerMove);
@@ -602,33 +671,31 @@ export default function DashboardPage() {
       document.removeEventListener("pointermove", handlePointerMove);
       document.removeEventListener("pointerup", handlePointerUp);
     };
-  }, [dropTargetId, setActiveWidgets, save, categoryOrder, categoryHidden, subcatNames]);
+  }, [mutate]); // stable — all mutable state read from refs or store.getState()
 
-  // Category helpers
-  const categories = categoryOrder.map(id => ALL_CATEGORIES.find(c => c.id === id)).filter(Boolean) as Category[];
+  /* ─── Category helpers ─── */
+  const categories  = categoryOrder.map(id => ALL_CATEGORIES.find(c => c.id === id)).filter(Boolean) as Category[];
   const visibleCats = categories.filter(c => !categoryHidden.includes(c.id));
-  const hiddenCats = categories.filter(c => categoryHidden.includes(c.id));
+  const hiddenCats  = categories.filter(c => categoryHidden.includes(c.id));
 
-  const toggleCat = (id: string) => {
-    const next = categoryHidden.includes(id) ? categoryHidden.filter(h => h !== id) : [...categoryHidden, id];
-    updateCatHidden(next);
-  };
-  const moveCat = (id: string, dir: "up" | "down") => {
+  const toggleCat = (id: string) => mutate({ categoryHidden: categoryHidden.includes(id) ? categoryHidden.filter(h => h !== id) : [...categoryHidden, id] });
+  const moveCat   = (id: string, dir: "up" | "down") => {
     const a = [...categoryOrder]; const i = a.indexOf(id);
-    if (dir === "up" && i > 0) { [a[i-1], a[i]] = [a[i], a[i-1]]; }
-    else if (dir === "down" && i < a.length - 1) { [a[i], a[i+1]] = [a[i+1], a[i]]; }
-    else return;
-    updateCatOrder(a);
+    if (dir === "up" && i > 0)             { [a[i-1], a[i]] = [a[i], a[i-1]]; mutate({ categoryOrder: a }); }
+    else if (dir === "down" && i < a.length-1) { [a[i], a[i+1]] = [a[i+1], a[i]]; mutate({ categoryOrder: a }); }
   };
 
-  // Widget helpers
-  const toggleWidget = (id: WidgetId) => {
-    const next = activeWidgets.includes(id) ? activeWidgets.filter(w => w !== id) : [...activeWidgets, id];
-    updateWidgets(next);
-  };
-  const resetWidgets = () => updateWidgets(DEFAULT_ACTIVE);
+  /* ─── Widget helpers ─── */
+  const toggleWidget = (id: WidgetId) => mutate({
+    activeWidgets: activeWidgets.includes(id) ? activeWidgets.filter(w => w !== id) : [...activeWidgets, id],
+  });
+  const resetWidgets = () => mutate({ activeWidgets: DEFAULT_ACTIVE, widgetCities: {} });
 
-  // Grouped display
+  const updateWidgetCity = (id: WidgetId, city: SavedCity | null) => {
+    mutate({ widgetCities: { ...widgetCities, [id]: city } });
+  };
+
+  /* ─── Grouped display ─── */
   const SUBCAT_ORDER: WidgetSubcat[] = ["systeme", "planning", "meteo", "iot", "sante", "finance"];
   const widgetsBySubcat: Record<WidgetSubcat, WidgetId[]> = { systeme: [], planning: [], meteo: [], iot: [], sante: [], finance: [] };
   activeWidgets.forEach(id => {
@@ -658,28 +725,24 @@ export default function DashboardPage() {
       <div>
         <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground mb-3 px-0.5">Catégories</p>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {visibleCats.map((cat) => {
+          {visibleCats.map(cat => {
             const CatIcon = cat.icon;
             return (
               <div key={cat.id} className="premium-panel group relative overflow-hidden rounded-[1.8rem] flex flex-col">
                 <div className={cn("absolute -right-6 -top-6 h-28 w-28 rounded-full bg-gradient-to-br opacity-15 blur-2xl transition-all duration-500 group-hover:opacity-25 group-hover:scale-125", cat.gradient)} />
                 <Link href={cat.primaryHref} className="relative flex items-start justify-between p-5 pb-3">
                   <div className="flex items-center gap-3">
-                    <div className={cn("flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br shadow-md", cat.gradient)}>
-                      <CatIcon className="h-5 w-5 text-white" />
-                    </div>
+                    <div className={cn("flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br shadow-md", cat.gradient)}><CatIcon className="h-5 w-5 text-white" /></div>
                     <div>
                       <h3 className="text-[15px] font-semibold tracking-[-0.03em]">{cat.label}</h3>
                       <p className="text-[11px] text-muted-foreground leading-tight mt-0.5">{cat.stat}</p>
                     </div>
                   </div>
-                  <div className="premium-panel-soft flex h-8 w-8 items-center justify-center rounded-xl text-muted-foreground transition-all duration-300 group-hover:text-foreground mt-0.5 shrink-0">
-                    <ArrowUpRight className="h-3.5 w-3.5" />
-                  </div>
+                  <div className="premium-panel-soft flex h-8 w-8 items-center justify-center rounded-xl text-muted-foreground transition-all duration-300 group-hover:text-foreground mt-0.5 shrink-0"><ArrowUpRight className="h-3.5 w-3.5" /></div>
                 </Link>
                 <div className="relative mx-5 h-px bg-foreground/[0.06]" />
                 <div className="relative flex flex-wrap gap-2 p-5 pt-3 flex-1">
-                  {cat.modules.map((mod) => {
+                  {cat.modules.map(mod => {
                     const ModIcon = mod.icon;
                     return (
                       <Link key={mod.id} href={mod.href} className="flex items-center gap-1.5 rounded-xl bg-foreground/[0.04] px-3 py-1.5 text-[12px] font-medium text-muted-foreground transition-all hover:bg-foreground/[0.08] hover:text-foreground">
@@ -687,9 +750,7 @@ export default function DashboardPage() {
                       </Link>
                     );
                   })}
-                  {cat.modules.length === 1 && cat.statSub && (
-                    <p className="w-full text-[11px] text-muted-foreground/60 mt-0.5">{cat.statSub}</p>
-                  )}
+                  {cat.modules.length === 1 && cat.statSub && <p className="w-full text-[11px] text-muted-foreground/60 mt-0.5">{cat.statSub}</p>}
                 </div>
               </div>
             );
@@ -719,20 +780,14 @@ export default function DashboardPage() {
                 {editWidgets ? "Terminer" : "Modifier"}
               </button>
             )}
-            <button
-              onClick={() => setCatalogOpen(true)}
-              className="flex items-center gap-1.5 text-[11px] font-medium px-3 py-1.5 rounded-xl text-primary hover:bg-primary/10 transition-all"
-            >
+            <button onClick={() => setCatalogOpen(true)} className="flex items-center gap-1.5 text-[11px] font-medium px-3 py-1.5 rounded-xl text-primary hover:bg-primary/10 transition-all">
               <Plus className="h-3.5 w-3.5" />Ajouter
             </button>
           </div>
         </div>
 
         {activeWidgets.length === 0 ? (
-          <button
-            onClick={() => setCatalogOpen(true)}
-            className="w-full premium-panel-soft flex items-center justify-center gap-3 rounded-[1.8rem] border-2 border-dashed border-foreground/[0.08] py-12 transition-all hover:border-primary/30 hover:bg-primary/[0.02]"
-          >
+          <button onClick={() => setCatalogOpen(true)} className="w-full premium-panel-soft flex items-center justify-center gap-3 rounded-[1.8rem] border-2 border-dashed border-foreground/[0.08] py-12 transition-all hover:border-primary/30 hover:bg-primary/[0.02]">
             <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-primary/10"><Plus className="h-5 w-5 text-primary" /></div>
             <div className="text-left">
               <p className="text-[13px] font-semibold text-foreground/70">Ajouter des modules</p>
@@ -741,48 +796,48 @@ export default function DashboardPage() {
           </button>
         ) : (
           <div className="space-y-5">
-            {nonEmptySubcats.map(subcat => {
-              const ids = widgetsBySubcat[subcat];
-              return (
-                <div key={subcat}>
-                  <SubcatLabel
-                    subcat={subcat}
-                    customNames={subcatNames}
-                    editMode={editWidgets}
-                    onChange={(sc, val) => {
-                      const next = { ...subcatNames };
-                      if (val) next[sc] = val; else delete next[sc];
-                      updateSubcatNames(next);
-                    }}
-                  />
-                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-                    {ids.map((id) => (
-                      <div
-                        key={id}
-                        ref={el => { if (el) tileRefs.current.set(id, el); else tileRefs.current.delete(id); }}
-                      >
-                        <WidgetTile
-                          id={id}
-                          editMode={editWidgets}
-                          onRemove={() => { toggleWidget(id); toast.success("Module retiré"); }}
-                          isDragOver={dropTargetId === id}
-                          onPointerDown={(e) => handleTilePointerDown(e, id)}
-                        />
-                      </div>
-                    ))}
-                    {editWidgets && (
-                      <button
-                        onClick={() => setCatalogOpen(true)}
-                        className="flex flex-col items-center justify-center gap-2 rounded-[1.4rem] border-2 border-dashed border-foreground/[0.08] p-4 transition-all hover:border-primary/30 hover:bg-primary/[0.02] min-h-[110px]"
-                      >
-                        <Plus className="h-4 w-4 text-primary" />
-                        <p className="text-[10px] font-medium text-muted-foreground">Ajouter</p>
-                      </button>
-                    )}
-                  </div>
+            {editWidgets && (
+              <p className="text-[11px] text-muted-foreground/60 px-0.5">
+                Glissez les modules pour les échanger · Crayon pour renommer · <MapPin className="inline h-3 w-3" /> pour changer la ville météo
+              </p>
+            )}
+            {nonEmptySubcats.map(subcat => (
+              <div key={subcat}>
+                <SubcatLabel
+                  subcat={subcat} customNames={subcatNames} editMode={editWidgets}
+                  onChange={(sc, val) => {
+                    const next = { ...subcatNames };
+                    if (val) next[sc] = val; else delete next[sc];
+                    mutate({ subcatNames: next });
+                  }}
+                />
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+                  {widgetsBySubcat[subcat].map(id => (
+                    <div
+                      key={id}
+                      ref={el => { if (el) tileRefs.current.set(id, el); else tileRefs.current.delete(id); }}
+                    >
+                      <WidgetTile
+                        id={id}
+                        editMode={editWidgets}
+                        onRemove={() => { toggleWidget(id); toast.success("Module retiré"); }}
+                        isDragOver={dropTargetId === id}
+                        isDragging={draggedId === id}
+                        onPointerDown={e => handleTilePointerDown(e, id)}
+                        widgetCity={widgetCities[id] ?? null}
+                        onCityChange={city => updateWidgetCity(id, city)}
+                      />
+                    </div>
+                  ))}
+                  {editWidgets && (
+                    <button onClick={() => setCatalogOpen(true)} className="flex flex-col items-center justify-center gap-2 rounded-[1.4rem] border-2 border-dashed border-foreground/[0.08] p-4 transition-all hover:border-primary/30 hover:bg-primary/[0.02] min-h-[110px]">
+                      <Plus className="h-4 w-4 text-primary" />
+                      <p className="text-[10px] font-medium text-muted-foreground">Ajouter</p>
+                    </button>
+                  )}
                 </div>
-              );
-            })}
+              </div>
+            ))}
           </div>
         )}
       </div>
@@ -805,14 +860,14 @@ export default function DashboardPage() {
                   <span className="flex-1 text-[13px] font-medium">{cat.label}</span>
                   {!isHidden && (<>
                     <button onClick={() => moveCat(cat.id, "up")} disabled={i === 0} className="p-1 rounded text-muted-foreground hover:text-foreground disabled:opacity-20"><ChevronRight className="h-3.5 w-3.5 -rotate-90" /></button>
-                    <button onClick={() => moveCat(cat.id, "down")} disabled={i === categories.length - 1} className="p-1 rounded text-muted-foreground hover:text-foreground disabled:opacity-20"><ChevronRight className="h-3.5 w-3.5 rotate-90" /></button>
+                    <button onClick={() => moveCat(cat.id, "down")} disabled={i === categories.length-1} className="p-1 rounded text-muted-foreground hover:text-foreground disabled:opacity-20"><ChevronRight className="h-3.5 w-3.5 rotate-90" /></button>
                   </>)}
                   <button onClick={() => toggleCat(cat.id)} className="p-1 rounded text-muted-foreground hover:text-foreground">{isHidden ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}</button>
                 </div>
               );
             })}
           </div>
-          <button onClick={() => { updateCatOrder(DEFAULT_CAT_ORDER); updateCatHidden([]); toast.success("Catégories réinitialisées"); }} className="mt-3 w-full flex items-center justify-center gap-2 rounded-xl bg-foreground/[0.05] py-2 text-[13px] font-medium text-muted-foreground hover:text-foreground transition-colors">
+          <button onClick={() => { mutate({ categoryOrder: DEFAULT_CAT_ORDER, categoryHidden: [] }); toast.success("Catégories réinitialisées"); }} className="mt-3 w-full flex items-center justify-center gap-2 rounded-xl bg-foreground/[0.05] py-2 text-[13px] font-medium text-muted-foreground hover:text-foreground transition-colors">
             <RotateCcw className="h-3.5 w-3.5" />Réinitialiser
           </button>
         </DialogContent>
@@ -827,9 +882,8 @@ export default function DashboardPage() {
           </DialogHeader>
           <div className="overflow-y-auto flex-1 pr-0.5">
             <WidgetCatalog
-              activeWidgets={activeWidgets}
-              customNames={subcatNames}
-              onToggle={(id) => { toggleWidget(id); toast.success(activeWidgets.includes(id) ? "Module retiré" : "Module ajouté"); }}
+              activeWidgets={activeWidgets} customNames={subcatNames}
+              onToggle={id => { toggleWidget(id); toast.success(activeWidgets.includes(id) ? "Module retiré" : "Module ajouté"); }}
               onReset={resetWidgets}
               onClose={() => setCatalogOpen(false)}
             />
@@ -849,7 +903,7 @@ export default function DashboardPage() {
         </>)}
         <button
           onClick={() => setFabOpen(!fabOpen)}
-          className={cn("flex h-11 w-11 items-center justify-center rounded-full backdrop-blur-xl border shadow-md transition-all hover:shadow-lg hover:scale-105 active:scale-95 lg:h-13 lg:w-13", fabOpen ? "bg-foreground/15 border-white/25 text-foreground" : "bg-foreground/10 border-white/20 text-muted-foreground lg:bg-white/58 lg:border-white/45 dark:lg:bg-white/[0.08]")}
+          className={cn("flex h-11 w-11 items-center justify-center rounded-full backdrop-blur-xl border shadow-md transition-all hover:shadow-lg hover:scale-105 active:scale-95", fabOpen ? "bg-foreground/15 border-white/25 text-foreground" : "bg-foreground/10 border-white/20 text-muted-foreground lg:bg-white/58 lg:border-white/45 dark:lg:bg-white/[0.08]")}
         >
           <MoreHorizontal className="h-5 w-5" />
         </button>

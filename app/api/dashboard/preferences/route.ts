@@ -37,6 +37,7 @@ export async function PUT(req: Request) {
       category_order: body.category_order ?? [],
       category_hidden: body.category_hidden ?? [],
       subcat_names:   body.subcat_names ?? {},
+      widget_cities:  body.widget_cities ?? {},
       updated_at: new Date().toISOString(),
     }, { onConflict: "user_id" });
 
